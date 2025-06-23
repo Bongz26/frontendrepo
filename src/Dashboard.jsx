@@ -137,18 +137,18 @@ const Dashboard = () => {
           <button className="btn btn-outline-secondary mb-3" onClick={fetchOrders} disabled={loading}>
             {loading ? "Refreshing..." : "🔄 Refresh"}
           </button>
-
+      
+                {/* Waiting Orders (Card View) */}
           <div className="row">
-            {/* Waiting Orders (Card View) */}
-            <div className="col-md-6">
-              <h6 className="bg-primary text-white p-2">⏳ Waiting Orders</h6>
-              {orders.filter(o => o.current_status === "Waiting").map(renderOrderCard)}
-            </div>
+              <div className="col-md-4">  {/* Narrower column for Waiting Orders */}
+                <h6 className="bg-primary text-white p-2">⏳ Waiting Orders</h6>
+                {orders.filter(o => o.current_status === "Waiting").map(renderOrderCard)}
+            </div>        
 
             {/* Active Orders (Table View) */}
-            <div className="col-md-6">
-              <h6 className="bg-success text-white p-2">🚀 Active Orders</h6>
-              <div className="table-responsive">
+            <div className="col-md-8">  {/* Wider area for Active Orders Table */}
+            <h6 className="bg-success text-white p-2">🚀 Active Orders</h6>
+            <div className="table-responsive">
                 <table className="table table-bordered table-hover table-sm">
                   <thead className="table-dark">
                     <tr>
