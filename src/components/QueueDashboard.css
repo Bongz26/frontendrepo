@@ -1,0 +1,77 @@
+.queue-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1rem;
+  font-family: sans-serif;
+}
+
+.waiting-list {
+  background-color: #f9f9f9;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.waiting-feed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.waiting-card {
+  padding: 0.5rem 1rem;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  display: flex;
+  gap: 1rem;
+  min-width: 120px;
+  justify-content: space-between;
+}
+
+.active-orders {
+  overflow-x: auto;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.orders-table th,
+.orders-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+.badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  color: white;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.badge.completed {
+  background-color: #4caf50;
+}
+
+.badge.in-progress {
+  background-color: #2196f3;
+}
+
+
+.pulse {
+  animation: pulse-highlight 1.2s ease-in-out;
+  background-color: #f0f8ff;
+}
+
+@keyframes pulse-highlight {
+  0% {
+    background-color: #f0f8ff;
+  }
+  100% {
+    background-color: transparent;
+  }
+}

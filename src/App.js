@@ -6,6 +6,7 @@ import AddOrder from "./Add_Order";
 import AdminOrders from "./AdminOrders";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./styles/queueStyles.css";
+import QueueDashboard from "./components/QueueDashboard";
 
 const App = () => {
   return (
@@ -15,6 +16,7 @@ const App = () => {
         <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="/add-order" element={<AddOrder />} />
         <Route path="/admin-orders" element={<AdminOrders userRole="Admin" />} />
+         <Route path="/test-queue" element={<QueueDashboard waitingOrders={[]} activeOrders={[]} />} />
       </Routes>
     </Router>
   );
