@@ -209,10 +209,9 @@ const Dashboard = () => {
             );
             setPendingColourUpdate(null);
           }}
-          onCancel={() => setPendingColourUpdate(null
-      
-        />
-      )}
+         onCancel={() => setPendingColourUpdate(null)}
+  />
+)}
     </div>
   );
 };
