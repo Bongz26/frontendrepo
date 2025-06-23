@@ -116,6 +116,11 @@ const Dashboard = () => {
         </div>
       </div>
     </div>
+const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
+const activeCount = orders.filter(o =>
+  !["Waiting", "Ready", "Complete"].includes(o.current_status)
+).length;
+
   );
 
   return (
@@ -140,13 +145,13 @@ const Dashboard = () => {
                 {/* Waiting Orders (Card View) */}
           <div className="row">
               <div className="col-md-4">  {/* Narrower column for Waiting Orders */}
-                <h6 className="bg-primary text-white p-2">⏳ Waiting Orders</h6>
+                <h6 className="bg-primary text-white p-2">⏳ Waiting Orders: {waitingCount}</h6>
                 {orders.filter(o => o.current_status === "Waiting").map(renderOrderCard)}
             </div>        
 
             {/* Active Orders (Table View) */}
             <div className="col-md-8">  {/* Wider area for Active Orders Table */}
-            <h6 className="bg-success text-white p-2">🚀 Active Orders</h6>
+            <h6 className="bg-success text-white p-2">🚀 Active Orders: {activeCount}</h6>
             <div className="table-responsive">
                 <table className="table table-bordered table-hover table-sm">
                   <thead className="table-dark">
