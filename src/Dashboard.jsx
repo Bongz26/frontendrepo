@@ -73,7 +73,10 @@ const Dashboard = () => {
       console.error(err);
     }
   };
-
+const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
+const activeCount = orders.filter(o =>
+  !["Waiting", "Ready", "Complete"].includes(o.current_status)
+).length;
   const renderOrderCard = (order) => (
     <div key={order.transaction_id} className={`card mb-3 shadow-sm ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}>
       <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
@@ -116,10 +119,7 @@ const Dashboard = () => {
         </div>
       </div>
     </div>
-const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
-const activeCount = orders.filter(o =>
-  !["Waiting", "Ready", "Complete"].includes(o.current_status)
-).length;
+
 
   );
 
