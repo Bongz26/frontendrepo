@@ -1,0 +1,28 @@
+body {
+  background-color: #f1f3f5; /* soft overall background */
+}
+
+.card,
+.card-body {
+  background-color: #f8f9fa; /* softened card interior */
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.table {
+  background-color: transparent; /* allow card background to show */
+}
+
+.table tbody tr:hover > td {
+  background-color: #e9ecef;
+  transition: background-color 0.3s ease;
+}
+
+.badge {
+  border-radius: 999px;
+  font-size: 0.85rem;
+  padding: 0.4em 0.75em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
