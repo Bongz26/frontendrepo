@@ -139,60 +139,72 @@ const Dashboard = () => {
           </button>
 
           <div className="row">
-            {/* Waiting Orders */}
+            {/* Waiting Orders (Card View) */}
             <div className="col-md-6">
               <h6 className="bg-primary text-white p-2">⏳ Waiting Orders</h6>
               {orders.filter(o => o.current_status === "Waiting").map(renderOrderCard)}
             </div>
 
-            {/* Active Orders with new layout */}
+            {/* Active Orders (Table View) */}
             <div className="col-md-6">
               <h6 className="bg-success text-white p-2">🚀 Active Orders</h6>
-              {orders
-                .filter(o => !["Waiting", "Ready", "Complete"].includes(o.current_status))
-                .map(order => (
-                  <div key={order.transaction_id} className={`card mb-3 border shadow-sm ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}>
-                    <div className="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                      <strong>{order.transaction_id}</strong>
-                      <span className="badge bg-warning text-dark">{order.category}</span>
-                    </div>
-                    <div className="card-body row">
-                      <div className="col-md-6">
-                        <p><strong>Customer:</strong> {order.customer_name}</p>
-                        <p><strong>Vehicle:</strong> {order.paint_type}</p>
-                        <p><strong>Qty:</strong> {order.paint_quantity}</p>
-                      </div>
-                      <div className="col-md-6">
-                        <p><strong>Assigned:</strong> {order.assigned_employee || "Unassigned"}</p>
-                        <p><strong>Colour:</strong> {order.colour_code}</p>
-                        <p><strong>Status:</strong> {order.current_status}</p>
-                      </div>
-                      <div className="col-12">
-                        <label className="form-label">Update Status</label>
-                        <select
-                          className="form-select"
-                          value={order.current_status}
-                          onChange={(e) =>
-                            updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
-                          }
-                        >
-                          <option value={order.current_status}>{order.current_status}</option>
-                          {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
-                          {order.current_status === "Spraying" && (
-                            <>
-                              <option value="Re-Mixing">Back to Mixing</option>
-                              <option value="Ready">Ready</option>
-                            </>
-                          )}
-                          {order.current_status === "Re-Mixing" && <option value="Spraying">Spraying</option>}
-                          {order.current_status === "Ready" && userRole === "Admin" && (
-                            <option value="Complete">Complete</option>
-                          )}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover table-sm">
+                  <thead className="table-dark">
+                    <tr>
+                      <th>Transaction ID</th>
+                      <th>Category</th>
+                      <th>Col. Code</th>
+                      <th>Car Details</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>Customer</th>
+                      <th>Order Type</th>
+                      <th>Assigned To</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.filter(o =>
+                      !["Waiting", "Ready", "Complete"].includes(o.current_status)
+                    ).map(order => (
+                      <tr key={order.transaction_id} className={recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}>
+                        <td>{order.transaction_id}</td>
+                        <td>{order.category}</td>
+                        <td>{order.colour_code}</td>
+                        <td>{order.paint_type}</td>
+                        <td>{order.paint_quantity}</td>
+                        <td>{order.current_status}</td>
+                        <td>{order.customer_name}</td>
+                        <td>{order.order_type}</td>
+                        <td>{order.assigned_employee || "Unassigned"}</td>
+                        <td>
+                          <select
+                            className="form-select form-select-sm"
+                            value={order.current_status}
+                            onChange={(e) =>
+                              updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
+                            }
+                          >
+                            <option value={order.current_status}>{order.current_status}</option>
+                            {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
+                            {order.current_status === "Spraying" && (
+                              <>
+                                <option value="Re-Mixing">Back to Mixing</option>
+                                <option value="Ready">Ready</option>
+                              </>
+                            )}
+                            {order.current_status === "Re-Mixing" && <option value="Spraying">Spraying</option>}
+                            {order.current_status === "Ready" && userRole === "Admin" && (
+                              <option value="Complete">Complete</option>
+                            )}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -206,7 +218,7 @@ const Dashboard = () => {
               pendingColourUpdate.newStatus,
               code,
               pendingColourUpdate.employeeName
-            );
+          );
             setPendingColourUpdate(null);
           }}
          onCancel={() => setPendingColourUpdate(null)}
