@@ -83,13 +83,12 @@ const Dashboard = () => {
       <div className="card-body row">
         <div className="col-md-6">
           <p><strong>Customer:</strong> {order.customer_name}</p>
-          <p><strong>Vehicle:</strong> {order.paint_type}</p>
-          <p><strong>Quantity:</strong> {order.paint_quantity}</p>
+          <p><strong>Car Details.:</strong> {order.paint_type}</p>
+          
         </div>
         <div className="col-md-6">
-          <p><strong>Status:</strong> {order.current_status}</p>
-          <p><strong>Assigned:</strong> {order.assigned_employee || "Unassigned"}</p>
-          <p><strong>Col. Code:</strong> {order.colour_code}</p>
+          <p><strong>Quantity:</strong> {order.paint_quantity}</p>
+          <p><strong>Colour Code:</strong> {order.colour_code}</p>
         </div>
         <div className="col-12">
           <label className="form-label">Update Status</label>
@@ -123,7 +122,7 @@ const Dashboard = () => {
     <div className="container mt-4">
       <div className="card mb-3 shadow-sm border-0">
         <div className="card-header bg-dark text-white d-flex justify-content-between">
-          <h5 className="mb-0">🎨 Paints Form View</h5>
+          <h5 className="mb-0">🎨 Queue Dashboard</h5>
           <button className="btn btn-light btn-sm" onClick={handleLogin}>Login as Admin</button>
         </div>
         <div className="card-body">
