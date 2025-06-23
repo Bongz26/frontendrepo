@@ -7,18 +7,7 @@ import ColourCodeModal from "./ColourCodeModal";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
 
-const ETC_TIMES = {
-  "New Mix": 120,
-  "Reorder Mix": 30,
-  "Colour Code": 60,
-};
-const getOrderClass = (category) => {
- 
-};
-
-
-
-  const Dashboard = () => {
+const Dashboard = () => {
   const [orders, setOrders] = useState([]);
   const [activeOrdersCount, setActiveOrdersCount] = useState(0);
   const [waitingOrdersCount, setWaitingOrdersCount] = useState(0);
@@ -26,10 +15,10 @@ const getOrderClass = (category) => {
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState("User");
   const [showLogin, setShowLogin] = useState(false);
-  const handleLogin = () => setShowLogin(true);
   const [pendingColourUpdate, setPendingColourUpdate] = useState(null);
   const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null);
-  
+
+  const handleLogin = () => setShowLogin(true);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -38,7 +27,6 @@ const getOrderClass = (category) => {
       const response = await axios.get(`${BASE_URL}/api/orders`);
       const activeOrders = response.data.filter(order => order.current_status !== "Ready" && order.current_status !== "Waiting");
       const waitingOrders = response.data.filter(order => order.current_status === "Waiting");
-      
       setOrders(response.data);
       setActiveOrdersCount(activeOrders.length);
       setWaitingOrdersCount(waitingOrders.length);
@@ -63,7 +51,6 @@ const getOrderClass = (category) => {
         alert("❌ Employee Code is required!");
         return;
       }
-
       try {
         const employeeResponse = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
         if (!employeeResponse.data || !employeeResponse.data.employee_name) {
@@ -77,36 +64,28 @@ const getOrderClass = (category) => {
       }
     }
 
-      if (
-          newStatus === "Ready" &&
-          (!updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending")
-        ) {
-          setPendingColourUpdate({
-            orderId,
-            newStatus,
-            employeeName,
-          });
-          return;
-        }
+    if (newStatus === "Ready" && (!updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending")) {
+      setPendingColourUpdate({ orderId, newStatus, employeeName });
+      return;
+    }
 
     try {
-  await axios.put(`${BASE_URL}/api/orders/${orderId}`, {
-    current_status: newStatus,
-    assigned_employee: employeeName,
-    colour_code: updatedColourCode,
-    userRole
-  });
+      await axios.put(`${BASE_URL}/api/orders/${orderId}`, {
+        current_status: newStatus,
+        assigned_employee: employeeName,
+        colour_code: updatedColourCode,
+        userRole
+      });
 
-  setRecentlyUpdatedId(orderId);
-  setTimeout(() => setRecentlyUpdatedId(null), 2000); // highlight lasts 2 seconds
-
-  setTimeout(() => {
-    fetchOrders();
-  }, 500);
-} catch (error) {
-  alert("❌ Error updating order status!");
-  console.error("🚨 Error updating:", error);
-}
+      setRecentlyUpdatedId(orderId);
+      setTimeout(() => setRecentlyUpdatedId(null), 2000);
+      setTimeout(() => {
+        fetchOrders();
+      }, 500);
+    } catch (error) {
+      alert("❌ Error updating order status!");
+      console.error("🚨 Error updating:", error);
+    }
   };
 
   return (
@@ -116,25 +95,37 @@ const getOrderClass = (category) => {
           <h4 className="mb-0">🎨 Paints Queue Dashboard</h4>
           <button onClick={handleLogin} className="btn btn-light btn-sm">Login as Admin</button>
           {showLogin && (
-  <LoginPopup
-    onLogin={(role) => setUserRole(role)}
-    onClose={() => setShowLogin(false)}
-  />
-)}
+            <LoginPopup
+              onLogin={(role) => setUserRole(role)}
+              onClose={() => setShowLogin(false)}
+            />
+          )}
         </div>
         <div className="card-body bg-light">
-          <p className="mb-2">
-            <strong>Active Orders:</strong> {activeOrdersCount}
-          </p>
-          <p className="mb-2">
-            <strong>Waiting Orders:</strong> {waitingOrdersCount}
-          </p>
+          <p><strong>Active Orders:</strong> {activeOrdersCount}</p>
+          <p><strong>Waiting Orders:</strong> {waitingOrdersCount}</p>
 
           {error && <div className="alert alert-danger">{error}</div>}
           <button className="btn btn-secondary mb-3" onClick={fetchOrders} disabled={loading}>
             {loading ? "Refreshing..." : "🔄 Refresh"}
           </button>
 
+          <h5 className="text-secondary mb-2">⏳ Waiting Orders</h5>
+          <div className="waiting-feed mb-4">
+            {orders.filter(o => o.current_status === "Waiting").map(order => (
+              <div key={order.transaction_id} className="waiting-card">
+                <div>
+                  <strong>{order.customer_name}</strong><br />
+                  <span className="text-muted">{order.transaction_id}</span>
+                </div>
+                <div>
+                  <span className="badge bg-warning text-dark">{order.category}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <h5 className="text-secondary mb-2">✅ Active Orders</h5>
           <div className="table-responsive">
             <table className="table table-hover align-middle table-bordered">
               <thead className="table-dark">
@@ -152,16 +143,13 @@ const getOrderClass = (category) => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map(order => (
-             <tr
-                    key={order.transaction_id}
-                    className={recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}>
-               
+                {orders.filter(order => order.current_status !== "Waiting" && order.current_status !== "Complete").map(order => (
+                  <tr key={order.transaction_id} className={recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}>
                     <td>{order.transaction_id}</td>
                     <td>
-                        {order.category === "New Mix" && <span className="badge bg-danger">New Mix</span>}
-                        {order.category === "Reorder Mix" && <span className="badge bg-warning text-dark">Mix More</span>}
-                        {order.category === "Colour Code" && <span className="badge bg-primary">Colour Code</span>}
+                      {order.category === "New Mix" && <span className="badge bg-danger">New Mix</span>}
+                      {order.category === "Reorder Mix" && <span className="badge bg-warning text-dark">Mix More</span>}
+                      {order.category === "Colour Code" && <span className="badge bg-primary">Colour Code</span>}
                     </td>
                     <td>{order.colour_code}</td>
                     <td>{order.paint_type}</td>
@@ -200,20 +188,21 @@ const getOrderClass = (category) => {
           </div>
         </div>
       </div>
-  {pendingColourUpdate && (
-  <ColourCodeModal
-    onSubmit={(code) => {
-      updateStatus(
-        pendingColourUpdate.orderId,
-        pendingColourUpdate.newStatus,
-        code,
-        pendingColourUpdate.employeeName
-      );
-      setPendingColourUpdate(null);
-    }}
-    onCancel={() => setPendingColourUpdate(null)}
-  />
-)}
+
+      {pendingColourUpdate && (
+        <ColourCodeModal
+          onSubmit={(code) => {
+            updateStatus(
+              pendingColourUpdate.orderId,
+              pendingColourUpdate.newStatus,
+              code,
+              pendingColourUpdate.employeeName
+            );
+            setPendingColourUpdate(null);
+          }}
+          onCancel={() => setPendingColourUpdate(null)}
+        />
+      )}
     </div>
   );
 };
