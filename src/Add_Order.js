@@ -20,6 +20,9 @@ const AddOrder = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
 
+  const [activeCount, setActiveCount] = useState(0);
+  const [waitingCount, setWaitingCount] = useState(0);
+
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [showToast, setShowToast] = useState(false);
@@ -44,6 +47,27 @@ const AddOrder = () => {
     setStartTime(new Date().toISOString());
   }, [orderType]);
 
+  useEffect(() => {
+    axios.get(`${BASE_URL}/api/orders`)
+      .then(res => {
+        const orders = res.data;
+        setActiveCount(orders.filter(o => o.current_status === "In Progress").length);
+        setWaitingCount(orders.filter(o => o.current_status === "Waiting").length);
+      })
+      .catch(() => triggerToast("❌ Could not fetch job count", "danger"));
+  }, []);
+
+  useEffect(() => {
+    const baseTimes = {
+      "New Mix": 25,
+      "Reorder Mix": 15,
+      "Colour Code": 10
+    };
+    const base = baseTimes[category] || 15;
+    const jobPosition = activeCount + waitingCount + 1;
+    setEta(`${jobPosition * base} minutes`);
+  }, [category, activeCount, waitingCount]);
+
   const validateContact = (input) => /^\d{10}$/.test(input);
 
   const handleContactChange = (e) => {
@@ -61,14 +85,13 @@ const AddOrder = () => {
   const handleSearch = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/api/orders`);
-      const filtered = res.data.filter(
-        (order) =>
-          order.transaction_id.includes(searchTerm) ||
-          order.client_contact.includes(searchTerm)
+      const filtered = res.data.filter(order =>
+        order.transaction_id.includes(searchTerm) ||
+        order.client_contact.includes(searchTerm)
       );
       setSearchResults(filtered);
     } catch {
-      triggerToast("❌ Could not fetch search results", "danger");
+      triggerToast("❌ Could not search orders", "danger");
     }
   };
 
@@ -76,23 +99,23 @@ const AddOrder = () => {
     e.preventDefault();
 
     if (!validateContact(clientContact)) {
-      triggerToast("❌ Contact number must be 10 digits!", "danger");
+      triggerToast("❌ Contact number must be 10 digits", "danger");
       return;
     }
     if (!paintType.trim()) {
-      triggerToast("❌ Car Details cannot be empty!", "danger");
+      triggerToast("❌ Car Details required", "danger");
       return;
     }
     if (!colorCode.trim() && category !== "New Mix") {
-      triggerToast("❌ Colour Code required for this category", "danger");
+      triggerToast("❌ Colour Code required", "danger");
       return;
     }
     if (!paintQuantity) {
-      triggerToast("❌ Please select a paint quantity", "danger");
+      triggerToast("❌ Select paint quantity", "danger");
       return;
     }
     if (transactionID.length !== 13 && orderType !== "Order") {
-      triggerToast("❌ Paid orders need 4-digit Transaction ID", "danger");
+      triggerToast("❌ Paid orders require 4-digit Transaction ID", "danger");
       return;
     }
 
@@ -107,13 +130,14 @@ const AddOrder = () => {
       current_status: "Waiting",
       order_type: orderType,
       start_time: startTime,
-      eta: eta || "Pending"
+      eta
     };
 
     try {
       await axios.post(`${BASE_URL}/api/orders`, newOrder);
-      triggerToast("✅ Order placed successfully!", "success");
+      triggerToast("✅ Order placed successfully");
       printReceipt(newOrder);
+
       localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
       setTransactionID(formatDateDDMMYYYY() + "-");
       setClientName("");
@@ -124,51 +148,14 @@ const AddOrder = () => {
       setCategory("New Mix");
       setOrderType("Walk-in");
       setStartTime(new Date().toISOString());
-      setEta("");
-    } catch (err) {
-      console.error("🚨 Order error:", err);
-      triggerToast("❌ Error placing order!", "danger");
+    } catch {
+      triggerToast("❌ Could not place order", "danger");
     }
-  };
-
-  const printReceipt = (order) => {
-    const win = window.open("", "_blank", "width=600,height=400");
-    if (!win) {
-      triggerToast("❌ Printing blocked!", "danger");
-      return;
-    }
-
-    const formatLine = (label, value) => `${label.padEnd(15)}: ${value}`;
-    const receipt = `
-=============================================
-      PROCUSHION QUEUE SYSTEM - RECEIPT
-=============================================
-${formatLine("Order No.", `#${order.transaction_id}`)}
-${formatLine("Client", order.customer_name)}
-${formatLine("Contact", order.client_contact)}
-${formatLine("Car Details", order.paint_type)}
-${formatLine("Colour Code", order.colour_code)} ${order.colour_code === "Pending" ? "(To be assigned)" : ""}
-${formatLine("Category", order.category)}
-${formatLine("ETA", order.eta)}
-
-Track ID       : TRK-${order.transaction_id}
-
-----------------------------------------
-  WhatsApp Support: 083 579 6982
-----------------------------------------
-
-     Thank you for your order!
-========================================
-    `;
-
-    win.document.write(`<html><head><title>Receipt</title><style>body{font-family:monospace;white-space:pre;font-size:12px;margin:0;padding:10px;}</style></head><body>${receipt}</body></html>`);
-    win.document.close();
-    win.print();
   };
 
   const formFields = [
     { label: "Order Type", type: "select", value: orderType, onChange: setOrderType, options: ["Paid", "Order"], required: true },
-    { label: "Transaction ID", type: "text", value: transactionID, onChange: (val) => {
+    { label: "Transaction ID", type: "text", value: transactionID, onChange: val => {
         const digits = val.replace(/\D/g, "").slice(-4);
         setTransactionID(formatDateDDMMYYYY() + "-" + digits);
       }, disabled: orderType === "Order", required: orderType !== "Order" },
@@ -178,7 +165,7 @@ Track ID       : TRK-${order.transaction_id}
     { label: "Car Details", type: "text", value: paintType, onChange: setPaintType, required: true },
     { label: "Colour Code", type: "text", value: colorCode, onChange: setColorCode, disabled: category === "New Mix" },
     { label: "Paint Quantity", type: "select", value: paintQuantity, onChange: setPaintQuantity, options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
-    { label: "ETA (optional)", type: "text", value: eta, onChange: setEta, placeholder: "e.g. 30 minutes" }
+    { label: "ETA", type: "text", value: eta, onChange: () => {}, disabled: true }
   ];
 
   return (
@@ -188,6 +175,7 @@ Track ID       : TRK-${order.transaction_id}
           <h5 className="mb-0">📝 Add New Order</h5>
         </div>
         <div className="card-body">
+          {/* Search bar and results (same as before) */}
           <div className="mb-4">
             <label className="form-label">🔎 Search Existing Order</label>
             <div className="input-group">
@@ -227,7 +215,7 @@ Track ID       : TRK-${order.transaction_id}
                     <select
                       className="form-select"
                       value={field.value}
-                      onChange={(e) => field.onChange(e.target.value)}
+                      onChange={(e) => field.onChange?.(e.target.value)}
                       required={field.required}
                     >
                       <option value="">Select</option>
@@ -241,7 +229,7 @@ Track ID       : TRK-${order.transaction_id}
                       name={field.name}
                       className="form-control"
                       value={field.value}
-                      onChange={(e) => field.onChange(e.target.value)}
+                      onChange={(e) => field.onChange?.(e.target.value)}
                       required={field.required}
                       disabled={field.disabled}
                       placeholder={field.placeholder}
