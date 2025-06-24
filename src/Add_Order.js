@@ -32,10 +32,7 @@ const AddOrder = () => {
 
   const formatDateDDMMYYYY = () => {
     const date = new Date();
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}${month}${year}`;
+    return `${String(date.getDate()).padStart(2, "0")}${String(date.getMonth() + 1).padStart(2, "0")}${date.getFullYear()}`;
   };
 
   useEffect(() => {
@@ -70,8 +67,8 @@ const AddOrder = () => {
           order.client_contact.includes(searchTerm)
       );
       setSearchResults(filtered);
-    } catch (err) {
-      triggerToast("❌ Search failed", "danger");
+    } catch {
+      triggerToast("❌ Could not fetch search results", "danger");
     }
   };
 
@@ -83,22 +80,19 @@ const AddOrder = () => {
       return;
     }
     if (!paintType.trim()) {
-      triggerToast("❌ Car Details required!", "danger");
+      triggerToast("❌ Car Details cannot be empty!", "danger");
       return;
     }
     if (!colorCode.trim() && category !== "New Mix") {
-      triggerToast("❌ Colour Code required!", "danger");
+      triggerToast("❌ Colour Code required for this category", "danger");
       return;
     }
-    if (
-      !paintQuantity ||
-      !["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"].includes(paintQuantity)
-    ) {
-      triggerToast("❌ Invalid paint quantity!", "danger");
+    if (!paintQuantity) {
+      triggerToast("❌ Please select a paint quantity", "danger");
       return;
     }
     if (transactionID.length !== 13 && orderType !== "Order") {
-      triggerToast("❌ Paid orders need 4-digit Transaction ID!", "danger");
+      triggerToast("❌ Paid orders need 4-digit Transaction ID", "danger");
       return;
     }
 
@@ -118,14 +112,9 @@ const AddOrder = () => {
 
     try {
       await axios.post(`${BASE_URL}/api/orders`, newOrder);
-      triggerToast("✅ Order placed successfully!");
+      triggerToast("✅ Order placed successfully!", "success");
       printReceipt(newOrder);
-
-      localStorage.setItem(
-        `client_${clientContact}`,
-        JSON.stringify({ name: clientName, contact: clientContact })
-      );
-
+      localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
       setTransactionID(formatDateDDMMYYYY() + "-");
       setClientName("");
       setClientContact("");
@@ -137,15 +126,15 @@ const AddOrder = () => {
       setStartTime(new Date().toISOString());
       setEta("");
     } catch (err) {
-      console.error("Order error:", err.message);
-      triggerToast("❌ Could not place order!", "danger");
+      console.error("🚨 Order error:", err);
+      triggerToast("❌ Error placing order!", "danger");
     }
   };
 
   const printReceipt = (order) => {
     const win = window.open("", "_blank", "width=600,height=400");
     if (!win) {
-      triggerToast("❌ Printing blocked by browser", "danger");
+      triggerToast("❌ Printing blocked!", "danger");
       return;
     }
 
@@ -161,23 +150,36 @@ ${formatLine("Car Details", order.paint_type)}
 ${formatLine("Colour Code", order.colour_code)} ${order.colour_code === "Pending" ? "(To be assigned)" : ""}
 ${formatLine("Category", order.category)}
 ${formatLine("ETA", order.eta)}
+
 Track ID       : TRK-${order.transaction_id}
 
 ----------------------------------------
   WhatsApp Support: 083 579 6982
 ----------------------------------------
 
-   Thank you for your order!
+     Thank you for your order!
 ========================================
-`;
-    win.document.write(`
-      <html><head><title>Receipt</title>
-      <style>body { font-family: monospace; white-space: pre; font-size: 12px; margin: 0; padding: 10px; }</style>
-      </head><body>${receipt}</body></html>
-    `);
+    `;
+
+    win.document.write(`<html><head><title>Receipt</title><style>body{font-family:monospace;white-space:pre;font-size:12px;margin:0;padding:10px;}</style></head><body>${receipt}</body></html>`);
     win.document.close();
     win.print();
   };
+
+  const formFields = [
+    { label: "Order Type", type: "select", value: orderType, onChange: setOrderType, options: ["Paid", "Order"], required: true },
+    { label: "Transaction ID", type: "text", value: transactionID, onChange: (val) => {
+        const digits = val.replace(/\D/g, "").slice(-4);
+        setTransactionID(formatDateDDMMYYYY() + "-" + digits);
+      }, disabled: orderType === "Order", required: orderType !== "Order" },
+    { label: "Client Contact", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
+    { label: "Client Name", type: "text", value: clientName, onChange: setClientName, required: true },
+    { label: "Category", type: "select", value: category, onChange: setCategory, options: ["New Mix", "Reorder Mix", "Colour Code"], required: true },
+    { label: "Car Details", type: "text", value: paintType, onChange: setPaintType, required: true },
+    { label: "Colour Code", type: "text", value: colorCode, onChange: setColorCode, disabled: category === "New Mix" },
+    { label: "Paint Quantity", type: "select", value: paintQuantity, onChange: setPaintQuantity, options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
+    { label: "ETA (optional)", type: "text", value: eta, onChange: setEta, placeholder: "e.g. 30 minutes" }
+  ];
 
   return (
     <div className="container mt-4">
@@ -186,7 +188,6 @@ Track ID       : TRK-${order.transaction_id}
           <h5 className="mb-0">📝 Add New Order</h5>
         </div>
         <div className="card-body">
-          {/* Search */}
           <div className="mb-4">
             <label className="form-label">🔎 Search Existing Order</label>
             <div className="input-group">
@@ -202,10 +203,14 @@ Track ID       : TRK-${order.transaction_id}
             {searchResults.length > 0 && (
               <div className="mt-3">
                 <small className="text-muted">{searchResults.length} result(s):</small>
-                <ul className="list-group">
+                <ul className="list-group mt-2">
                   {searchResults.map((order) => (
-                    <li key={order.transaction_id} className="list-group-item">
-                      {order.transaction_id} — {order.customer_name} ({order.current_status})
+                    <li key={order.transaction_id} className="list-group-item d-flex justify-content-between">
+                      <div>
+                        <strong>{order.transaction_id}</strong><br />
+                        {order.customer_name} — {order.current_status}
+                      </div>
+                      <small className="text-muted">{order.paint_type}</small>
                     </li>
                   ))}
                 </ul>
@@ -215,78 +220,7 @@ Track ID       : TRK-${order.transaction_id}
 
           <form onSubmit={handleSubmit}>
             <div className="row">
-              {/* Input fields */}
-              {[
-                {
-                  label: "Order Type",
-                  type: "select",
-                  col: 6,
-                  value: orderType,
-                  onChange: setOrderType,
-                  options: ["Paid", "Order"]
-                },
-                {
-                  label: "Transaction ID",
-                  type: "text",
-                  col: 6,
-                  value: transactionID,
-                  onChange: (val) => {
-                    const digits = val.replace(/\D/g, "").slice(-4);
-                    setTransactionID(formatDateDDMMYYYY() + "-" + digits);
-                  },
-                  disabled: orderType === "Order"
-                },
-                {
-                  label: "Client Contact",
-                  name: "clientContact",
-                  type: "text",
-                  col: 6,
-                  value: clientName,
-                  onChange: setClientName,
-                  required: true
-                },
-                {
-                  label: "Category",
-                  type: "select",
-                  col: 6,
-                  value: category,
-                  onChange: setCategory,
-                  options: ["New Mix", "Reorder Mix", "Colour Code"]
-                },
-                {
-                  label: "Car Details",
-                  type: "text",
-                  col: 6,
-                  value: paintType,
-                  onChange: setPaintType,
-                  required: true
-                },
-                {
-                  label: "Colour Code",
-                  type: "text",
-                  col: 6,
-                  value: colorCode,
-                  onChange: setColorCode,
-                  disabled: category === "New Mix"
-                },
-                {
-                  label: "Paint Quantity",
-                  type: "select",
-                  col: 6,
-                  value: paintQuantity,
-                  onChange: setPaintQuantity,
-                  options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"],
-                  required: true
-                },
-                {
-                  label: "ETA (optional)",
-                  type: "text",
-                  col: 6,
-                  value: eta,
-                  onChange: setEta,
-                  placeholder: "e.g. 30 minutes"
-                }
-              ].map((field, idx) => (
+              {formFields.map((field, idx) => (
                 <div key={idx} className={`col-md-${field.col || 6} mb-3`}>
                   <label className="form-label">{field.label}</label>
                   {field.type === "select" ? (
@@ -304,7 +238,7 @@ Track ID       : TRK-${order.transaction_id}
                   ) : (
                     <input
                       type={field.type}
-                      name={field.name || undefined}
+                      name={field.name}
                       className="form-control"
                       value={field.value}
                       onChange={(e) => field.onChange(e.target.value)}
@@ -323,7 +257,13 @@ Track ID       : TRK-${order.transaction_id}
       </div>
 
       <ToastContainer position="top-end" className="p-3">
-        <Toast bg={toastType} onClose={() => setShowToast(false)} show={showToast} delay={3500} autohide>
+        <Toast
+          bg={toastType}
+          onClose={() => setShowToast(false)}
+          show={showToast}
+          delay={3500}
+          autohide
+        >
           <Toast.Body className="text-white">{toastMessage}</Toast.Body>
         </Toast>
       </ToastContainer>
