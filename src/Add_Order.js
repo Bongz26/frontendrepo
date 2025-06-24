@@ -35,12 +35,16 @@ const AddOrder = () => {
 
   const formatDateDDMMYYYY = () => {
     const date = new Date();
-    return `${String(date.getDate()).padStart(2, "0")}${String(date.getMonth() + 1).padStart(2, "0")}${date.getFullYear()}`;
+    return `${String(date.getDate()).padStart(2, "0")}${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}${date.getFullYear()}`;
   };
 
   useEffect(() => {
     if (orderType === "Order") {
-      setTransactionID(`${formatDateDDMMYYYY()}-PO_${Math.floor(1000 + Math.random() * 9000)}`);
+      setTransactionID(
+        `${formatDateDDMMYYYY()}-PO_${Math.floor(1000 + Math.random() * 9000)}`
+      );
     } else {
       setTransactionID(`${formatDateDDMMYYYY()}-`);
     }
@@ -48,11 +52,12 @@ const AddOrder = () => {
   }, [orderType]);
 
   useEffect(() => {
-    axios.get(`${BASE_URL}/api/orders`)
-      .then(res => {
+    axios
+      .get(`${BASE_URL}/api/orders`)
+      .then((res) => {
         const orders = res.data;
-        setActiveCount(orders.filter(o => o.current_status === "In Progress").length);
-        setWaitingCount(orders.filter(o => o.current_status === "Waiting").length);
+        setActiveCount(orders.filter((o) => o.current_status === "In Progress").length);
+        setWaitingCount(orders.filter((o) => o.current_status === "Waiting").length);
       })
       .catch(() => triggerToast("❌ Could not fetch job count", "danger"));
   }, []);
@@ -61,7 +66,7 @@ const AddOrder = () => {
     const baseTimes = {
       "New Mix": 25,
       "Reorder Mix": 15,
-      "Colour Code": 10
+      "Colour Code": 10,
     };
     const base = baseTimes[category] || 15;
     const jobPosition = activeCount + waitingCount + 1;
@@ -85,14 +90,55 @@ const AddOrder = () => {
   const handleSearch = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/api/orders`);
-      const filtered = res.data.filter(order =>
-        order.transaction_id.includes(searchTerm) ||
-        order.client_contact.includes(searchTerm)
+      const filtered = res.data.filter(
+        (order) =>
+          order.transaction_id.includes(searchTerm) ||
+          order.client_contact.includes(searchTerm)
       );
       setSearchResults(filtered);
     } catch {
       triggerToast("❌ Could not search orders", "danger");
     }
+  };
+
+  const printReceipt = (order) => {
+    const win = window.open("", "_blank", "width=600,height=400");
+    if (!win) {
+      triggerToast("❌ Printing blocked", "danger");
+      return;
+    }
+
+    const formatLine = (label, value) => `${label.padEnd(15)}: ${value}`;
+    const receipt = `
+=============================================
+      PROCUSHION QUEUE SYSTEM - RECEIPT
+=============================================
+${formatLine("Order No.", `#${order.transaction_id}`)}
+${formatLine("Client", order.customer_name)}
+${formatLine("Contact", order.client_contact)}
+${formatLine("Car Details", order.paint_type)}
+${formatLine("Colour Code", order.colour_code)} ${
+      order.colour_code === "Pending" ? "(To be assigned)" : ""
+    }
+${formatLine("Category", order.category)}
+${formatLine("ETA", order.eta)}
+Track ID       : TRK-${order.transaction_id}
+
+----------------------------------------
+  WhatsApp Support: 083 579 6982
+----------------------------------------
+
+     Thank you for your order!
+========================================
+`;
+
+    win.document.write(`
+      <html><head><title>Receipt</title>
+      <style>body{font-family:monospace;white-space:pre;font-size:12px;margin:0;padding:10px;}</style>
+      </head><body>${receipt}</body></html>
+    `);
+    win.document.close();
+    win.print();
   };
 
   const handleSubmit = async (e) => {
@@ -120,24 +166,23 @@ const AddOrder = () => {
     }
 
     const newOrder = {
-  transaction_id: transactionID,
-  customer_name: clientName,
-  client_contact: clientContact,
-  paint_type: paintType,
-  colour_code: category === "New Mix" ? "Pending" : (colorCode || "N/A"),
-  category,
-  paint_quantity: paintQuantity,
-  current_status: "Waiting",
-  order_type: orderType,
-  start_time: startTime,
-  eta: eta
-};
+      transaction_id: transactionID,
+      customer_name: clientName,
+      client_contact: clientContact,
+      paint_type: paintType,
+      colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
+      category,
+      paint_quantity: paintQuantity,
+      current_status: "Waiting",
+      order_type: orderType,
+      start_time: startTime,
+      eta,
+    };
 
     try {
       await axios.post(`${BASE_URL}/api/orders`, newOrder);
       triggerToast("✅ Order placed successfully");
       printReceipt(newOrder);
-
       localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
       setTransactionID(formatDateDDMMYYYY() + "-");
       setClientName("");
@@ -166,7 +211,7 @@ const AddOrder = () => {
     { label: "Colour Code", type: "text", value: colorCode, onChange: setColorCode, disabled: category === "New Mix" },
     { label: "Paint Quantity", type: "select", value: paintQuantity, onChange: setPaintQuantity, options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
     { label: "ETA", type: "text", value: eta, onChange: () => {}, disabled: true }
-  ];
+      ];
 
   return (
     <div className="container mt-4">
@@ -175,7 +220,6 @@ const AddOrder = () => {
           <h5 className="mb-0">📝 Add New Order</h5>
         </div>
         <div className="card-body">
-          {/* Search bar and results (same as before) */}
           <div className="mb-4">
             <label className="form-label">🔎 Search Existing Order</label>
             <div className="input-group">
@@ -186,16 +230,22 @@ const AddOrder = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <button className="btn btn-outline-secondary" onClick={handleSearch}>Search</button>
+              <button className="btn btn-outline-secondary" onClick={handleSearch}>
+                Search
+              </button>
             </div>
             {searchResults.length > 0 && (
               <div className="mt-3">
                 <small className="text-muted">{searchResults.length} result(s):</small>
                 <ul className="list-group mt-2">
                   {searchResults.map((order) => (
-                    <li key={order.transaction_id} className="list-group-item d-flex justify-content-between">
+                    <li
+                      key={order.transaction_id}
+                      className="list-group-item d-flex justify-content-between"
+                    >
                       <div>
-                        <strong>{order.transaction_id}</strong><br />
+                        <strong>{order.transaction_id}</strong>
+                        <br />
                         {order.customer_name} — {order.current_status}
                       </div>
                       <small className="text-muted">{order.paint_type}</small>
@@ -220,7 +270,9 @@ const AddOrder = () => {
                     >
                       <option value="">Select</option>
                       {field.options.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
                       ))}
                     </select>
                   ) : (
@@ -239,7 +291,9 @@ const AddOrder = () => {
               ))}
             </div>
 
-            <button type="submit" className="btn btn-success w-100 mt-3">➕ Add Order</button>
+            <button type="submit" className="btn btn-success w-100 mt-3">
+              ➕ Add Order
+            </button>
           </form>
         </div>
       </div>
@@ -260,3 +314,4 @@ const AddOrder = () => {
 };
 
 export default AddOrder;
+ 
