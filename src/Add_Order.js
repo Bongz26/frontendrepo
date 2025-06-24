@@ -3,7 +3,7 @@ import axios from "axios";
 
 const BASE_URL = "https://queue-backendser.onrender.com";
 
-const AddOrder = () => {
+const AddOrderPage = () => {
   const [orderType, setOrderType] = useState("Paid");
   const [transactionID, setTransactionID] = useState("");
   const [clientName, setClientName] = useState("");
@@ -31,11 +31,6 @@ const AddOrder = () => {
     setStartTime(new Date().toISOString());
   }, [orderType]);
 
-  useEffect(() => {
-    console.log("Generated Transaction ID:", transactionID);
-  }, [transactionID]);
-
-  // Detect autofill after mount
   useEffect(() => {
     const detectAutofill = () => {
       const contactInput = document.querySelector("input[name='clientContact']");
@@ -191,110 +186,110 @@ Track ID       : TRK-${order.transaction_id}
   };
 
   return (
-  <div className="container mt-4">
-    <div className="card shadow-sm border-0">
-      <div className="card-header bg-primary text-white">
-        <h5 className="mb-0">📝 Add New Order</h5>
-      </div>
-      <div className="card-body">
-        <form onSubmit={handleSubmit}>
-          <div className="row">
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Order Type</label>
-              <select className="form-select" value={orderType} onChange={(e) => setOrderType(e.target.value)}>
-                <option>Paid</option>
-                <option>Order</option>
-              </select>
+    <div className="container mt-4">
+      <div className="card shadow-sm border-0">
+        <div className="card-header bg-primary text-white">
+          <h5 className="mb-0">📝 Add New Order</h5>
+        </div>
+        <div className="card-body">
+          <form onSubmit={handleSubmit}>
+            <div className="row">
+              <div className="col-md-6 mb-3">
+                <label className="form-label">Order Type</label>
+                <select className="form-select" value={orderType} onChange={(e) => setOrderType(e.target.value)}>
+                  <option>Paid</option>
+                  <option>Order</option>
+                </select>
+              </div>
+
+              <div className="col-md-6 mb-3">
+                <label className="form-label">Transaction ID</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={transactionID}
+                  onChange={(e) => {
+                    if (orderType === "Paid") {
+                      const userDigits = e.target.value.replace(/\D/g, "").slice(-4);
+                      setTransactionID(formatDateDDMMYYYY() + "-" + userDigits);
+                    }
+                  }}
+                  disabled={orderType === "Order"}
+                  placeholder="Enter 4-digit ID for Paid"
+                />
+              </div>
+
+              <div className="col-md-6 mb-3">
+                <label className="form-label">Client Contact</label>
+                <input
+                  type="text"
+                  name="clientContact"
+                  className="form-control"
+                  value={clientContact}
+                  onChange={handleContactChange}
+                  required
+                />
+              </div>
+
+              <div className="col-md-6 mb-3">
+                <label className="form-label">Client Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="col-md-6 mb-3">
+                <label className="form-label">Category</label>
+                <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
+                  <option>New Mix</option>
+                  <option>Reorder Mix</option>
+                  <option>Colour Code</option>
+                </select>
+              </div>
+
+              <div className="col-md-6 mb-3">
+                <label className="form-label">Car Details</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={paintType}
+                                   onChange={(e) => setPaintType(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="col-md-6 mb-3">
+                <label className="form-label">Colour Code</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={colorCode}
+                  onChange={(e) => setColorCode(e.target.value)}
+                  disabled={category === "New Mix"}
+                />
+              </div>
+
+              <div className="col-md-6 mb-3">
+                <label className="form-label">Paint Quantity</label>
+                <select className="form-select" value={paintQuantity} onChange={(e) => setPaintQuantity(e.target.value)} required>
+                  <option value="">Select Quantity</option>
+                  {["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Transaction ID</label>
-              <input
-                type="text"
-                className="form-control"
-                value={transactionID}
-                onChange={(e) => {
-                  if (orderType === "Paid") {
-                    const userDigits = e.target.value.replace(/\D/g, "").slice(-4);
-                    setTransactionID(formatDateDDMMYYYY() + "-" + userDigits);
-                  }
-                }}
-                disabled={orderType === "Order"}
-                placeholder="Enter 4-digit ID for Paid"
-              />
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Client Contact</label>
-              <input
-                type="text"
-                name="clientContact"
-                className="form-control"
-                value={clientContact}
-                onChange={handleContactChange}
-                required
-              />
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Client Name</label>
-              <input
-                type="text"
-                className="form-control"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Category</label>
-              <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option>New Mix</option>
-                <option>Reorder Mix</option>
-                <option>Colour Code</option>
-              </select>
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Car Details</label>
-              <input
-                type="text"
-                className="form-control"
-                value={paintType}
-                onChange={(e) => setPaintType(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Colour Code</label>
-              <input
-                type="text"
-                className="form-control"
-                value={colorCode}
-                onChange={(e) => setColorCode(e.target.value)}
-                disabled={category === "New Mix"}
-              />
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Paint Quantity</label>
-              <select className="form-select" value={paintQuantity} onChange={(e) => setPaintQuantity(e.target.value)} required>
-                <option value="">Select Quantity</option>
-                {["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"].map(size => (
-                  <option key={size} value={size}>{size}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <button type="submit" className="btn btn-success w-100 mt-3">➕ Add Order</button>
-        </form>
+            <button type="submit" className="btn btn-success w-100 mt-3">➕ Add Order</button>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 
-export default AddOrder;
+export default AddOrderPage;
