@@ -207,7 +207,7 @@ Track ID       : TRK-${order.transaction_id}
         setTransactionID(formatDateDDMMYYYY() + "-" + digits);
       }, disabled: orderType === "Order", required: orderType !== "Order" },
     { label: "Client Contact", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
-    { label: "Client Name", type: "text", value: clientName, onChange: setClientName, required: true },
+    { label: "Client Name", type: "text", value: clientName, onChange: (val) => setClientName(val), required: true },
     { label: "Category", type: "select", value: category, onChange: setCategory, options: ["New Mix", "Reorder Mix", "Colour Code"], required: true },
     { label: "Car Details", type: "text", value: paintType, onChange: setPaintType, required: true },
     { label: "Colour Code", type: "text", value: colorCode, onChange: setColorCode, disabled: category === "New Mix" },
