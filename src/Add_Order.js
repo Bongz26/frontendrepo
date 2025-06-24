@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { Toast, ToastContainer } from "react-bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 const BASE_URL = "https://queue-backendser.onrender.com";
 
@@ -13,12 +15,26 @@ const AddOrder = () => {
   const [colorCode, setColorCode] = useState("");
   const [paintQuantity, setPaintQuantity] = useState("");
   const [startTime, setStartTime] = useState("");
+  const [eta, setEta] = useState("");
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
+  const [showToast, setShowToast] = useState(false);
+
+  const triggerToast = (message, type = "success") => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
 
   const formatDateDDMMYYYY = () => {
     const date = new Date();
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear().toString();
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
     return `${day}${month}${year}`;
   };
 
@@ -31,39 +47,11 @@ const AddOrder = () => {
     setStartTime(new Date().toISOString());
   }, [orderType]);
 
-  useEffect(() => {
-    console.log("Generated Transaction ID:", transactionID);
-  }, [transactionID]);
-
-  // Detect autofill after mount
-  useEffect(() => {
-    const detectAutofill = () => {
-      const contactInput = document.querySelector("input[name='clientContact']");
-      if (contactInput) {
-        const filledValue = contactInput.value;
-        if (/^\d{10}$/.test(filledValue)) {
-          const stored = localStorage.getItem(`client_${filledValue}`);
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            setClientContact(filledValue);
-            setClientName(parsed.name);
-          }
-        }
-      }
-    };
-
-    window.addEventListener("load", detectAutofill);
-    setTimeout(detectAutofill, 500);
-
-    return () => window.removeEventListener("load", detectAutofill);
-  }, []);
-
   const validateContact = (input) => /^\d{10}$/.test(input);
 
   const handleContactChange = (e) => {
     const input = e.target.value;
     setClientContact(input);
-
     if (validateContact(input)) {
       const stored = localStorage.getItem(`client_${input}`);
       if (stored) {
@@ -73,31 +61,44 @@ const AddOrder = () => {
     }
   };
 
+  const handleSearch = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/orders`);
+      const filtered = res.data.filter(
+        (order) =>
+          order.transaction_id.includes(searchTerm) ||
+          order.client_contact.includes(searchTerm)
+      );
+      setSearchResults(filtered);
+    } catch (err) {
+      triggerToast("❌ Search failed", "danger");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!validateContact(clientContact)) {
-      alert("❌ Contact number must be exactly 10 digits!");
+      triggerToast("❌ Contact number must be 10 digits!", "danger");
       return;
     }
-
     if (!paintType.trim()) {
-      alert("❌ Car Details cannot be empty!");
+      triggerToast("❌ Car Details required!", "danger");
       return;
     }
-
     if (!colorCode.trim() && category !== "New Mix") {
-      alert("❌ Colour Code cannot be empty!");
+      triggerToast("❌ Colour Code required!", "danger");
       return;
     }
-
-    if (!paintQuantity || !["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"].includes(paintQuantity)) {
-      alert("❌ Please select a valid paint quantity!");
+    if (
+      !paintQuantity ||
+      !["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"].includes(paintQuantity)
+    ) {
+      triggerToast("❌ Invalid paint quantity!", "danger");
       return;
     }
-
-    if (transactionID.length !== 13 && orderType !== 'Order') {
-      alert("❌ Paid orders must have a 4-digit Transaction ID!");
+    if (transactionID.length !== 13 && orderType !== "Order") {
+      triggerToast("❌ Paid orders need 4-digit Transaction ID!", "danger");
       return;
     }
 
@@ -111,16 +112,19 @@ const AddOrder = () => {
       paint_quantity: paintQuantity,
       current_status: "Waiting",
       order_type: orderType,
-      start_time: startTime
+      start_time: startTime,
+      eta: eta || "Pending"
     };
 
     try {
       await axios.post(`${BASE_URL}/api/orders`, newOrder);
-      alert("✅ Order placed successfully!");
+      triggerToast("✅ Order placed successfully!");
       printReceipt(newOrder);
 
-      const clientData = { name: clientName, contact: clientContact };
-      localStorage.setItem(`client_${clientContact}`, JSON.stringify(clientData));
+      localStorage.setItem(
+        `client_${clientContact}`,
+        JSON.stringify({ name: clientName, contact: clientContact })
+      );
 
       setTransactionID(formatDateDDMMYYYY() + "-");
       setClientName("");
@@ -131,24 +135,24 @@ const AddOrder = () => {
       setCategory("New Mix");
       setOrderType("Walk-in");
       setStartTime(new Date().toISOString());
-    } catch (error) {
-      console.error("🚨 Error adding order:", error.message);
-      alert("❌ Error adding order! Please check your TransactionID / Network Connection.");
+      setEta("");
+    } catch (err) {
+      console.error("Order error:", err.message);
+      triggerToast("❌ Could not place order!", "danger");
     }
   };
 
   const printReceipt = (order) => {
-    const printWindow = window.open("", "_blank", "width=600,height=400");
-    if (!printWindow) {
-      alert("❌ Printing blocked! Enable pop-ups in your browser.");
+    const win = window.open("", "_blank", "width=600,height=400");
+    if (!win) {
+      triggerToast("❌ Printing blocked by browser", "danger");
       return;
     }
 
     const formatLine = (label, value) => `${label.padEnd(15)}: ${value}`;
-
-    const receiptContent = `
+    const receipt = `
 =============================================
-         PROCUSHION QUEUE SYSTEM - RECEIPT
+      PROCUSHION QUEUE SYSTEM - RECEIPT
 =============================================
 ${formatLine("Order No.", `#${order.transaction_id}`)}
 ${formatLine("Client", order.customer_name)}
@@ -156,145 +160,175 @@ ${formatLine("Contact", order.client_contact)}
 ${formatLine("Car Details", order.paint_type)}
 ${formatLine("Colour Code", order.colour_code)} ${order.colour_code === "Pending" ? "(To be assigned)" : ""}
 ${formatLine("Category", order.category)}
-
+${formatLine("ETA", order.eta)}
 Track ID       : TRK-${order.transaction_id}
 
 ----------------------------------------
   WhatsApp Support: 083 579 6982
 ----------------------------------------
 
-     Thank you for your order!
+   Thank you for your order!
 ========================================
 `;
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Receipt</title>
-          <style>
-            body {
-              font-family: monospace;
-              white-space: pre;
-              font-size: 12px;
-              margin: 0;
-              padding: 10px;
-            }
-          </style>
-        </head>
-        <body>
-          ${receiptContent}
-        </body>
-      </html>
+    win.document.write(`
+      <html><head><title>Receipt</title>
+      <style>body { font-family: monospace; white-space: pre; font-size: 12px; margin: 0; padding: 10px; }</style>
+      </head><body>${receipt}</body></html>
     `);
-    printWindow.document.close();
-    printWindow.print();
+    win.document.close();
+    win.print();
   };
 
   return (
-  <div className="container mt-4">
-    <div className="card shadow-sm border-0">
-      <div className="card-header bg-primary text-white">
-        <h5 className="mb-0">📝 Add New Order</h5>
-      </div>
-      <div className="card-body">
-        <form onSubmit={handleSubmit}>
-          <div className="row">
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Order Type</label>
-              <select className="form-select" value={orderType} onChange={(e) => setOrderType(e.target.value)}>
-                <option>Paid</option>
-                <option>Order</option>
-              </select>
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Transaction ID</label>
+    <div className="container mt-4">
+      <div className="card shadow-sm border-0">
+        <div className="card-header bg-primary text-white">
+          <h5 className="mb-0">📝 Add New Order</h5>
+        </div>
+        <div className="card-body">
+          {/* Search */}
+          <div className="mb-4">
+            <label className="form-label">🔎 Search Existing Order</label>
+            <div className="input-group">
               <input
                 type="text"
                 className="form-control"
-                value={transactionID}
-                onChange={(e) => {
-                  if (orderType === "Paid") {
-                    const userDigits = e.target.value.replace(/\D/g, "").slice(-4);
-                    setTransactionID(formatDateDDMMYYYY() + "-" + userDigits);
-                  }
-                }}
-                disabled={orderType === "Order"}
-                placeholder="Enter 4-digit ID for Paid"
+                placeholder="Transaction ID or Contact"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
+              <button className="btn btn-outline-secondary" onClick={handleSearch}>Search</button>
             </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Client Contact</label>
-              <input
-                type="text"
-                name="clientContact"
-                className="form-control"
-                value={clientContact}
-                onChange={handleContactChange}
-                required
-              />
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Client Name</label>
-              <input
-                type="text"
-                className="form-control"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Category</label>
-              <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option>New Mix</option>
-                <option>Reorder Mix</option>
-                <option>Colour Code</option>
-              </select>
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Car Details</label>
-              <input
-                type="text"
-                className="form-control"
-                value={paintType}
-                onChange={(e) => setPaintType(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Colour Code</label>
-              <input
-                type="text"
-                className="form-control"
-                value={colorCode}
-                onChange={(e) => setColorCode(e.target.value)}
-                disabled={category === "New Mix"}
-              />
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Paint Quantity</label>
-              <select className="form-select" value={paintQuantity} onChange={(e) => setPaintQuantity(e.target.value)} required>
-                <option value="">Select Quantity</option>
-                {["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"].map(size => (
-                  <option key={size} value={size}>{size}</option>
-                ))}
-              </select>
-            </div>
+            {searchResults.length > 0 && (
+              <div className="mt-3">
+                <small className="text-muted">{searchResults.length} result(s):</small>
+                <ul className="list-group">
+                  {searchResults.map((order) => (
+                    <li key={order.transaction_id} className="list-group-item">
+                      {order.transaction_id} — {order.customer_name} ({order.current_status})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
-          <button type="submit" className="btn btn-success w-100 mt-3">➕ Add Order</button>
-        </form>
+          <form onSubmit={handleSubmit}>
+            <div className="row">
+              {/* Input fields */}
+              {[
+                {
+                  label: "Order Type",
+                  type: "select",
+                  col: 6,
+                  value: orderType,
+                  onChange: setOrderType,
+                  options: ["Paid", "Order"]
+                },
+                {
+                  label: "Transaction ID",
+                  type: "text",
+                  col: 6,
+                  value: transactionID,
+                  onChange: (val) => {
+                    const digits = val.replace(/\D/g, "").slice(-4);
+                    setTransactionID(formatDateDDMMYYYY() + "-" + digits);
+                  },
+                  disabled: orderType === "Order"
+                },
+                {
+                  label: "Client Contact",
+                  name: "clientContact",
+                  type: "text",
+                  col: 6,
+                  value: clientName,
+                  onChange: setClientName,
+                  required: true
+                },
+                {
+                  label: "Category",
+                  type: "select",
+                  col: 6,
+                  value: category,
+                  onChange: setCategory,
+                  options: ["New Mix", "Reorder Mix", "Colour Code"]
+                },
+                {
+                  label: "Car Details",
+                  type: "text",
+                  col: 6,
+                  value: paintType,
+                  onChange: setPaintType,
+                  required: true
+                },
+                {
+                  label: "Colour Code",
+                  type: "text",
+                  col: 6,
+                  value: colorCode,
+                  onChange: setColorCode,
+                  disabled: category === "New Mix"
+                },
+                {
+                  label: "Paint Quantity",
+                  type: "select",
+                  col: 6,
+                  value: paintQuantity,
+                  onChange: setPaintQuantity,
+                  options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"],
+                  required: true
+                },
+                {
+                  label: "ETA (optional)",
+                  type: "text",
+                  col: 6,
+                  value: eta,
+                  onChange: setEta,
+                  placeholder: "e.g. 30 minutes"
+                }
+              ].map((field, idx) => (
+                <div key={idx} className={`col-md-${field.col || 6} mb-3`}>
+                  <label className="form-label">{field.label}</label>
+                  {field.type === "select" ? (
+                    <select
+                      className="form-select"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      required={field.required}
+                    >
+                      <option value="">Select</option>
+                      {field.options.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={field.type}
+                      name={field.name || undefined}
+                      className="form-control"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      required={field.required}
+                      disabled={field.disabled}
+                      placeholder={field.placeholder}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button type="submit" className="btn btn-success w-100 mt-3">➕ Add Order</button>
+          </form>
+        </div>
       </div>
+
+      <ToastContainer position="top-end" className="p-3">
+        <Toast bg={toastType} onClose={() => setShowToast(false)} show={showToast} delay={3500} autohide>
+          <Toast.Body className="text-white">{toastMessage}</Toast.Body>
+        </Toast>
+      </ToastContainer>
     </div>
-  </div>
-);
+  );
 };
 
 export default AddOrder;
