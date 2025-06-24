@@ -120,18 +120,18 @@ const AddOrder = () => {
     }
 
     const newOrder = {
-      transaction_id: transactionID,
-      customer_name: clientName,
-      client_contact: clientContact,
-      paint_type: paintType,
-      colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
-      category,
-      paint_quantity: paintQuantity,
-      current_status: "Waiting",
-      order_type: orderType,
-      start_time: startTime,
-      eta
-    };
+  transaction_id: transactionID,
+  customer_name: clientName,
+  client_contact: clientContact,
+  paint_type: paintType,
+  colour_code: category === "New Mix" ? "Pending" : (colorCode || "N/A"),
+  category,
+  paint_quantity: paintQuantity,
+  current_status: "Waiting",
+  order_type: orderType,
+  start_time: startTime,
+  eta: eta
+};
 
     try {
       await axios.post(`${BASE_URL}/api/orders`, newOrder);
