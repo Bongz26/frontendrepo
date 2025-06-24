@@ -191,95 +191,110 @@ Track ID       : TRK-${order.transaction_id}
   };
 
   return (
-    <div className="container mt-4">
-      <h2>Add New Order</h2>
-      <form onSubmit={handleSubmit}>
-        <label>Order Type:</label>
-        <select className="form-control" value={orderType} onChange={(e) => setOrderType(e.target.value)}>
-          <option>Paid</option>
-          <option>Order</option>
-        </select>
+  <div className="container mt-4">
+    <div className="card shadow-sm border-0">
+      <div className="card-header bg-primary text-white">
+        <h5 className="mb-0">📝 Add New Order</h5>
+      </div>
+      <div className="card-body">
+        <form onSubmit={handleSubmit}>
+          <div className="row">
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Order Type</label>
+              <select className="form-select" value={orderType} onChange={(e) => setOrderType(e.target.value)}>
+                <option>Paid</option>
+                <option>Order</option>
+              </select>
+            </div>
 
-        <label>Transaction ID:</label>
-        <input
-          type="text"
-          className="form-control"
-          value={transactionID}
-          onChange={(e) => {
-            if (orderType === "Paid") {
-              const userDigits = e.target.value.replace(/\D/g, "").slice(-4);
-              setTransactionID(formatDateDDMMYYYY() + "-" + userDigits);
-            }
-          }}
-          disabled={orderType === "Order"}
-          placeholder="Enter 4-digit ID for Paid Customer"
-        />
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Transaction ID</label>
+              <input
+                type="text"
+                className="form-control"
+                value={transactionID}
+                onChange={(e) => {
+                  if (orderType === "Paid") {
+                    const userDigits = e.target.value.replace(/\D/g, "").slice(-4);
+                    setTransactionID(formatDateDDMMYYYY() + "-" + userDigits);
+                  }
+                }}
+                disabled={orderType === "Order"}
+                placeholder="Enter 4-digit ID for Paid"
+              />
+            </div>
 
-        <label>Client Contact:</label>
-        <input
-          type="text"
-          name="clientContact"
-          className="form-control"
-          value={clientContact}
-          onChange={handleContactChange}
-          required
-        />
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Client Contact</label>
+              <input
+                type="text"
+                name="clientContact"
+                className="form-control"
+                value={clientContact}
+                onChange={handleContactChange}
+                required
+              />
+            </div>
 
-        <label>Client Name:</label>
-        <input
-          type="text"
-          className="form-control"
-          value={clientName}
-          onChange={(e) => setClientName(e.target.value)}
-          required
-        />
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Client Name</label>
+              <input
+                type="text"
+                className="form-control"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                required
+              />
+            </div>
 
-        <label>Category:</label>
-        <select className="form-control" value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option>New Mix</option>
-          <option>Reorder Mix</option>
-          <option>Colour Code</option>
-        </select>
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Category</label>
+              <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option>New Mix</option>
+                <option>Reorder Mix</option>
+                <option>Colour Code</option>
+              </select>
+            </div>
 
-        <label>Car Details:</label>
-        <input
-          type="text"
-          className="form-control"
-          value={paintType}
-          onChange={(e) => setPaintType(e.target.value)}
-          required
-        />
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Car Details</label>
+              <input
+                type="text"
+                className="form-control"
+                value={paintType}
+                onChange={(e) => setPaintType(e.target.value)}
+                required
+              />
+            </div>
 
-        <label>Colour Code:</label>
-        <input
-          type="text"
-          className="form-control"
-          value={colorCode}
-          onChange={(e) => setColorCode(e.target.value)}
-          disabled={category === "New Mix"}
-        />
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Colour Code</label>
+              <input
+                type="text"
+                className="form-control"
+                value={colorCode}
+                onChange={(e) => setColorCode(e.target.value)}
+                disabled={category === "New Mix"}
+              />
+            </div>
 
-        <label>Paint Quantity:</label>
-                  <select className="form-control" value={paintQuantity} onChange={(e) => setPaintQuantity(e.target.value)} required>
-                    <option value="">Select Quantity</option>
-                    <option value="250ml">250ml</option>                   
-                    <option value="500ml">500ml</option>
-                    <option value="750ml">750ml</option>
-                    <option value="1L">1L</option>
-                    <option value="1.25L">1.25L</option>
-                    <option value="1.5L">1.5L</option>
-                    <option value="2L">2L</option>
-                    <option value="2.5L">2.5L</option>
-                    <option value="3L">3L</option>
-                    <option value="4L">4L</option>
-                    <option value="5L">5L</option>
-                    <option value="10L">10L</option>
-                </select>
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Paint Quantity</label>
+              <select className="form-select" value={paintQuantity} onChange={(e) => setPaintQuantity(e.target.value)} required>
+                <option value="">Select Quantity</option>
+                {["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"].map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-                <button type="submit" className="btn btn-primary mt-3">Add Order</button>
-            </form>
-        </div>
-    );
+          <button type="submit" className="btn btn-success w-100 mt-3">➕ Add Order</button>
+        </form>
+      </div>
+    </div>
+  </div>
+);
 };
 
 export default AddOrder;
