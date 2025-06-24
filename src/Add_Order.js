@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Toast, ToastContainer } from "react-bootstrap";
-import "bootstrap/dist/css/bootstrap.min.css"; // Make sure this is included in your root app
 
 const BASE_URL = "https://queue-backendser.onrender.com";
 
