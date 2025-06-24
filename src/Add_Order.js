@@ -76,6 +76,7 @@ const AddOrder = () => {
   const validateContact = (input) => /^\d{10}$/.test(input);
 
   const handleContactChange = (e) => {
+    console.log("Typing:", e.target.value);
     const input = e.target.value;
     setClientContact(input);
     if (validateContact(input)) {
@@ -86,6 +87,7 @@ const AddOrder = () => {
       }
     }
   };
+  
 
   const handleSearch = async () => {
     try {
