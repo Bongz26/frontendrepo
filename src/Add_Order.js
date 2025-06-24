@@ -200,20 +200,20 @@ Track ID       : TRK-${order.transaction_id}
     }
   };
 
-  const formFields = [
-    { label: "Order Type", type: "select", value: orderType, onChange: setOrderType, options: ["Paid", "Order"], required: true },
-    { label: "Transaction ID", type: "text", value: transactionID, onChange: val => {
-        const digits = val.replace(/\D/g, "").slice(-4);
-        setTransactionID(formatDateDDMMYYYY() + "-" + digits);
-      }, disabled: orderType === "Order", required: orderType !== "Order" },
-    { label: "Client Contact", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
-    { label: "Client Name", type: "text", value: clientName, onChange: (val) => setClientName(val), required: true },
-    { label: "Category", type: "select", value: category, onChange: setCategory, options: ["New Mix", "Reorder Mix", "Colour Code"], required: true },
-    { label: "Car Details", type: "text", value: paintType, onChange: setPaintType, required: true },
-    { label: "Colour Code", type: "text", value: colorCode, onChange: setColorCode, disabled: category === "New Mix" },
-    { label: "Paint Quantity", type: "select", value: paintQuantity, onChange: setPaintQuantity, options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
-    { label: "ETA", type: "text", value: eta, onChange: () => {}, disabled: true }
-      ];
+const formFields = [
+  { label: "Order Type", type: "select", value: orderType, onChange: (val) => setOrderType(val), options: ["Paid", "Order"], required: true },
+  { label: "Transaction ID", type: "text", value: transactionID, onChange: (val) => {
+      const digits = val.replace(/\D/g, "").slice(-4);
+      setTransactionID(formatDateDDMMYYYY() + "-" + digits);
+    }, disabled: orderType === "Order", required: orderType !== "Order" },
+  { label: "Client Contact", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
+  { label: "Client Name", type: "text", value: clientName, onChange: (val) => setClientName(val), required: true },
+  { label: "Category", type: "select", value: category, onChange: (val) => setCategory(val), options: ["New Mix", "Reorder Mix", "Colour Code"], required: true },
+  { label: "Car Details", type: "text", value: paintType, onChange: (val) => setPaintType(val), required: true },
+  { label: "Colour Code", type: "text", value: colorCode, onChange: (val) => setColorCode(val), disabled: category === "New Mix" },
+  { label: "Paint Quantity", type: "select", value: paintQuantity, onChange: (val) => setPaintQuantity(val), options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
+  { label: "ETA", type: "text", value: eta, onChange: () => {}, disabled: true }
+];
 
   return (
     <div className="container mt-4">
@@ -283,8 +283,13 @@ Track ID       : TRK-${order.transaction_id}
                       name={field.name}
                       className="form-control"
                       value={field.value}
-                      onChange={(e) => field.onChange?.(e.target.value)}
-                      required={field.required}
+                      onChange={(e) => {
+  
+if (typeof field.onChange === "function") {
+    field.onChange(e.target?.value ?? "");
+  }
+}}
+                   required={field.required}
                       disabled={field.disabled}
                       placeholder={field.placeholder}
                     />
