@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Toast, ToastContainer } from "react-bootstrap";
 
 const BASE_URL = "https://queue-backendser.onrender.com";
 
-const AddOrderPage = () => {
+const AddOrder = () => {
   const [orderType, setOrderType] = useState("Paid");
   const [transactionID, setTransactionID] = useState("");
   const [clientName, setClientName] = useState("");
@@ -14,16 +13,6 @@ const AddOrderPage = () => {
   const [colorCode, setColorCode] = useState("");
   const [paintQuantity, setPaintQuantity] = useState("");
   const [startTime, setStartTime] = useState("");
-
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState("success");
-  const [showToast, setShowToast] = useState(false);
-
-  const triggerToast = (message, type = "success") => {
-    setToastMessage(message);
-    setToastType(type);
-    setShowToast(true);
-  };
 
   const formatDateDDMMYYYY = () => {
     const date = new Date();
@@ -42,6 +31,11 @@ const AddOrderPage = () => {
     setStartTime(new Date().toISOString());
   }, [orderType]);
 
+  useEffect(() => {
+    console.log("Generated Transaction ID:", transactionID);
+  }, [transactionID]);
+
+  // Detect autofill after mount
   useEffect(() => {
     const detectAutofill = () => {
       const contactInput = document.querySelector("input[name='clientContact']");
@@ -83,27 +77,27 @@ const AddOrderPage = () => {
     e.preventDefault();
 
     if (!validateContact(clientContact)) {
-      triggerToast("❌ Contact number must be exactly 10 digits!", "danger");
+      alert("❌ Contact number must be exactly 10 digits!");
       return;
     }
 
     if (!paintType.trim()) {
-      triggerToast("❌ Car Details cannot be empty!", "danger");
+      alert("❌ Car Details cannot be empty!");
       return;
     }
 
     if (!colorCode.trim() && category !== "New Mix") {
-      triggerToast("❌ Colour Code cannot be empty!", "danger");
+      alert("❌ Colour Code cannot be empty!");
       return;
     }
 
     if (!paintQuantity || !["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"].includes(paintQuantity)) {
-      triggerToast("❌ Please select a valid paint quantity!", "danger");
+      alert("❌ Please select a valid paint quantity!");
       return;
     }
 
     if (transactionID.length !== 13 && orderType !== 'Order') {
-      triggerToast("❌ Paid orders must have a 4-digit Transaction ID!", "danger");
+      alert("❌ Paid orders must have a 4-digit Transaction ID!");
       return;
     }
 
@@ -122,7 +116,7 @@ const AddOrderPage = () => {
 
     try {
       await axios.post(`${BASE_URL}/api/orders`, newOrder);
-      triggerToast("✅ Order placed successfully!", "success");
+      alert("✅ Order placed successfully!");
       printReceipt(newOrder);
 
       const clientData = { name: clientName, contact: clientContact };
@@ -139,14 +133,14 @@ const AddOrderPage = () => {
       setStartTime(new Date().toISOString());
     } catch (error) {
       console.error("🚨 Error adding order:", error.message);
-      triggerToast("❌ Error adding order! Check Transaction ID / Network.", "danger");
+      alert("❌ Error adding order! Please check your TransactionID / Network Connection.");
     }
   };
 
   const printReceipt = (order) => {
     const printWindow = window.open("", "_blank", "width=600,height=400");
     if (!printWindow) {
-      triggerToast("❌ Printing blocked! Enable pop-ups.", "danger");
+      alert("❌ Printing blocked! Enable pop-ups in your browser.");
       return;
     }
 
@@ -187,7 +181,9 @@ Track ID       : TRK-${order.transaction_id}
             }
           </style>
         </head>
-        <body>${receiptContent}</body>
+        <body>
+          ${receiptContent}
+        </body>
       </html>
     `);
     printWindow.document.close();
@@ -195,30 +191,110 @@ Track ID       : TRK-${order.transaction_id}
   };
 
   return (
-    <div className="container mt-4">
-      <div className="card shadow-sm border-0">
-        <div className="card-header bg-primary text-white">
-          <h5 className="mb-0">📝 Add New Order</h5>
-        </div>
-        <div className="card-body">
-          <form onSubmit={handleSubmit}>
-            <div className="row">
-              {/* All input fields, same as before */}
-              {/* ... Truncated here for brevity */}
+  <div className="container mt-4">
+    <div className="card shadow-sm border-0">
+      <div className="card-header bg-primary text-white">
+        <h5 className="mb-0">📝 Add New Order</h5>
+      </div>
+      <div className="card-body">
+        <form onSubmit={handleSubmit}>
+          <div className="row">
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Order Type</label>
+              <select className="form-select" value={orderType} onChange={(e) => setOrderType(e.target.value)}>
+                <option>Paid</option>
+                <option>Order</option>
+              </select>
             </div>
 
-            <button type="submit" className="btn btn-success w-100 mt-3">➕ Add Order</button>
-          </form>
-        </div>
-      </div>
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Transaction ID</label>
+              <input
+                type="text"
+                className="form-control"
+                value={transactionID}
+                onChange={(e) => {
+                  if (orderType === "Paid") {
+                    const userDigits = e.target.value.replace(/\D/g, "").slice(-4);
+                    setTransactionID(formatDateDDMMYYYY() + "-" + userDigits);
+                  }
+                }}
+                disabled={orderType === "Order"}
+                placeholder="Enter 4-digit ID for Paid"
+              />
+            </div>
 
-      <ToastContainer position="top-end" className="p-3">
-        <Toast bg={toastType} onClose={() => setShowToast(false)} show={showToast} delay={3500} autohide>
-          <Toast.Body className="text-white">{toastMessage}</Toast.Body>
-        </Toast>
-      </ToastContainer>
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Client Contact</label>
+              <input
+                type="text"
+                name="clientContact"
+                className="form-control"
+                value={clientContact}
+                onChange={handleContactChange}
+                required
+              />
+            </div>
+
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Client Name</label>
+              <input
+                type="text"
+                className="form-control"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Category</label>
+              <select className="form-select" value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option>New Mix</option>
+                <option>Reorder Mix</option>
+                <option>Colour Code</option>
+              </select>
+            </div>
+
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Car Details</label>
+              <input
+                type="text"
+                className="form-control"
+                value={paintType}
+                onChange={(e) => setPaintType(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Colour Code</label>
+              <input
+                type="text"
+                className="form-control"
+                value={colorCode}
+                onChange={(e) => setColorCode(e.target.value)}
+                disabled={category === "New Mix"}
+              />
+            </div>
+
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Paint Quantity</label>
+              <select className="form-select" value={paintQuantity} onChange={(e) => setPaintQuantity(e.target.value)} required>
+                <option value="">Select Quantity</option>
+                {["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"].map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-success w-100 mt-3">➕ Add Order</button>
+        </form>
+      </div>
     </div>
-  );
+  </div>
+);
 };
 
-export default AddOrderPage;
+export default AddOrder;
