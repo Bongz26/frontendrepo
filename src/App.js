@@ -7,6 +7,7 @@ import AdminOrders from "./AdminOrders";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./styles/queueStyles.css";
 import QueueDashboard from "./components/QueueDashboard";
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const App = () => {
   return (
