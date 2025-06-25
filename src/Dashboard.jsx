@@ -95,8 +95,8 @@ const activeCount = orders.filter(o =>
     <p><strong>Customer:</strong> {order.customer_name}</p>
     <p><strong>Contact No.:</strong> {order.client_contact}</p>
 
-    {/* Optional ETA display */}
-    <p><strong>Estimated Time:</strong> {calculateETA(order)} </p>
+  {/* Optional ETA display */}
+       {/*<p><strong>Estimated Time:</strong> {calculateETA(order)} </p> */}
 
     <label className="form-label">Update Status</label>
     <select
