@@ -307,8 +307,8 @@ if (typeof field.onChange === "function") {
               ))}
             </div>
 
-            <button type="submit" className="btn btn-success w-100 mt-3">
-              ➕ Add Order
+            <button type="submit" className="btn btn-success w-100 mt-3" disabled={loading}>
+                    {loading ? "Processing..." : "➕ Add Order"}
             </button>
           </form>
         </div>
