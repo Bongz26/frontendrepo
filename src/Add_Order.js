@@ -64,9 +64,9 @@ const AddOrder = () => {
 
   useEffect(() => {
     const baseTimes = {
-      "New Mix": 25,
-      "Reorder Mix": 15,
-      "Colour Code": 10,
+      "New Mix": 160,
+      "Reorder Mix": 30,
+      "Colour Code": 90,
     };
     const base = baseTimes[category] || 15;
     const jobPosition = activeCount + waitingCount + 1;
