@@ -249,6 +249,7 @@ const formFields = [
                         {order.customer_name} — {order.current_status} — {order.paint_quantity}
                       </div>
                       <small className="text-muted">{order.paint_type}</small>
+                      <small className="text-muted">👨‍🔧 Assigned: {order.assigned_employee || "Not Assigned"}</small>
                     </li>
                   ))}
                 </ul>
