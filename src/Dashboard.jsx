@@ -77,47 +77,40 @@ const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
 const activeCount = orders.filter(o =>
   !["Waiting", "Ready", "Complete"].includes(o.current_status)
 ).length;
+
+  const calculateETA = (order) => {
+  const waitingOrders = orders.filter(o => o.current_status === "Waiting");
+  const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
+  const base = order.category === "New Mix" ? 25 : order.category === "Reorder Mix" ? 15 : 10;
+  return `${position * base} minutes`;
+};
+
   const renderOrderCard = (order) => (
     <div key={order.transaction_id} className={`card mb-3 shadow-sm ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}>
-      <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
-        <span>🆔 {order.transaction_id}</span>
-        <span>{order.category}</span>
-      </div>
-      <div className="card-body row">
-        <div className="col-md-6">
-          <p><strong>Customer:</strong> {order.customer_name}</p>
-          <p><strong>Car Details.:</strong> {order.paint_type}</p>
-          
-        </div>
-        <div className="col-md-6">
-          <p><strong>Quantity:</strong> {order.paint_quantity}</p>
-          <p><strong>Colour Code:</strong> {order.colour_code}</p>
-        </div>
-        <div className="col-12">
-          <label className="form-label">Update Status</label>
-          <select
-            className="form-select"
-            value={order.current_status}
-            onChange={(e) =>
-              updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
-            }
-          >
-            <option value={order.current_status}>{order.current_status}</option>
-            {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
-            {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
-            {order.current_status === "Spraying" && (
-              <>
-                <option value="Re-Mixing">Back to Mixing</option>
-                <option value="Ready">Ready</option>
-              </>
-            )}
-            {order.current_status === "Re-Mixing" && <option value="Spraying">Spraying</option>}
-            {order.current_status === "Ready" && userRole === "Admin" && (
-              <option value="Complete">Complete</option>
-            )}
-          </select>
-        </div>
-      </div>
+  <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
+    <span>🆔 {order.transaction_id}</span>
+    <span>{order.category}</span>
+  </div>
+  <div className="card-body">
+    <p><strong>Customer:</strong> {order.customer_name}</p>
+    <p><strong>Contact No.:</strong> {order.client_contact}</p>
+
+    {/* Optional ETA display */}
+    <p><strong>Estimated Time:</strong> {calculateETA(order)} </p>
+
+    <label className="form-label">Update Status</label>
+    <select
+      className="form-select"
+      value={order.current_status}
+      onChange={(e) =>
+        updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
+      }
+    >
+      <option value={order.current_status}>{order.current_status}</option>
+      {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
+    </select>
+  </div>
+</div>
     </div>
 
 
