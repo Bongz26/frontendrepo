@@ -216,7 +216,7 @@ const formFields = [
     }, disabled: orderType === "Order", required: orderType !== "Order" },
   { label: "Client Contact", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
   { label: "Client Name", type: "text", value: clientName, onChange: (val) => setClientName(val), required: true },
-  { label: "Category", type: "select", value: category, onChange: (val) => setCategory(val), options: ["New Mix", "Reorder Mix", "Colour Code"], required: true },
+  { label: "Category", type: "select", value: category, onChange: (val) => setCategory(val), options: ["New Mix", "Mix More", "Colour Code"], required: true },
   { label: "Car Details", type: "text", value: paintType, onChange: (val) => setPaintType(val), required: true },
   { label: "Colour Code", type: "text", value: colorCode, onChange: (val) => setColorCode(val), disabled: category === "New Mix" },
   { label: "Paint Quantity", type: "select", value: paintQuantity, onChange: (val) => setPaintQuantity(val), options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
