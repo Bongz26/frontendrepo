@@ -111,9 +111,6 @@ const activeCount = orders.filter(o =>
     </select>
   </div>
 </div>
-    </div>
-
-
   );
 
   return (
