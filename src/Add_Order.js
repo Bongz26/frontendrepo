@@ -246,7 +246,7 @@ const formFields = [
                       <div>
                         <strong>{order.transaction_id}</strong>
                         <br />
-                        {order.customer_name} — {order.current_status}
+                        {order.customer_name} — {order.current_status} — {order.paint_quantity}
                       </div>
                       <small className="text-muted">{order.paint_type}</small>
                     </li>
