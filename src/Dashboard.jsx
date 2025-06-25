@@ -15,7 +15,7 @@ const Dashboard = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [pendingColourUpdate, setPendingColourUpdate] = useState(null);
   const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null); // For modal
 
   const handleLogin = () => setShowLogin(true);
 
@@ -43,7 +43,6 @@ const Dashboard = () => {
     if (["Re-Mixing", "Mixing", "Spraying", "Ready"].includes(newStatus)) {
       const employeeCode = prompt("🔍 Enter Employee Code:");
       if (!employeeCode) return alert("❌ Employee Code required!");
-
       try {
         const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
         if (!res.data?.employee_name) return alert("❌ Invalid code!");
@@ -74,49 +73,48 @@ const Dashboard = () => {
       console.error(err);
     }
   };
-const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
-const activeCount = orders.filter(o =>
-  !["Waiting", "Ready", "Complete"].includes(o.current_status)
-).length;
 
   const calculateETA = (order) => {
-  const waitingOrders = orders.filter(o => o.current_status === "Waiting");
-  const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
-  const base = order.category === "New Mix" ? 25 : order.category === "Reorder Mix" ? 15 : 10;
-  return `${position * base} minutes`;
-};
+    const waitingOrders = orders.filter(o => o.current_status === "Waiting");
+    const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
+    const base = order.category === "New Mix" ? 25 : order.category === "Reorder Mix" ? 15 : 10;
+    return `${position * base} minutes`;
+  };
 
   const renderOrderCard = (order) => (
-    <div key={order.transaction_id} className={`card mb-3 shadow-sm ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}
-        style={{ cursor: "pointer" }}
-        onClick={() => setSelectedOrder(order)>
-
-
-  <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
-    <span>🆔 {order.transaction_id}</span>
-    <span>{order.category}</span>
-  </div>
-  <div className="card-body">
-    <p><strong>Customer:</strong> {order.customer_name}</p>
-    <p><strong>Contact No.:</strong> {order.client_contact}</p>
-
-  {/* Optional ETA display */}
-       {/*<p><strong>Estimated Time:</strong> {calculateETA(order)} </p> */}
-
-    <label className="form-label">Update Status</label>
-    <select
-      className="form-select"
-      value={order.current_status}
-      onChange={(e) =>
-        updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
-      }
+    <div
+      key={order.transaction_id}
+      className={`card mb-3 shadow-sm ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}
+      style={{ cursor: "pointer" }}
+      onClick={() => setSelectedOrder(order)}
     >
-      <option value={order.current_status}>{order.current_status}</option>
-      {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
-    </select>
-  </div>
-</div>
+      <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
+        <span>🆔 {order.transaction_id}</span>
+        <span>{order.category}</span>
+      </div>
+      <div className="card-body">
+        <p><strong>Customer:</strong> {order.customer_name}</p>
+        <p><strong>Contact No.:</strong> {order.client_contact}</p>
+        <p><strong>ETA:</strong> {calculateETA(order)}</p>
+        <label className="form-label">Update Status</label>
+        <select
+          className="form-select"
+          value={order.current_status}
+          onChange={(e) =>
+            updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
+          }
+        >
+          <option value={order.current_status}>{order.current_status}</option>
+          {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
+        </select>
+      </div>
+    </div>
   );
+
+  const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
+  const activeCount = orders.filter(o =>
+    !["Waiting", "Ready", "Complete"].includes(o.current_status)
+  ).length;
 
   return (
     <div className="container mt-4">
@@ -125,8 +123,7 @@ const activeCount = orders.filter(o =>
           <h5 className="mb-0">🎨 Queue Dashboard</h5>
           <button className="btn btn-light btn-sm" onClick={handleLogin}>Login as Admin</button>
         </div>
-
-      <div className="card-body">
+        <div className="card-body">
           {showLogin && (
             <LoginPopup
               onLogin={(role) => setUserRole(role)}
@@ -134,21 +131,22 @@ const activeCount = orders.filter(o =>
             />
           )}
           {error && <div className="alert alert-danger">{error}</div>}
+
           <button className="btn btn-outline-secondary mb-3" onClick={fetchOrders} disabled={loading}>
             {loading ? "Refreshing..." : "🔄 Refresh"}
           </button>
-      
-                {/* Waiting Orders (Card View) */}
-          <div className="row">
-              <div className="col-md-4">  {/* Narrower column for Waiting Orders */}
-                <h6 className="bg-primary text-white p-2">⏳ Waiting Orders: {waitingCount}</h6>
-                {orders.filter(o => o.current_status === "Waiting").map(renderOrderCard)}
-      </div>        
 
-            {/* Active Orders (Table View) */}
-            <div className="col-md-8">  {/* Wider area for Active Orders Table */}
-            <h6 className="bg-success text-white p-2">🚀 Active Orders: {activeCount}</h6>
-            <div className="table-responsive">
+          <div className="row">
+            {/* Waiting Orders */}
+            <div className="col-md-4">
+              <h6 className="bg-primary text-white p-2">⏳ Waiting Orders: {waitingCount}</h6>
+              {orders.filter(o => o.current_status === "Waiting").map(renderOrderCard)}
+            </div>
+
+            {/* Active Orders Table */}
+            <div className="col-md-8">
+              <h6 className="bg-success text-white p-2">🚀 Active Orders: {activeCount}</h6>
+              <div className="table-responsive">
                 <table className="table table-bordered table-hover table-sm">
                   <thead className="table-dark">
                     <tr>
@@ -202,7 +200,6 @@ const activeCount = orders.filter(o =>
                         </td>
                       </tr>
                     ))}
-
                   </tbody>
                 </table>
               </div>
@@ -210,8 +207,7 @@ const activeCount = orders.filter(o =>
           </div>
         </div>
       </div>
-      
-  {/* Order Details Modal */}
+                    {/* Order Details Modal */}
       {selectedOrder && (
   <div className="modal d-block" tabIndex="-1" onClick={() => setSelectedOrder(null)}>
     <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
@@ -232,14 +228,13 @@ const activeCount = orders.filter(o =>
           <p><strong>Order Type:</strong> {selectedOrder.order_type}</p>
           <p><strong>Assigned To:</strong> {selectedOrder.assigned_employee || "Unassigned"}</p>
           <p><strong>ETA:</strong> {calculateETA(selectedOrder)}</p>
-              </div>
-            </div>
-          </div>
         </div>
-        )}
-    </div> {/* Close .card-body */}
+      </div>
+    </div>
+  </div>
+)}
 
-      {pendingColourUpdate && (
+{pendingColourUpdate && (
         <ColourCodeModal
           onSubmit={(code) => {
             updateStatus(
