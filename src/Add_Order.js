@@ -141,62 +141,72 @@ Track ID       : TRK-${order.transaction_id}
     win.print();
   };
 
-  const handleSubmit = async (e) => {
+const [loading, setLoading] = useState(false); // Track submission state
+
+const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true); // Disable button
 
     if (!validateContact(clientContact)) {
-      triggerToast("❌ Contact number must be 10 digits", "danger");
-      return;
+        triggerToast("❌ Contact number must be 10 digits", "danger");
+        setLoading(false);
+        return;
     }
     if (!paintType.trim()) {
-      triggerToast("❌ Car Details required", "danger");
-      return;
+        triggerToast("❌ Car Details required", "danger");
+        setLoading(false);
+        return;
     }
     if (!colorCode.trim() && category !== "New Mix") {
-      triggerToast("❌ Colour Code required", "danger");
-      return;
+        triggerToast("❌ Colour Code required", "danger");
+        setLoading(false);
+        return;
     }
     if (!paintQuantity) {
-      triggerToast("❌ Select paint quantity", "danger");
-      return;
+        triggerToast("❌ Select paint quantity", "danger");
+        setLoading(false);
+        return;
     }
     if (transactionID.length !== 13 && orderType !== "Order") {
-      triggerToast("❌ Paid orders require 4-digit Transaction ID", "danger");
-      return;
+        triggerToast("❌ Paid orders require 4-digit Transaction ID", "danger");
+        setLoading(false);
+        return;
     }
 
     const newOrder = {
-      transaction_id: transactionID,
-      customer_name: clientName,
-      client_contact: clientContact,
-      paint_type: paintType,
-      colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
-      category,
-      paint_quantity: paintQuantity,
-      current_status: "Waiting",
-      order_type: orderType,
-      start_time: startTime,
-      eta,
+        transaction_id: transactionID,
+        customer_name: clientName,
+        client_contact: clientContact,
+        paint_type: paintType,
+        colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
+        category,
+        paint_quantity: paintQuantity,
+        current_status: "Waiting",
+        order_type: orderType,
+        start_time: startTime,
+        eta,
     };
 
     try {
-      await axios.post(`${BASE_URL}/api/orders`, newOrder);
-      triggerToast("✅ Order placed successfully");
-      printReceipt(newOrder);
-      localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
-      setTransactionID(formatDateDDMMYYYY() + "-");
-      setClientName("");
-      setClientContact("");
-      setPaintType("");
-      setColorCode("");
-      setPaintQuantity("");
-      setCategory("New Mix");
-      setOrderType("Walk-in");
-      setStartTime(new Date().toISOString());
+        await axios.post(`${BASE_URL}/api/orders`, newOrder);
+        triggerToast("✅ Order placed successfully");
+
+        // ✅ Clear form fields after successful submission
+        setTransactionID(formatDateDDMMYYYY() + "-");
+        setClientName("");
+        setClientContact("");
+        setPaintType("");
+        setColorCode("");
+        setPaintQuantity("");
+        setCategory("New Mix");
+        setOrderType("Walk-in");
+        setStartTime(new Date().toISOString());
     } catch {
-      triggerToast("❌ Could not place order", "danger");
+        triggerToast("❌ Could not place order", "danger");
+    } finally {
+        setLoading(false); // Re-enable button
     }
-  };
+};
 
 const formFields = [
   { label: "Order Type", type: "select", value: orderType, onChange: (val) => setOrderType(val), options: ["Paid", "Order"], required: true },
