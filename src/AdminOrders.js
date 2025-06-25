@@ -1,72 +1,93 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { Toast, ToastContainer } from "react-bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 const BASE_URL = "https://queue-backendser.onrender.com";
 
-const AdminOrders = ({ userRole }) => {
-    const [readyOrders, setReadyOrders] = useState([]);
-    const [error, setError] = useState("");
+const AdminOrders = () => {
+  const [orders, setOrders] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredOrders, setFilteredOrders] = useState([]);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
+  const [showToast, setShowToast] = useState(false);
 
-    useEffect(() => {
-        fetchReadyOrders();
-    }, []);
+  const triggerToast = (message, type = "success") => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+  };
 
-    const fetchReadyOrders = async () => {
-        try {
-            const response = await axios.get(`${BASE_URL}/api/orders/admin`);
-            setReadyOrders(response.data);
-        } catch (error) {
-            setError("Error fetching ready orders.");
-        }
-    };
+  useEffect(() => {
+    axios.get(`${BASE_URL}/api/orders`)
+      .then((res) => {
+        setOrders(res.data);
+        setFilteredOrders(res.data);
+      })
+      .catch(() => triggerToast("❌ Could not fetch orders", "danger"));
+  }, []);
 
-    const markAsPaid = async (orderId) => {
-        if (userRole !== "Admin") {
-            alert("❌ Only Admins can mark orders as Paid!");
-            return;
-        }
-
-        try {
-            await axios.put(`${BASE_URL}/api/orders/mark-paid/${orderId}`, { userRole });
-            alert("✅ Order marked as Paid!");
-            fetchReadyOrders();
-        } catch (error) {
-            setError("Error marking order as Paid.");
-        }
-    };
-
-    return (
-        <div className="container mt-4">
-            <h2> Unpaid Orders </h2>
-            {error && <div className="alert alert-danger">{error}</div>}
-            <table className="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Transaction ID</th>
-                        <th>Customer</th>
-                        <th>Customer No.</th>
-                        <th>Amount</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {readyOrders.map(order => (
-                        <tr key={order.transaction_id}>
-                            <td>{order.transaction_id}</td>
-                            <td>{order.customer_name}</td>
-                            <td>{order.client_contact}</td>
-                            <td>{order.paint_quantity}</td>
-                            <td>
-                                <button onClick={() => markAsPaid(order.transaction_id)} className="btn btn-success">
-                                    Mark as Paid
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+  useEffect(() => {
+    const results = orders.filter(order =>
+      order.transaction_id.includes(searchTerm) ||
+      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.assigned_employee?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    setFilteredOrders(results);
+  }, [searchTerm, orders]);
+
+  return (
+    <div className="container mt-4">
+      <div className="card shadow-sm border-0">
+        <div className="card-header bg-primary text-white">
+          <h5 className="mb-0">📋 Admin Orders</h5>
+        </div>
+        <div className="card-body">
+          {/* Search Bar */}
+          <div className="mb-4">
+            <label className="form-label">🔎 Search Orders</label>
+            <div className="input-group">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Transaction ID, Customer Name, or Employee"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Orders List */}
+          {filteredOrders.length > 0 ? (
+            <ul className="list-group mt-2">
+              {filteredOrders.map((order) => (
+                <li key={order.transaction_id} className="list-group-item d-flex justify-content-between">
+                  <div>
+                    <strong>{order.transaction_id}</strong><br />
+                    {order.customer_name} — {order.current_status}<br />
+                    <small className="text-muted">Car: {order.paint_type}</small><br />
+                    <small className="text-muted">👨‍🔧 Assigned: {order.assigned_employee || "Not Assigned"}</small><br />
+                    <small className="text-muted">💰 Amount: R{order.amount || "0.00"}</small><br />
+                    <small className="text-muted">📂 Category: {order.category}</small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted">No orders found.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Toast Notifications */}
+      <ToastContainer position="top-end" className="p-3">
+        <Toast bg={toastType} onClose={() => setShowToast(false)} show={showToast} delay={3500} autohide>
+          <Toast.Body className="text-white">{toastMessage}</Toast.Body>
+        </Toast>
+      </ToastContainer>
+    </div>
+  );
 };
 
 export default AdminOrders;
