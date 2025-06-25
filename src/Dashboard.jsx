@@ -125,7 +125,8 @@ const activeCount = orders.filter(o =>
           <h5 className="mb-0">🎨 Queue Dashboard</h5>
           <button className="btn btn-light btn-sm" onClick={handleLogin}>Login as Admin</button>
         </div>
-        <div className="card-body">
+
+      <div className="card-body">
           {showLogin && (
             <LoginPopup
               onLogin={(role) => setUserRole(role)}
@@ -142,7 +143,7 @@ const activeCount = orders.filter(o =>
               <div className="col-md-4">  {/* Narrower column for Waiting Orders */}
                 <h6 className="bg-primary text-white p-2">⏳ Waiting Orders: {waitingCount}</h6>
                 {orders.filter(o => o.current_status === "Waiting").map(renderOrderCard)}
-            </div>        
+      </div>        
 
             {/* Active Orders (Table View) */}
             <div className="col-md-8">  {/* Wider area for Active Orders Table */}
@@ -201,12 +202,16 @@ const activeCount = orders.filter(o =>
                         </td>
                       </tr>
                     ))}
+
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
         </div>
+      </div>
+      
+  {/* Order Details Modal */}
       {selectedOrder && (
   <div className="modal d-block" tabIndex="-1" onClick={() => setSelectedOrder(null)}>
     <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
@@ -231,8 +236,8 @@ const activeCount = orders.filter(o =>
             </div>
           </div>
         </div>
-      )}
-</div>
+        )}
+    </div> {/* Close .card-body */}
 
       {pendingColourUpdate && (
         <ColourCodeModal
