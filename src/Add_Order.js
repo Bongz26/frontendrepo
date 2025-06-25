@@ -74,20 +74,18 @@ const AddOrder = () => {
   }, [category, activeCount, waitingCount]);
 
   const validateContact = (input) => /^\d{10}$/.test(input);
+  const handleContactChange = (value) => {
+  console.log("Typing:", value);
+  setClientContact(value);
 
-  const handleContactChange = (e) => {
-    console.log("Typing:", e.target.value);
-    const input = e.target.value;
-    setClientContact(input);
-    if (validateContact(input)) {
-      const stored = localStorage.getItem(`client_${input}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setClientName(parsed.name);
-      }
+  if (validateContact(value)) {
+    const stored = localStorage.getItem(`client_${value}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setClientName(parsed.name);
     }
-  };
-  
+  }
+};
 
   const handleSearch = async () => {
     try {
