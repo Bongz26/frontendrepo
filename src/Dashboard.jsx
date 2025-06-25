@@ -15,6 +15,7 @@ const Dashboard = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [pendingColourUpdate, setPendingColourUpdate] = useState(null);
   const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const handleLogin = () => setShowLogin(true);
 
@@ -86,7 +87,11 @@ const activeCount = orders.filter(o =>
 };
 
   const renderOrderCard = (order) => (
-    <div key={order.transaction_id} className={`card mb-3 shadow-sm ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}>
+    <div key={order.transaction_id} className={`card mb-3 shadow-sm ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}
+        style={{ cursor: "pointer" }}
+        onClick={() => setSelectedOrder(order)>
+
+
   <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
     <span>🆔 {order.transaction_id}</span>
     <span>{order.category}</span>
@@ -202,7 +207,32 @@ const activeCount = orders.filter(o =>
             </div>
           </div>
         </div>
-      </div>
+      {selectedOrder && (
+  <div className="modal d-block" tabIndex="-1" onClick={() => setSelectedOrder(null)}>
+    <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">🧾 Order Details</h5>
+          <button type="button" className="btn-close" onClick={() => setSelectedOrder(null)}></button>
+        </div>
+        <div className="modal-body">
+          <p><strong>Transaction ID:</strong> {selectedOrder.transaction_id}</p>
+          <p><strong>Customer:</strong> {selectedOrder.customer_name}</p>
+          <p><strong>Contact:</strong> {selectedOrder.client_contact}</p>
+          <p><strong>Paint:</strong> {selectedOrder.paint_type}</p>
+          <p><strong>Category:</strong> {selectedOrder.category}</p>
+          <p><strong>Quantity:</strong> {selectedOrder.paint_quantity}</p>
+          <p><strong>Colour Code:</strong> {selectedOrder.colour_code}</p>
+          <p><strong>Status:</strong> {selectedOrder.current_status}</p>
+          <p><strong>Order Type:</strong> {selectedOrder.order_type}</p>
+          <p><strong>Assigned To:</strong> {selectedOrder.assigned_employee || "Unassigned"}</p>
+          <p><strong>ETA:</strong> {calculateETA(selectedOrder)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+</div>
 
       {pendingColourUpdate && (
         <ColourCodeModal
