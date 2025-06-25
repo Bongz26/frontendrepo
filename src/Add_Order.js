@@ -26,6 +26,7 @@ const AddOrder = () => {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [showToast, setShowToast] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const triggerToast = (message, type = "success") => {
     setToastMessage(message);
@@ -249,17 +250,20 @@ const formFields = [
                 <small className="text-muted">{searchResults.length} result(s):</small>
                 <ul className="list-group mt-2">
                   {searchResults.map((order) => (
-                    <li
+                   <li
                       key={order.transaction_id}
-                      className="list-group-item d-flex justify-content-between"
+                      className="list-group-item"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setSelectedOrder(order)}
                     >
                       <div>
-                        <strong>{order.transaction_id}</strong>
-                        <br />
-                        {order.customer_name} — {order.current_status} — {order.paint_quantity}
+                        <strong>🆔 {order.transaction_id}</strong><br />
+                        {order.customer_name} — {order.current_status}<br />
+                        <small className="text-muted">🚗 {order.paint_type}</small><br />
+                        <small className="text-muted">👨‍🔧 {order.assigned_employee || "Unassigned"}</small><br />
+                        <small className="text-muted">🧪 {order.paint_quantity || "0.00ML"}</small><br />
+                        <small className="text-muted">📂 {order.category}</small>
                       </div>
-                      <small className="text-muted">{order.paint_type}</small>
-                      <small className="text-muted">👨‍🔧 Assigned: {order.assigned_employee || "Not Assigned"}</small>
                     </li>
                   ))}
                 </ul>
@@ -325,6 +329,32 @@ if (typeof field.onChange === "function") {
           <Toast.Body className="text-white">{toastMessage}</Toast.Body>
         </Toast>
       </ToastContainer>
+
+                {selectedOrder && (
+  <div className="modal d-block" tabIndex="-1" onClick={() => setSelectedOrder(null)}>
+    <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">🧾 Order Details</h5>
+          <button type="button" className="btn-close" onClick={() => setSelectedOrder(null)}></button>
+        </div>
+        <div className="modal-body">
+          <p><strong>Transaction ID:</strong> {selectedOrder.transaction_id}</p>
+          <p><strong>Customer:</strong> {selectedOrder.customer_name}</p>
+          <p><strong>Contact:</strong> {selectedOrder.client_contact}</p>
+          <p><strong>Paint:</strong> {selectedOrder.paint_type}</p>
+          <p><strong>Category:</strong> {selectedOrder.category}</p>
+          <p><strong>Quantity:</strong> {selectedOrder.paint_quantity}</p>
+          <p><strong>Colour Code:</strong> {selectedOrder.colour_code}</p>
+          <p><strong>Status:</strong> {selectedOrder.current_status}</p>
+          <p><strong>Order Type:</strong> {selectedOrder.order_type}</p>
+          <p><strong>Assigned To:</strong> {selectedOrder.assigned_employee || "Unassigned"}</p>
+          <p><strong>ETA:</strong> {selectedOrder.eta || "N/A"}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
