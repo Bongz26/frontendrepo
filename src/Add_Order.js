@@ -202,7 +202,7 @@ const handleSubmit = async (e) => {
         setOrderType("Walk-in");
         setStartTime(new Date().toISOString());
     } catch {
-        triggerToast("❌ Could not place order", "danger");
+        triggerToast("❌ Could not place order - Check for duplicate", "danger");
     } finally {
         setLoading(false); // Re-enable button
     }
