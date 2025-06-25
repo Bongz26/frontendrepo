@@ -77,7 +77,7 @@ const Dashboard = () => {
   const calculateETA = (order) => {
     const waitingOrders = orders.filter(o => o.current_status === "Waiting");
     const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
-    const base = order.category === "New Mix" ? 25 : order.category === "Reorder Mix" ? 15 : 10;
+    const base = order.category === "New Mix" ? 25 : order.category === "Mix More" ? 15 : 10;
     return `${position * base} minutes`;
   };
 
@@ -95,7 +95,7 @@ const Dashboard = () => {
       <div className="card-body">
         <p><strong>Customer:</strong> {order.customer_name}</p>
         <p><strong>Contact No.:</strong> {order.client_contact}</p>
-        <p><strong>ETA:</strong> {calculateETA(order)}</p>
+        {/*<p><strong>ETA:</strong> {calculateETA(order)}</p>*/}
         <label className="form-label">Update Status</label>
         <select
           className="form-select"
@@ -227,7 +227,7 @@ const Dashboard = () => {
           <p><strong>Status:</strong> {selectedOrder.current_status}</p>
           <p><strong>Order Type:</strong> {selectedOrder.order_type}</p>
           <p><strong>Assigned To:</strong> {selectedOrder.assigned_employee || "Unassigned"}</p>
-          <p><strong>ETA:</strong> {calculateETA(selectedOrder)}</p>
+          {/*  <p><strong>ETA:</strong> {calculateETA(selectedOrder)}</p>*/}
         </div>
       </div>
     </div>
