@@ -105,7 +105,7 @@ const AddOrder = () => {
       triggerToast("❌ Could not search orders", "danger");
     }
   };
-  const [userRole, setUserRole] = useState("User"); // Default to "User"
+  const [userRole, setUserRole] = useState("Admin"); // Default to "User"
   
 
   const printReceipt = (order) => {
