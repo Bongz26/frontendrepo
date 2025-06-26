@@ -106,14 +106,7 @@ const AddOrder = () => {
     }
   };
   const [userRole, setUserRole] = useState("User"); // Default to "User"
-  {userRole === "Admin" && (
-  <button
-    className="btn btn-outline-dark mb-3"
-    onClick={() => window.location.href = "/admin-orders"}
-  >
-    🧾 Go to Admin Orders
-  </button>
-)}
+  
 
   const printReceipt = (order) => {
     const win = window.open("", "_blank", "width=600,height=400");
@@ -254,7 +247,15 @@ const formFields = [
 
 
         <div className="card-body">
-          <div className="mb-4">
+          {userRole === "Admin" && (
+                <button
+                  className="btn btn-outline-dark mb-3"
+                  onClick={() => window.location.href = "/admin-orders"}
+                >
+                  🧾 Go to Admin Orders
+                </button>
+              )}
+         <div className="mb-4">
             <label className="form-label">🔎 Search Existing Order</label>
             <div className="input-group">
               <input
