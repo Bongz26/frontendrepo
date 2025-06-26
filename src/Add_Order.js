@@ -94,7 +94,7 @@ const AddOrder = () => {
 
   const handleSearch = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/orders`);
+      const res = await axios.get(`${BASE_URL}/api/orders/search`);
       const filtered = res.data.filter(
         (order) =>
           order.transaction_id.includes(searchTerm) ||
