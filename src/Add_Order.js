@@ -6,6 +6,8 @@ import "bootstrap/dist/css/bootstrap.min.css";
 const BASE_URL = "https://queue-backendser.onrender.com";
 
 const AddOrder = () => {
+
+  const [showForm, setShowForm] = useState(false);
   const [orderType, setOrderType] = useState("Paid");
   const [transactionID, setTransactionID] = useState("");
   const [transSuffix, setTransSuffix] = useState("");
@@ -265,6 +267,16 @@ const formFields = [
                   🧾 Go to Admin Orders
                 </button>
               )}
+          
+          <button
+            className="btn btn-primary mb-3"
+            onClick={() => setShowForm((prev) => !prev)}
+          >
+            {showForm ? "🔽 Hide Form" : "➕ Add New Order"}
+          </button>
+
+
+
          <div className="mb-4">
             <label className="form-label">🔎 Search Existing Order</label>
             <div className="input-group">
@@ -327,7 +339,8 @@ const formFields = [
             )}
           </div>
 
-          <form onSubmit={handleSubmit}>
+         {showForm && (
+            <form onSubmit={handleSubmit}>
             <div className="row">
               {formFields.map((field, idx) => (
                 <div key={idx} className={`col-md-${field.col || 6} mb-3`}>
@@ -370,7 +383,7 @@ if (typeof field.onChange === "function") {
             <button type="submit" className="btn btn-success w-100 mt-3" disabled={loading}>
                     {loading ? "Processing..." : "➕ Add Order"}
             </button>
-          </form>
+          </form>)}
         </div>
       </div>
 
