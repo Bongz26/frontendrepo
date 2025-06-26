@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Toast, ToastContainer } from "react-bootstrap";
+import { Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 const BASE_URL = "https://queue-backendser.onrender.com";
@@ -41,7 +42,7 @@ const AdminOrders = ({ userRole }) => {
             triggerToast("✅ Order has been Completed!");
             fetchReadyOrders();
         } catch (error) {
-            triggerToast("❌ Error marking order as Paid.", "danger");
+            triggerToast("❌ Error marking order as Complete.", "danger");
         }
     };
 
@@ -49,7 +50,10 @@ const AdminOrders = ({ userRole }) => {
         <div className="container mt-4">
             <div className="card shadow-sm border-0">
                 <div className="card-header bg-primary text-white">
-                    <h5 className="mb-0">💰 Unpaid Orders</h5>
+                    <h5 className="mb-0">💰 Incomplete Orders</h5>
+                    <Link to="/add-order" className="btn btn-outline-primary mb-3">
+                          ← Back to Add Order
+                        </Link>
                 </div>
                 <div className="card-body">
                     {readyOrders.length > 0 ? (
