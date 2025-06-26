@@ -306,7 +306,7 @@ const formFields = [
                         {order.customer_name} — {order.current_status}<br />
                         <small className="text-muted">🚗 {order.paint_type}</small><br />
                         <small className="text-muted">👨‍🔧 {order.assigned_employee || "Unassigned"}</small><br />
-                        <small className="text-muted">🧪 {order.paint_quantity || "0.00ML"}</small><br />
+                        <small className="text-muted">🧪 {order.paint_quantity ?? "0.00ML"}</small><br />
                         <small className="text-muted">📂 {order.category}</small>
                       </div>
 
