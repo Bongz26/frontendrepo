@@ -89,7 +89,7 @@ const Dashboard = () => {
       onClick={() => setSelectedOrder(order)}
     >
 
-      <div className="card-body d-flex flex-column flex-sm-row justify-content-between align-items-start">
+     <div className="card-body d-flex flex-column flex-sm-row justify-content-between align-items-start">
   <div>
     <strong>{order.transaction_id}</strong> • {order.category}  
     <br />
@@ -103,12 +103,13 @@ const Dashboard = () => {
       value={order.current_status}
       onChange={(e) =>
         updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
-      }>
-          <option value={order.current_status}>{order.current_status}</option>
-          {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
-        </select>
-      </div>
-    </div>
+      }
+    >
+      <option value={order.current_status}>{order.current_status}</option>
+      {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
+    </select>
+  </div>
+</div>
   );
 
   const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
