@@ -66,7 +66,7 @@ const AddOrder = () => {
   useEffect(() => {
     const baseTimes = {
       "New Mix": 160,
-      "Reorder Mix": 30,
+      "Mix More": 30,
       "Colour Code": 90,
     };
     const base = baseTimes[category] || 15;
