@@ -69,13 +69,13 @@ const AdminOrders = ({ userRole }) => {
                                         <td>{order.transaction_id}</td>
                                         <td>{order.customer_name}</td>
                                         <td>{order.client_contact}</td>
-                                        <td>R{order.amount || "0.00"}</td>
+                                        <td>{order.paint_quantity || "0.00"}</td>
                                         <td>
-                                            <button 
-                                                onClick={() => markAsPaid(order.transaction_id)} 
-                                                className="btn btn-success"
+                                            <button
+                                              className="btn btn-success btn-sm"
+                                              onClick={() => markAsPaid(order.transaction_id)}
                                             >
-                                                ✅ Mark as Paid
+                                              {order.order_type === "Order" ? "💰 Mark as Paid" : "✅ Mark as Complete"}
                                             </button>
                                         </td>
                                     </tr>
