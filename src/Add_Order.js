@@ -198,6 +198,8 @@ const handleSubmit = async (e) => {
         await axios.post(`${BASE_URL}/api/orders`, newOrder);
         triggerToast("✅ Order placed successfully");
 
+          printReceipt(newOrder);
+
         // ✅ Clear form fields after successful submission
         setTransactionID(formatDateDDMMYYYY() + "-");
         setClientName("");
