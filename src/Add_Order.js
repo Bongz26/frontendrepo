@@ -105,6 +105,15 @@ const AddOrder = () => {
       triggerToast("❌ Could not search orders", "danger");
     }
   };
+  const [userRole, setUserRole] = useState("User"); // Default to "User"
+  {userRole === "Admin" && (
+  <button
+    className="btn btn-outline-dark mb-3"
+    onClick={() => window.location.href = "/admin-orders"}
+  >
+    🧾 Go to Admin Orders
+  </button>
+)}
 
   const printReceipt = (order) => {
     const win = window.open("", "_blank", "width=600,height=400");
@@ -243,14 +252,7 @@ const formFields = [
           <h5 className="mb-0">📝 Add New Order</h5>
         </div>
 
-{userRole === "Admin" && (
-  <button
-    className="btn btn-outline-dark mb-3"
-    onClick={() => window.location.href = "/admin-orders"}
-  >
-    🧾 Go to Admin Orders
-  </button>
-)}
+
         <div className="card-body">
           <div className="mb-4">
             <label className="form-label">🔎 Search Existing Order</label>
