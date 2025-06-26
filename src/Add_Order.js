@@ -242,6 +242,15 @@ const formFields = [
         <div className="card-header bg-primary text-white">
           <h5 className="mb-0">📝 Add New Order</h5>
         </div>
+
+{userRole === "Admin" && (
+  <button
+    className="btn btn-outline-dark mb-3"
+    onClick={() => window.location.href = "/admin-orders"}
+  >
+    🧾 Go to Admin Orders
+  </button>
+)}
         <div className="card-body">
           <div className="mb-4">
             <label className="form-label">🔎 Search Existing Order</label>
