@@ -222,7 +222,34 @@ const formFields = [
   { label: "Colour Code", type: "text", value: colorCode, onChange: (val) => setColorCode(val), disabled: category === "New Mix" },
   { label: "Paint Quantity", type: "select", value: paintQuantity, onChange: (val) => setPaintQuantity(val), options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
   { label: "ETA", type: "text", value: eta, onChange: () => {}, disabled: true }
+      
 ];
+    {eta && (
+  <div className="mt-2">
+    <div
+      className="progress"
+      style={{
+        height: "6px",
+        backgroundColor: "var(--bs-secondary-bg, #f1f3f5)"
+      }}
+    >
+      <div
+        className="progress-bar"
+        role="progressbar"
+        style={{
+          width: `${Math.min((parseInt(eta) / 320) * 100, 100)}%`,
+          backgroundColor: "var(--bs-info, #0dcaf0)"
+        }}
+        aria-valuenow={parseInt(eta)}
+        aria-valuemin={0}
+        aria-valuemax={320}
+      ></div>
+    </div>
+    <div className="text-muted small mt-1">
+      Visual preview based on current queue position
+    </div>
+  </div>
+)}
 
   return (
     <div className="container mt-4">
