@@ -81,7 +81,7 @@ const AddOrder = () => {
 
     const base = baseTimes[category] || 15;
     const jobPosition = activeCount + waitingCount + 1;
-    setEta({jobPosition * base});
+    setEta(jobPosition * base);
   }, [category, activeCount, waitingCount]);
 
   const validateContact = (input) => /^\d{10}$/.test(input);
