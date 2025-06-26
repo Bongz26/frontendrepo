@@ -69,9 +69,19 @@ const AddOrder = () => {
       "Mix More": 30,
       "Colour Code": 90,
     };
+
+    const formatMinutesToHours = (minutes) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+  return hrs > 0
+    ? `${hrs}hr${hrs > 1 ? "s" : ""} ${mins > 0 ? `${mins}min` : ""}`.trim()
+    : `${mins}min`;
+      };
+
+
     const base = baseTimes[category] || 15;
     const jobPosition = activeCount + waitingCount + 1;
-    setEta(`${jobPosition * base} minutes`);
+    setEta({jobPosition * base});
   }, [category, activeCount, waitingCount]);
 
   const validateContact = (input) => /^\d{10}$/.test(input);
@@ -221,7 +231,9 @@ const formFields = [
   { label: "Car Details", type: "text", value: paintType, onChange: (val) => setPaintType(val), required: true },
   { label: "Colour Code", type: "text", value: colorCode, onChange: (val) => setColorCode(val), disabled: category === "New Mix" },
   { label: "Paint Quantity", type: "select", value: paintQuantity, onChange: (val) => setPaintQuantity(val), options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
-  { label: "ETA", type: "text", value: eta, onChange: () => {}, disabled: true }
+  {/*{ label: "ETA", type: "text", value: eta, onChange: () => {}, disabled: true }*/}
+  <label>ETA</label>
+  <input value={formatMinutesToHours(eta)} disabled />
       
 ];
     {eta && (
