@@ -197,23 +197,22 @@ const handleSubmit = async (e) => {
     eta,
   };
 
-    try {
-        await axios.post(`${BASE_URL}/api/orders`, newOrder);
-        triggerToast("✅ Order placed successfully");
+  try {
+    await axios.post(`${BASE_URL}/api/orders`, newOrder);
+    triggerToast("✅ Order placed successfully");
 
-          setTimeout(() => printReceipt(newOrder), 300);
+    setTimeout(() => printReceipt(newOrder), 300);
 
-
-        // ✅ Clear form fields after successful submission
-        setTransactionID(formatDateDDMMYYYY() + "-");
-        setClientName("");
-        setClientContact("");
-        setPaintType("");
-        setColorCode("");
-        setPaintQuantity("");
-        setCategory("New Mix");
-        setOrderType("Walk-in");
-        setStartTime(new Date().toISOString());
+    // Reset fields after success
+    setTransSuffix("");
+    setClientName("");
+    setClientContact("");
+    setPaintType("");
+    setColorCode("");
+    setPaintQuantity("");
+    setCategory("New Mix");
+    setOrderType("Walk-in");
+    setStartTime(new Date().toISOString());
     } catch {
         triggerToast("❌ Could not place order - Check for duplicate", "danger");
     } finally {
@@ -230,10 +229,16 @@ const handleSubmit = async (e) => {
       };
 const formFields = [
   { label: "Order Type", type: "select", value: orderType, onChange: (val) => setOrderType(val), options: ["Paid", "Order"], required: true },
-  { label: "Transaction ID", type: "text", value: transactionID, onChange: (val) => {
-      const digits = val.replace(/\D/g, "").slice(-4);
-      setTransactionID(formatDateDDMMYYYY() + "-" + digits);
-    }, disabled: orderType === "Order", required: orderType !== "Order" },
+  { label: "Transaction ID",
+            type: "text",
+            value: transSuffix,
+            onChange: (val) => {
+              const digits = val.replace(/\D/g, "").slice(0, 4);
+              setTransSuffix(digits);
+            },
+            disabled: orderType === "Order",
+            required: orderType !== "Order",
+            placeholder: "Enter 4-digit ID"},
   { label: "Client Contact", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
   { label: "Client Name", type: "text", value: clientName, onChange: (val) => setClientName(val), required: true },
   { label: "Category", type: "select", value: category, onChange: (val) => setCategory(val), options: ["New Mix", "Mix More", "Colour Code"], required: true },
