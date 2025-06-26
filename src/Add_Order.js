@@ -44,14 +44,13 @@ const AddOrder = () => {
 
   useEffect(() => {
     if (orderType === "Order") {
-      setTransactionID(
-        `${formatDateDDMMYYYY()}-PO_${Math.floor(1000 + Math.random() * 9000)}`
-      );
-    } else {
-      setTransactionID(`${formatDateDDMMYYYY()}-`);
-    }
-    setStartTime(new Date().toISOString());
-  }, [orderType]);
+    const randomDigits = Math.floor(1000 + Math.random() * 9000);
+    setTransSuffix(`PO_${randomDigits}`);
+  } else {
+    setTransSuffix(""); // Let user enter 4-digit suffix manually
+  }
+  setStartTime(new Date().toISOString());
+}, [orderType]);
 
   useEffect(() => {
     axios
