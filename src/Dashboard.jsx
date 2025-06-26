@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "./styles/queueStyles.css";
@@ -81,7 +82,7 @@ const Dashboard = () => {
     return `${position * base} minutes`;
   };
 
-  const renderOrderCard = (order) => (
+ const renderOrderCard = (order) => (
   <div
     key={order.transaction_id}
     className={`card mb-2 shadow-sm px-2 py-1 ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}
@@ -94,7 +95,7 @@ const Dashboard = () => {
         {order.customer_name} ({order.client_contact})
       </div>
       <div className="text-end">
-        <small>ETA: {calculateETA(order)}</small><br />
+        {/*  <small>ETA: {calculateETA(order)}</small><br />*/}
         <select
           className="form-select form-select-sm mt-1"
           value={order.current_status}
