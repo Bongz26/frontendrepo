@@ -84,32 +84,34 @@ const Dashboard = () => {
 
  const renderOrderCard = (order) => (
   <div
-    key={order.transaction_id}
-    className={`card mb-2 shadow-sm px-2 py-1 ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}
-    style={{ fontSize: "0.85rem", lineHeight: "1.3", cursor: "pointer" }}
-    onClick={() => setSelectedOrder(order)}
-  >
-    <div className="d-flex justify-content-between">
-      <div>
-        <strong>{order.transaction_id}</strong> • {order.category}<br />
-        {order.customer_name} ({order.client_contact})
-      </div>
-      <div className="text-end">
-          <small>ETA: {calculateETA(order)}</small><br />
-        <select
-          className="form-select form-select-sm mt-1"
-          value={order.current_status}
-          onClick={(e) => e.stopPropagation()} // prevent modal
-          onChange={(e) =>
-            updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
-          }
-        >
-          <option value={order.current_status}>{order.current_status}</option>
-          {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
-        </select>
-      </div>
+  key={order.transaction_id}
+  className={`card mb-2 px-3 py-2 shadow-sm border-0 ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}
+  style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
+  onClick={() => setSelectedOrder(order)}
+>
+  <div className="d-flex justify-content-between">
+    <div>
+      <strong>{order.transaction_id}</strong> • <span className="text-muted">{order.category}</span><br />
+      <span>{order.customer_name}</span> <small className="text-muted">({order.client_contact})</small>
+    </div>
+    <div className="text-end">
+      <small className="text-muted">ETA: {calculateETA(order)}</small><br />
+      <select
+        className="form-select form-select-sm mt-1"
+        style={{ minWidth: "120px" }}
+        onClick={(e) => e.stopPropagation()}
+        value={order.current_status}
+        onChange={(e) =>
+          updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
+        }
+      >
+        <option value={order.current_status}>{order.current_status}</option>
+        {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
+      </select>
     </div>
   </div>
+</div>
+
 );
 
   const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
