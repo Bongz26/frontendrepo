@@ -78,7 +78,7 @@ const Dashboard = () => {
   const calculateETA = (order) => {
     const waitingOrders = orders.filter(o => o.current_status === "Waiting");
     const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
-    const base = order.category === "New Mix" ? 25 : order.category === "Mix More" ? 15 : 10;
+    const base = order.category === "New Mix" ? 160 : order.category === "Colour Code" ? 90 : 45;
     return `${position * base} minutes`;
   };
 
@@ -95,7 +95,7 @@ const Dashboard = () => {
         {order.customer_name} ({order.client_contact})
       </div>
       <div className="text-end">
-        {/*  <small>ETA: {calculateETA(order)}</small><br />*/}
+          <small>ETA: {calculateETA(order)}</small><br />
         <select
           className="form-select form-select-sm mt-1"
           value={order.current_status}
