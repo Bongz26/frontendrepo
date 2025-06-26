@@ -38,7 +38,7 @@ const AdminOrders = ({ userRole }) => {
 
         try {
             await axios.put(`${BASE_URL}/api/orders/mark-paid/${orderId}`, { userRole });
-            triggerToast("✅ Order marked as Complete!");
+            triggerToast("✅ Order has been Completed!");
             fetchReadyOrders();
         } catch (error) {
             triggerToast("❌ Error marking order as Paid.", "danger");
