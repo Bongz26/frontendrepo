@@ -82,35 +82,34 @@ const Dashboard = () => {
   };
 
   const renderOrderCard = (order) => (
-    <div
-      key={order.transaction_id}
-      className={`card mb-3 shadow-sm ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}
-      style={{ cursor: "pointer" }}
-      onClick={() => setSelectedOrder(order)}
-    >
-
-     <div className="card-body d-flex flex-column flex-sm-row justify-content-between align-items-start">
-  <div>
-    <strong>{order.transaction_id}</strong> • {order.category}  
-    <br />
-    {order.customer_name} ({order.client_contact})
+  <div
+    key={order.transaction_id}
+    className={`card mb-2 shadow-sm px-2 py-1 ${recentlyUpdatedId === order.transaction_id ? "flash-row" : ""}`}
+    style={{ fontSize: "0.85rem", lineHeight: "1.3", cursor: "pointer" }}
+    onClick={() => setSelectedOrder(order)}
+  >
+    <div className="d-flex justify-content-between">
+      <div>
+        <strong>{order.transaction_id}</strong> • {order.category}<br />
+        {order.customer_name} ({order.client_contact})
+      </div>
+      <div className="text-end">
+        <small>ETA: {calculateETA(order)}</small><br />
+        <select
+          className="form-select form-select-sm mt-1"
+          value={order.current_status}
+          onClick={(e) => e.stopPropagation()} // prevent modal
+          onChange={(e) =>
+            updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
+          }
+        >
+          <option value={order.current_status}>{order.current_status}</option>
+          {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
+        </select>
+      </div>
+    </div>
   </div>
-  <div className="text-end">
-    <small className="text-muted">ETA: {calculateETA(order)}</small><br />
-    <label className="form-label mb-1">Update Status</label>
-    <select
-      className="form-select form-select-sm"
-      value={order.current_status}
-      onChange={(e) =>
-        updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
-      }
-    >
-      <option value={order.current_status}>{order.current_status}</option>
-      {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
-    </select>
-  </div>
-</div>
-  );
+);
 
   const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
   const activeCount = orders.filter(o =>
