@@ -70,13 +70,7 @@ const AddOrder = () => {
       "Colour Code": 90,
     };
 
-    const formatMinutesToHours = (minutes) => {
-    const hrs = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-  return hrs > 0
-    ? `${hrs}hr${hrs > 1 ? "s" : ""} ${mins > 0 ? `${mins}min` : ""}`.trim()
-    : `${mins}min`;
-      };
+   
 
 
     const base = baseTimes[category] || 15;
@@ -219,6 +213,13 @@ const handleSubmit = async (e) => {
     }
 };
 
+   const formatMinutesToHours = (minutes) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+  return hrs > 0
+    ? `${hrs}hr${hrs > 1 ? "s" : ""} ${mins > 0 ? `${mins}min` : ""}`.trim()
+    : `${mins}min`;
+      };
 const formFields = [
   { label: "Order Type", type: "select", value: orderType, onChange: (val) => setOrderType(val), options: ["Paid", "Order"], required: true },
   { label: "Transaction ID", type: "text", value: transactionID, onChange: (val) => {
