@@ -88,22 +88,22 @@ const Dashboard = () => {
       style={{ cursor: "pointer" }}
       onClick={() => setSelectedOrder(order)}
     >
-      <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
-        <span>🆔 {order.transaction_id}</span>
-        <span>{order.category}</span>
-      </div>
-      <div className="card-body">
-        <p><strong>Customer:</strong> {order.customer_name}</p>
-        <p><strong>Contact No.:</strong> {order.client_contact}</p>
-        {/*<p><strong>ETA:</strong> {calculateETA(order)}</p>*/}
-        <label className="form-label">Update Status</label>
-        <select
-          className="form-select"
-          value={order.current_status}
-          onChange={(e) =>
-            updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
-          }
-        >
+
+      <div className="card-body d-flex flex-column flex-sm-row justify-content-between align-items-start">
+  <div>
+    <strong>{order.transaction_id}</strong> • {order.category}  
+    <br />
+    {order.customer_name} ({order.client_contact})
+  </div>
+  <div className="text-end">
+    <small className="text-muted">ETA: {calculateETA(order)}</small><br />
+    <label className="form-label mb-1">Update Status</label>
+    <select
+      className="form-select form-select-sm"
+      value={order.current_status}
+      onChange={(e) =>
+        updateStatus(order.transaction_id, e.target.value, order.colour_code, order.assigned_employee)
+      }>
           <option value={order.current_status}>{order.current_status}</option>
           {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
         </select>
