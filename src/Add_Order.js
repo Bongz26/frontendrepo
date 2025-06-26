@@ -8,6 +8,7 @@ const BASE_URL = "https://queue-backendser.onrender.com";
 const AddOrder = () => {
   const [orderType, setOrderType] = useState("Paid");
   const [transactionID, setTransactionID] = useState("");
+  const [transSuffix, setTransSuffix] = useState("");
   const [clientName, setClientName] = useState("");
   const [clientContact, setClientContact] = useState("");
   const [category, setCategory] = useState("New Mix");
@@ -151,48 +152,50 @@ Track ID       : TRK-${order.transaction_id}
 const [loading, setLoading] = useState(false); // Track submission state
 
 const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true); // Disable button
+  e.preventDefault();
+  setLoading(true);
 
-    if (!validateContact(clientContact)) {
-        triggerToast("❌ Contact number must be 10 digits", "danger");
-        setLoading(false);
-        return;
-    }
-    if (!paintType.trim()) {
-        triggerToast("❌ Car Details required", "danger");
-        setLoading(false);
-        return;
-    }
-    if (!colorCode.trim() && category !== "New Mix") {
-        triggerToast("❌ Colour Code required", "danger");
-        setLoading(false);
-        return;
-    }
-    if (!paintQuantity) {
-        triggerToast("❌ Select paint quantity", "danger");
-        setLoading(false);
-        return;
-    }
-    if (transactionID.length !== 13 && orderType !== "Order") {
-        triggerToast("❌ Paid orders require 4-digit Transaction ID", "danger");
-        setLoading(false);
-        return;
-    }
+  const fullTransactionID = `${formatDateDDMMYYYY()}-${transSuffix}`;
 
-    const newOrder = {
-        transaction_id: transactionID,
-        customer_name: clientName,
-        client_contact: clientContact,
-        paint_type: paintType,
-        colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
-        category,
-        paint_quantity: paintQuantity,
-        current_status: "Waiting",
-        order_type: orderType,
-        start_time: startTime,
-        eta,
-    };
+  if (!validateContact(clientContact)) {
+    triggerToast("❌ Contact number must be 10 digits", "danger");
+    setLoading(false);
+    return;
+  }
+  if (!paintType.trim()) {
+    triggerToast("❌ Car Details required", "danger");
+    setLoading(false);
+    return;
+  }
+  if (!colorCode.trim() && category !== "New Mix") {
+    triggerToast("❌ Colour Code required", "danger");
+    setLoading(false);
+    return;
+  }
+  if (!paintQuantity) {
+    triggerToast("❌ Select paint quantity", "danger");
+    setLoading(false);
+    return;
+  }
+  if (orderType !== "Order" && transSuffix.length !== 4) {
+    triggerToast("❌ Paid orders require a 4-digit Transaction ID", "danger");
+    setLoading(false);
+    return;
+  }
+
+  const newOrder = {
+    transaction_id: fullTransactionID,
+    customer_name: clientName,
+    client_contact: clientContact,
+    paint_type: paintType,
+    colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
+    category,
+    paint_quantity: paintQuantity,
+    current_status: "Waiting",
+    order_type: orderType,
+    start_time: startTime,
+    eta,
+  };
 
     try {
         await axios.post(`${BASE_URL}/api/orders`, newOrder);
