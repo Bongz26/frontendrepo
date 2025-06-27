@@ -132,31 +132,28 @@ const renderWaitingCard = (order) => (
 const renderActiveCard = (order) => (
   <div
     key={order.transaction_id}
-    className={`card mb-3 shadow-sm ${
+    className={`card mb-2 shadow-sm px-3 py-2 border-0 ${
       recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
     }`}
+    style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
     onClick={() => setSelectedOrder(order)}
-    style={{ cursor: "pointer" }}
   >
-    <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
-      <span>🆔 {order.transaction_id}</span>
-      <span>{order.category}</span>
-    </div>
-    <div className="card-body row">
-      <div className="col-md-6">
-        <p><strong>Customer:</strong> {order.customer_name}</p>
-        <p><strong>Vehicle:</strong> {order.paint_type}</p>
-        <p><strong>Quantity:</strong> {order.paint_quantity}</p>
+    <div className="d-flex justify-content-between">
+      <div>
+        <strong>🆔 {order.transaction_id}</strong> •{" "}
+        <span className="text-muted">{order.category}</span><br />
+        {order.customer_name} <small className="text-muted">({order.client_contact})</small><br />
+        🎨 <span className="text-muted">{order.paint_type}</span> — {order.paint_quantity}ml<br />
+        <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
       </div>
-      <div className="col-md-6">
-        <p><strong>Status:</strong> {order.current_status}</p>
-        <p><strong>Assigned:</strong> {order.assigned_employee || "Unassigned"}</p>
-        <p><strong>Col. Code:</strong> {order.colour_code}</p>
-      </div>
-      <div className="col-12">
-        <label className="form-label">Update Status</label>
+
+      <div className="text-end">
+        <span className="badge bg-secondary mb-1">{order.current_status}</span><br />
+        <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small><br />
         <select
-          className="form-select"
+          className="form-select form-select-sm mt-1"
+          style={{ minWidth: "130px" }}
+          onClick={(e) => e.stopPropagation()}
           value={order.current_status}
           onChange={(e) =>
             updateStatus(
@@ -166,7 +163,6 @@ const renderActiveCard = (order) => (
               order.assigned_employee
             )
           }
-          onClick={(e) => e.stopPropagation()}
         >
           <option value={order.current_status}>{order.current_status}</option>
           {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
