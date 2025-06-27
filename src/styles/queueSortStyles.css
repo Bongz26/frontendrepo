@@ -8,3 +8,9 @@
   animation: flashGlow 2s ease-in-out;
   border-left: 4px solid #28a745;
 }
+
+.card-category-mixing { border-left: 4px solid #17a2b8; }     /* Teal */
+.card-category-spraying { border-left: 4px solid #ffc107; }   /* Amber */
+.card-category-remix { border-left: 4px solid #fd7e14; }       /* Orange */
+.card-category-detailing { border-left: 4px solid #6f42c1; }   /* Purple */
+.card-category-default { border-left: 4px solid #dee2e6; }     /* Gray */
