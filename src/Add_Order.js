@@ -130,7 +130,7 @@ ${formatLine("Colour Code", order.colour_code)} ${
       order.colour_code === "Pending" ? "(To be assigned)" : ""
     }
 ${formatLine("Category", order.category)}
-${formatLine("ETA", order.eta)}
+
 Track ID       : TRK-${order.transaction_id}
 
 ----------------------------------------
