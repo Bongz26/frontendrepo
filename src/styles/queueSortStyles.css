@@ -13,8 +13,27 @@
 }
 
 
-.card-category-mixing { border-left: 4px solid #17a2b8; }     /* Teal */
-.card-category-spraying { border-left: 4px solid #ffc107; }   /* Amber */
-.card-category-remix { border-left: 4px solid #fd7e14; }       /* Orange */
-.card-category-detailing { border-left: 4px solid #6f42c1; }   /* Purple */
-.card-category-default { border-left: 4px solid #dee2e6; }     /* Gray */
+.modal-category-mixing {
+  background-color: #d1ecf1; /* Light Teal */
+  color: #0c5460;
+}
+
+.modal-category-spraying {
+  background-color: #fff3cd; /* Light Amber */
+  color: #856404;
+}
+
+.modal-category-remix {
+  background-color: #fde2ce; /* Warm Orange */
+  color: #7a3e00;
+}
+
+.modal-category-detailing {
+  background-color: #e9d8fd; /* Light Purple */
+  color: #4b0082;
+}
+
+.modal-category-default {
+  background-color: #f8f9fa; /* Soft Gray */
+  color: #212529;
+}
