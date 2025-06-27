@@ -258,9 +258,9 @@ const renderActiveCard = (order) => (
       {selectedOrder && (
   <div className="modal d-block" tabIndex="-1" onClick={() => setSelectedOrder(null)}>
     <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-content">
-        <div className={`modal-header ${getModalCategoryClass(selectedOrder.category)}`}>
-          <h5 className="modal-title">🧾 Order Details</h5>
+          <div className={`modal-content ${getModalCategoryClass(selectedOrder.category)}`}>
+          <div className="modal-header">
+            <h5 className="modal-title">🧾 Order Details</h5>
           <button type="button" className="btn-close" onClick={() => setSelectedOrder(null)}></button>
         </div>
         <div className="modal-body">
