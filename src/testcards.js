@@ -215,7 +215,7 @@ const renderActiveCard = (order) => (
                         .map(renderWaitingCard)}
           </div>
 
-            {/* Active Orders (Table View) */}
+           
               <div className="col-md-8">
             <h6 className="bg-success text-white p-2">🚀 Active Orders: {activeCount}</h6>
             {orders
@@ -226,6 +226,32 @@ const renderActiveCard = (order) => (
         </div>
       </div>
 
+{/* Order Details Modal */}
+      {selectedOrder && (
+  <div className="modal d-block" tabIndex="-1" onClick={() => setSelectedOrder(null)}>
+    <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">🧾 Order Details</h5>
+          <button type="button" className="btn-close" onClick={() => setSelectedOrder(null)}></button>
+        </div>
+        <div className="modal-body">
+          <p><strong>Transaction ID:</strong> {selectedOrder.transaction_id}</p>
+          <p><strong>Customer:</strong> {selectedOrder.customer_name}</p>
+          <p><strong>Contact:</strong> {selectedOrder.client_contact}</p>
+          <p><strong>Paint:</strong> {selectedOrder.paint_type}</p>
+          <p><strong>Category:</strong> {selectedOrder.category}</p>
+          <p><strong>Quantity:</strong> {selectedOrder.paint_quantity}</p>
+          <p><strong>Colour Code:</strong> {selectedOrder.colour_code}</p>
+          <p><strong>Status:</strong> {selectedOrder.current_status}</p>
+          <p><strong>Order Type:</strong> {selectedOrder.order_type}</p>
+          <p><strong>Assigned To:</strong> {selectedOrder.assigned_employee || "Unassigned"}</p>
+          {/*  <p><strong>ETA:</strong> {calculateETA(selectedOrder)}</p>*/}
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       {pendingColourUpdate && (
         <ColourCodeModal
           onSubmit={(code) => {
