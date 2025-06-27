@@ -15,6 +15,7 @@ const App = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="/add-order" element={<AddOrder />} />
+        <Route path="/test-cards" element={<AddOrder />} />
         <Route path="/admin-orders" element={<AdminOrders userRole="Admin" />} />
          <Route path="/test-queue" element={<QueueDashboard waitingOrders={[]} activeOrders={[]} />} />
       </Routes>
