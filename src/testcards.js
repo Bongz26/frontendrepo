@@ -172,7 +172,7 @@ const renderActiveCard = (order) => (
         <strong>🆔 {order.transaction_id}</strong> •{" "}
         <span className="text-muted">{order.category}</span><br />
         {order.customer_name} <small className="text-muted">({order.client_contact})</small><br />
-        🎨 <span className="text-muted">{order.paint_type}</span> — {order.paint_quantity}ml<br />
+        🎨 <span className="text-muted">{order.paint_type}</span> — {order.paint_quantity}<br />
         <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
       </div>
 
