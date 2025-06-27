@@ -182,6 +182,10 @@ const renderActiveCard = (order) => (
   </div>
 );
 
+  const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
+  const activeCount = orders.filter(o =>
+    !["Waiting", "Ready", "Complete"].includes(o.current_status)
+  ).length;
 
   return (
     <div className="container mt-4">
@@ -205,7 +209,7 @@ const renderActiveCard = (order) => (
                 {/* Waiting Orders (Card View) */}
           <div className="row">
               <div className="col-md-4">  {/* Narrower column for Waiting Orders */}
-                <h6 className="bg-primary text-white p-2">⏳ Waiting Orders</h6>
+                <h6 className="bg-primary text-white p-2">⏳ Waiting Orders: {WaitingCount}</h6>
                 {orders.filter(o => o.current_status === "Waiting")
                         .map(renderWaitingCard)}
           </div>
