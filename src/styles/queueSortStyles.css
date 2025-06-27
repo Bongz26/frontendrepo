@@ -1,10 +1,10 @@
-.flash-row > td {
-  animation: flashRowFade 4s ease-in-out;
-  will-change: background-color;
+@keyframes flashGlow {
+  0%   { background-color: #d4edda; }
+  50%  { background-color: #aee4bc; }
+  100% { background-color: inherit; }
 }
 
-@keyframes flashRowFade {
-  0%   { background-color: #21cc4a; }       /* soft green */
-  50%  { background-color: #80c493; }
-  100% { background-color: inherit; }
+.flash-row {
+  animation: flashGlow 2s ease-in-out;
+  border-left: 4px solid #28a745;
 }
