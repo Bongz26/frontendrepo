@@ -134,6 +134,7 @@ const renderActiveCard = (order) => (
     className={`card mb-3 shadow-sm ${
       recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
     }`}
+   onClick={() => setSelectedOrder(order)}
   >
     <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
       <span>🆔 {order.transaction_id}</span>
