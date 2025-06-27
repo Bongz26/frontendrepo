@@ -86,6 +86,22 @@ const CardView = () => {
     return `${position * base} minutes`;
   };
 
+const getCategoryClass = (cat) => {
+  switch (cat?.toLowerCase()) {
+    case "mixing":
+      return "card-category-mixing";
+    case "spraying":
+      return "card-category-spraying";
+    case "re-mixing":
+      return "card-category-remix";
+    case "detailing":
+      return "card-category-detailing";
+    default:
+      return "card-category-default";
+  }
+};
+
+
 const renderWaitingCard = (order) => (
   <div
     key={order.transaction_id}
@@ -133,8 +149,8 @@ const renderActiveCard = (order) => (
   <div
     key={order.transaction_id}
     className={`card mb-2 shadow-sm px-3 py-2 border-0 ${
-      recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
-    }`}
+          recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
+    } ${getCategoryClass(order.category)}`}
     style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
     onClick={() => setSelectedOrder(order)}
   >
