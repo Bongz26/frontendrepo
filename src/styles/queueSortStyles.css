@@ -1,8 +1,8 @@
 @keyframes flashGlow {
   0%   { background-color: #d0e3ff; }   /* Soft baby blue */
-  25%  { background-color: #90c9ff; }   /* Lighter azure */
-  50%  { background-color: #5fa8f5; }   /* Bright blue highlight */
-  75%  { background-color: #90c9ff; }
+  25%  { background-color: #5fa8f5; }   /* Lighter azure */
+  50%  { background-color: ##1b7ee7; }   /* Bright blue highlight */
+  75%  { background-color: #1e64a7; }
   100% { background-color: inherit; }
 }
 
