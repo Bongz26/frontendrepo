@@ -95,14 +95,12 @@ const renderWaitingCard = (order) => (
     <div className="d-flex justify-content-between">
       <div>
         <strong>{order.transaction_id}</strong> •{" "}
-        <span className="text-muted">{order.category}</span>
-        <br />
+        <span className="text-muted">{order.category}</span><br />
         <span>{order.customer_name}</span>{" "}
         <small className="text-muted">({order.client_contact})</small>
       </div>
       <div className="text-end">
-        <small className="text-muted">ETA: {calculateETA(order)}</small>
-        <br />
+        <small className="text-muted">ETA: {calculateETA(order)}</small><br />
         <select
           className="form-select form-select-sm mt-1"
           style={{ minWidth: "120px" }}
@@ -134,7 +132,8 @@ const renderActiveCard = (order) => (
     className={`card mb-3 shadow-sm ${
       recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
     }`}
-   onClick={() => setSelectedOrder(order)}
+    onClick={() => setSelectedOrder(order)}
+    style={{ cursor: "pointer" }}
   >
     <div className="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
       <span>🆔 {order.transaction_id}</span>
@@ -164,6 +163,7 @@ const renderActiveCard = (order) => (
               order.assigned_employee
             )
           }
+          onClick={(e) => e.stopPropagation()}
         >
           <option value={order.current_status}>{order.current_status}</option>
           {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
