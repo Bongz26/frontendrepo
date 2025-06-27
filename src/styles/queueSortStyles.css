@@ -1,13 +1,17 @@
 @keyframes flashGlow {
-  0%   { background-color: #0000FF; }
-  50%  { background-color: #aee4bc; }
+  0%   { background-color: #fff59d; }   /* Warm yellow */
+  25%  { background-color: #ffe082; }
+  50%  { background-color: #ffca28; }   /* Rich amber */
+  75%  { background-color: #ffe082; }
   100% { background-color: inherit; }
 }
 
 .flash-row {
-  animation: flashGlow 2s ease-in-out;
-  border-left: 4px solid #28a745;
+  animation: flashGlow 4s ease-in-out;
+  border-left: 4px solid #ffc107;       /* Accent edge */
+  transition: background-color 0.3s ease-in-out;
 }
+
 
 .card-category-mixing { border-left: 4px solid #17a2b8; }     /* Teal */
 .card-category-spraying { border-left: 4px solid #ffc107; }   /* Amber */
