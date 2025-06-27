@@ -8,7 +8,7 @@ import ColourCodeModal from "./ColourCodeModal";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
 
-const Dashboard = () => {
+const CardView = () => {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -229,4 +229,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default CardView;
