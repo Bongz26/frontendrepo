@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Dashboard from "./Dashboard"; // Adjust path if needed
+import CardView from "./testcards"; 
 import TrackOrderPage from "./TrackOrderPage";
 import AddOrder from "./Add_Order";
 import AdminOrders from "./AdminOrders";
@@ -15,7 +16,7 @@ const App = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="/add-order" element={<AddOrder />} />
-        <Route path="/test-cards" element={<AddOrder />} />
+        <Route path="/test-cards" element={<CardView />} />
         <Route path="/admin-orders" element={<AdminOrders userRole="Admin" />} />
          <Route path="/test-queue" element={<QueueDashboard waitingOrders={[]} activeOrders={[]} />} />
       </Routes>
