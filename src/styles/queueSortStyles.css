@@ -1,15 +1,15 @@
 @keyframes flashGlow {
-  0%   { background-color: #fff59d; }   /* Warm yellow */
-  25%  { background-color: #ffe082; }
-  50%  { background-color: #ffca28; }   /* Rich amber */
-  75%  { background-color: #ffe082; }
+  0%   { background-color: #d0e3ff; }   /* Soft baby blue */
+  25%  { background-color: #90c9ff; }   /* Lighter azure */
+  50%  { background-color: #5fa8f5; }   /* Bright blue highlight */
+  75%  { background-color: #90c9ff; }
   100% { background-color: inherit; }
 }
 
 .flash-row {
-  animation: flashGlow 10s ease-in-out;
-  border-left: 4px solid #251df4;       /* Accent edge */
-  transition: background-color 0.5s ease-in-out;
+  animation: flashGlow 13s ease-in-out;
+  border-left: 4px solid #251df4; /* Deep blue accent */
+  transition: background-color 0.6s ease-in-out;
 }
 
 
