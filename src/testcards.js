@@ -16,6 +16,7 @@ const CardView = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [pendingColourUpdate, setPendingColourUpdate] = useState(null);
   const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null); // For modal
 
   const handleLogin = () => setShowLogin(true);
 
