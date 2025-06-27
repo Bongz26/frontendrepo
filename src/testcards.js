@@ -76,6 +76,13 @@ const CardView = () => {
     }
   };
 
+    const calculateETA = (order) => {
+    const waitingOrders = orders.filter(o => o.current_status === "Waiting");
+    const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
+    const base = order.category === "New Mix" ? 160 : order.category === "Colour Code" ? 90 : 45;
+    return `${position * base} minutes`;
+  };
+
 const renderWaitingCard = (order) => (
   <div
     key={order.transaction_id}
