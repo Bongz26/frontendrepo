@@ -34,8 +34,11 @@ const CardView = () => {
   }, []);
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+  fetchOrders();
+  const interval = setInterval(fetchOrders, 30000); // every 30s
+  return () => clearInterval(interval);
+}, [fetchOrders]);
+
 
   const updateStatus = async (orderId, newStatus, colourCode, currentEmp) => {
     let employeeName = currentEmp || "Unassigned";
