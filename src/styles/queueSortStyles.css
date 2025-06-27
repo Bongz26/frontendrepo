@@ -7,7 +7,7 @@
 }
 
 .flash-row {
-  animation: flashGlow 4s ease-in-out;
+  animation: flashGlow 6s ease-in-out;
   border-left: 4px solid #ffc107;       /* Accent edge */
   transition: background-color 0.3s ease-in-out;
 }
