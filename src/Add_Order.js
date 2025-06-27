@@ -44,15 +44,23 @@ const AddOrder = () => {
     ).padStart(2, "0")}${date.getFullYear()}`;
   };
 
-  useEffect(() => {
-    if (orderType === "Order") {
+ useEffect(() => {
+  const today = new Date();
+  const formattedDate = today.toLocaleDateString("en-GB").replace(/\//g, ""); // 27062025
+
+  if (orderType === "Order") {
+    // Auto-generate 4-digit suffix for normal orders
     const randomDigits = Math.floor(1000 + Math.random() * 9000);
-    setTransSuffix(`PO_${randomDigits}`);
-  } else {
-    setTransSuffix(""); // Let user enter 4-digit suffix manually
+    setTransSuffix(`${randomDigits}`);
+  } else if (orderType === "Paid") {
+    // Let user manually enter 4 digits (we'll prefix with PO_ in fullTransactionID)
+    setTransSuffix(""); // clear input — user will type manually
   }
-  setStartTime(new Date().toISOString());
+
+  setStartTime(today.toISOString());
 }, [orderType]);
+
+
 
   useEffect(() => {
     axios
@@ -156,7 +164,12 @@ const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
 
-  const fullTransactionID = `${formatDateDDMMYYYY()}-${transSuffix}`;
+  const today = formatDateDDMMYYYY();
+  const fullTransactionID =
+      orderType === "Paid"
+        ? `${today}-PO-${transSuffix}`
+        : `${today}-${transSuffix}`;
+
 
   if (!validateContact(clientContact)) {
     triggerToast("❌ Contact number must be 10 digits", "danger");
