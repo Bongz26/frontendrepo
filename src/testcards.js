@@ -39,7 +39,20 @@ const CardView = () => {
   return () => clearInterval(interval);
 }, [fetchOrders]);
 
-
+const getModalCategoryClass = (cat) => {
+  switch (cat?.toLowerCase()) {
+    case "mixing":
+      return "modal-category-mixing";
+    case "spraying":
+      return "modal-category-spraying";
+    case "re-mixing":
+      return "modal-category-remix";
+    case "detailing":
+      return "modal-category-detailing";
+    default:
+      return "modal-category-default";
+  }
+};
   const updateStatus = async (orderId, newStatus, colourCode, currentEmp) => {
     let employeeName = currentEmp || "Unassigned";
     let updatedColourCode = colourCode;
@@ -246,7 +259,7 @@ const renderActiveCard = (order) => (
   <div className="modal d-block" tabIndex="-1" onClick={() => setSelectedOrder(null)}>
     <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
       <div className="modal-content">
-        <div className="modal-header">
+        <div className={`modal-header ${getModalCategoryClass(selectedOrder.category)}`}>
           <h5 className="modal-title">🧾 Order Details</h5>
           <button type="button" className="btn-close" onClick={() => setSelectedOrder(null)}></button>
         </div>
