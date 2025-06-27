@@ -1,5 +1,5 @@
 @keyframes flashGlow {
-  0%   { background-color: #d4edda; }
+  0%   { background-color: #0000FF; }
   50%  { background-color: #aee4bc; }
   100% { background-color: inherit; }
 }
