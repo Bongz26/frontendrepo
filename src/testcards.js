@@ -220,7 +220,7 @@ const renderActiveCard = (order) => (
     <div className="container mt-4">
       <div className="card mb-3 shadow-sm border-0">
         <div className="card-header bg-dark text-white d-flex justify-content-between">
-          <h5 className="mb-0">🎨 Paints Form View</h5>
+          <h5 className="mb-0">🎨 Queue System View</h5>
           <button className="btn btn-light btn-sm" onClick={handleLogin}>Login as Admin</button>
         </div>
         <div className="card-body">
