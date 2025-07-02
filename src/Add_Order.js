@@ -39,9 +39,9 @@ const AddOrder = () => {
 
   const formatDateDDMMYYYY = () => {
     const date = new Date();
-    return ${String(date.getDate()).padStart(2, "0")}${String(
+    return `${String(date.getDate()).padStart(2, "0")}${String(
       date.getMonth() + 1
-    ).padStart(2, "0")}${date.getFullYear()};
+    ).padStart(2, "0")}${date.getFullYear()}`;
   };
 
  useEffect(() => {
@@ -51,7 +51,7 @@ const AddOrder = () => {
   if (orderType === "Order") {
     // Auto-generate 4-digit suffix for normal orders
     const randomDigits = Math.floor(1000 + Math.random() * 9000);
-    setTransSuffix(${randomDigits});
+    setTransSuffix(`${randomDigits}`);
   } else if (orderType === "Paid") {
     // Let user manually enter 4 digits (we'll prefix with PO_ in fullTransactionID)
     setTransSuffix(""); // clear input — user will type manually
@@ -64,7 +64,7 @@ const AddOrder = () => {
 
   useEffect(() => {
     axios
-      .get(${BASE_URL}/api/orders)
+      .get(`${BASE_URL}/api/orders`)
       .then((res) => {
         const orders = res.data;
         setActiveCount(orders.filter((o) => o.current_status === "In Progress").length);
@@ -94,7 +94,7 @@ const AddOrder = () => {
   setClientContact(value);
 
   if (validateContact(value)) {
-    const stored = localStorage.getItem(client_${value});
+    const stored = localStorage.getItem(`client_${value}`);
     if (stored) {
       const parsed = JSON.parse(stored);
       setClientName(parsed.name);
@@ -104,7 +104,7 @@ const AddOrder = () => {
 
   const handleSearch = async () => {
     try {
-      const res = await axios.get(${BASE_URL}/api/orders/search);
+      const res = await axios.get(`${BASE_URL}/api/orders/search`);
       const filtered = res.data.filter(
         (order) =>
           order.transaction_id.includes(searchTerm) ||
@@ -125,12 +125,12 @@ const AddOrder = () => {
       return;
     }
 
-    const formatLine = (label, value) => ${label.padEnd(15)}: ${value};
-    const receipt = 
+    const formatLine = (label, value) => `${label.padEnd(15)}: ${value}`;
+    const receipt = `
 =============================================
       PROCUSHION QUEUE SYSTEM - RECEIPT
 =============================================
-${formatLine("Order No.", #${order.transaction_id})}
+${formatLine("Order No.", `#${order.transaction_id}`)}
 ${formatLine("Client", order.customer_name)}
 ${formatLine("Contact", order.client_contact)}
 ${formatLine("Car Details", order.paint_type)}
@@ -147,13 +147,13 @@ Track ID       : TRK-${order.transaction_id}
 
      Thank you for your order!
 ========================================
-;
+`;
 
-    win.document.write(
+    win.document.write(`
       <html><head><title>Receipt</title>
       <style>body{font-family:monospace;white-space:pre;font-size:12px;margin:0;padding:10px;}</style>
       </head><body>${receipt}</body></html>
-    );
+    `);
     win.document.close();
     win.print();
   };
@@ -167,8 +167,8 @@ const handleSubmit = async (e) => {
   const today = formatDateDDMMYYYY();
   const fullTransactionID =
       orderType === "Paid"
-        ? ${today}-PO-${transSuffix}
-        : ${today}-${transSuffix};
+        ? `${today}-PO-${transSuffix}`
+        : `${today}-${transSuffix}`;
 
 
   if (!validateContact(clientContact)) {
@@ -212,7 +212,7 @@ const handleSubmit = async (e) => {
   };
 
   try {
-    await axios.post(${BASE_URL}/api/orders, newOrder);
+    await axios.post(`${BASE_URL}/api/orders`, newOrder);
     triggerToast("✅ Order placed successfully");
 
     setTimeout(() => printReceipt(newOrder), 300);
@@ -238,8 +238,8 @@ const handleSubmit = async (e) => {
     const hrs = Math.floor(minutes / 60);
     const mins = minutes % 60;
   return hrs > 0
-    ? ${hrs}hr${hrs > 1 ? "s" : ""} ${mins > 0 ? ${mins}min : ""}.trim()
-    : ${mins}min;
+    ? `${hrs}hr${hrs > 1 ? "s" : ""} ${mins > 0 ? `${mins}min` : ""}`.trim()
+    : `${mins}min`;
       };
 const formFields = [
   { label: "Order Type", type: "select", value: orderType, onChange: (val) => setOrderType(val), options: ["Paid", "Order"], required: true },
@@ -312,7 +312,7 @@ const formFields = [
         className="progress-bar"
         role="progressbar"
         style={{
-          width: ${Math.min((parseInt(eta) / 320) * 100, 100)}%,
+          width: `${Math.min((parseInt(eta) / 320) * 100, 100)}%`,
           backgroundColor: "var(--bs-info, #0dcaf0)"
         }}
         aria-valuenow={parseInt(eta)}
@@ -356,7 +356,7 @@ const formFields = [
             <form onSubmit={handleSubmit}>
             <div className="row">
               {formFields.map((field, idx) => (
-                <div key={idx} className={col-md-${field.col || 6} mb-3}>
+                <div key={idx} className={`col-md-${field.col || 6} mb-3`}>
                   <label className="form-label">{field.label}</label>
                   {field.type === "select" ? (
                     <select
@@ -442,3 +442,4 @@ if (typeof field.onChange === "function") {
 };
 
 export default AddOrder;
+ 
