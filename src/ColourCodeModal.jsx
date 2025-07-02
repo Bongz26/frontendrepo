@@ -33,6 +33,7 @@ const ColourCodeModal = ({ onSubmit, onCancel }) => {
                 className="form-control"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
+                placeholder="e.g. 5W (HV4L)"
                 autoFocus
               />
             </div>
