@@ -57,7 +57,7 @@ const getModalCategoryClass = (cat) => {
     let employeeName = currentEmp || "Unassigned";
     let updatedColourCode = colourCode;
 
-    if (["Re-Mixing", "Mixing", "Spraying", "Ready"].includes(newStatus)) {
+    if (["Re-Mixing", "Mixing", "Spraying"].includes(newStatus)|| (newStatus === "Ready" && order.category !== "New Mix")) {
       const employeeCode = prompt("🔍 Enter Employee Code:");
       if (!employeeCode) return alert("❌ Employee Code required!");
 
