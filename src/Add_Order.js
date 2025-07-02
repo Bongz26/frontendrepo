@@ -217,7 +217,7 @@ Track ID       : TRK-${order.transaction_id}
       
     // ✅ Save to localStorage
       localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
-      localStorage.setItem("last_contact", clientContact);
+      
 
     // ✅ Hide form
       setShowForm(false);
