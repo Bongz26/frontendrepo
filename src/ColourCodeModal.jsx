@@ -31,8 +31,8 @@ const ColourCodeModal = ({ onSubmit, onCancel }) => {
               <input
                 type="text"
                 className="form-control"
-                value={colourCode}
-                onChange={(e) => setColourCode(e.target.value)}
+                value={code}
+                onChange={(e) => setcode(e.target.value)}
                 autoFocus
               />
             </div>
