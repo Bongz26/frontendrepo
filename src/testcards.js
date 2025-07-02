@@ -140,7 +140,7 @@ const renderWaitingCard = (order) => (
           value={order.current_status}
           onChange={(e) =>
             updateStatus(
-              order.transaction_id,
+              order,
               e.target.value,
               order.colour_code,
               order.assigned_employee
