@@ -80,18 +80,32 @@ const AddOrder = () => {
     setEta(jobPosition * base);
   }, [category, activeCount, waitingCount]);
 
+  useEffect(() => {
+  const lastContact = localStorage.getItem("last_contact");
+  if (lastContact) {
+    setClientContact(lastContact);
+    const saved = localStorage.getItem(`client_${lastContact}`);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setClientName(parsed.name);
+    }
+  }
+}, []);
+
+
   const validateContact = (input) => /^\d{10}$/.test(input);
 
   const handleContactChange = (value) => {
-    setClientContact(value);
-    if (validateContact(value)) {
-      const stored = localStorage.getItem(`client_${value}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setClientName(parsed.name);
-      }
+  setClientContact(value);
+  if (/^\d{10}$/.test(value)) {
+    const stored = localStorage.getItem(`client_${value}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setClientName(parsed.name);
     }
-  };
+  }
+};
+
 
   const handleSearch = async () => {
     try {
@@ -200,6 +214,13 @@ Track ID       : TRK-${order.transaction_id}
     try {
       await axios.post(`${BASE_URL}/api/orders`, newOrder);
       triggerToast("✅ Order placed successfully");
+      
+    // ✅ Save to localStorage
+      localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
+      localStorage.setItem("last_contact", clientContact);
+
+    // ✅ Hide form
+      setShowForm(false);
       setTimeout(() => printReceipt(newOrder), 300);
 
       setTransSuffix("");
