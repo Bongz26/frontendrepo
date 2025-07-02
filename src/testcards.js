@@ -53,7 +53,7 @@ const getModalCategoryClass = (cat) => {
       return "modal-category-default";
   }
 };
-  const updateStatus = async (orderId, newStatus, colourCode, currentEmp) => {
+  const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
     let employeeName = currentEmp || "Unassigned";
     let updatedColourCode = colourCode;
 
@@ -71,7 +71,7 @@ const getModalCategoryClass = (cat) => {
     }
 
     if (newStatus === "Ready" && (!updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending")) {
-      setPendingColourUpdate({ orderId, newStatus, employeeName });
+      setPendingColourUpdate({ orderId: order.transaction_id, newStatus, employeeName });
       return;
     }
 
@@ -83,7 +83,7 @@ const getModalCategoryClass = (cat) => {
         userRole
       });
 
-      setRecentlyUpdatedId(orderId);
+      setRecentlyUpdatedId(order.transaction_id);
       setTimeout(() => setRecentlyUpdatedId(null), 2000);
       setTimeout(fetchOrders, 500);
     } catch (err) {
@@ -138,6 +138,7 @@ const renderWaitingCard = (order) => (
           style={{ minWidth: "120px" }}
           onClick={(e) => e.stopPropagation()}
           value={order.current_status}
+
           onChange={(e) =>
             updateStatus(
               order,
@@ -186,7 +187,7 @@ const renderActiveCard = (order) => (
           value={order.current_status}
           onChange={(e) =>
             updateStatus(
-              order.transaction_id,
+              order,
               e.target.value,
               order.colour_code,
               order.assigned_employee
