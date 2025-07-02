@@ -47,16 +47,18 @@ const AdminOrders = ({ userRole }) => {
     };
 
     return (
-        <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-  <h5 className="mb-0">💰 Incomplete Orders</h5>
-              <Link
-            to="/add-order"
-            className="btn btn-light fw-bold rounded-pill px-4 py-2"
-            style={{ fontSize: "1rem" }}
-          >
-            ← Back
-              </Link>
-            </div>
+         <div className="container mt-4">
+            <div className="card shadow-sm border-0">
+                <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 className="mb-0">💰 Incomplete Orders</h5>
+                    <Link
+                        to="/add-order"
+                        className="btn btn-light fw-bold rounded-pill px-4 py-2"
+                        style={{ fontSize: "1rem" }}
+                    >
+                        ← Back
+                    </Link>
+                </div>
                 <div className="card-body">
                     {readyOrders.length > 0 ? (
                         <table className="table table-bordered">
