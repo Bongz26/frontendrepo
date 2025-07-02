@@ -76,7 +76,7 @@ const getModalCategoryClass = (cat) => {
     }
 
     try {
-      await axios.put(`${BASE_URL}/api/orders/${orderId}`, {
+      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
         current_status: newStatus,
         assigned_employee: employeeName,
         colour_code: updatedColourCode,
