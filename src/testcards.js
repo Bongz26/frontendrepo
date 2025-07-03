@@ -55,24 +55,24 @@ const getModalCategoryClass = (cat) => {
 };
 
 const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
-  let employeeName = currentEmp || "Unassigned";
   let updatedColourCode = colourCode;
 
   const isNewMixAndReady = newStatus === "Ready" && order.category === "New Mix";
   const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
 
-  // ✅ Handle New Mix → Ready case first (use modal, no prompt!)
+  // ✅ 1. FIRST — handle New Mix → Ready where modal is needed
   if (isNewMixAndReady && isColourMissing) {
     setPendingColourUpdate({
       orderId: order.transaction_id,
       newStatus,
-      employeeName: "", // We'll get emp name from modal
+      employeeName: "", // let modal collect it
     });
     return;
   }
 
-  // ✅ For all other cases, prompt for Employee Code if needed
+  // ✅ 2. THEN — for all other status changes, always ask for emp code
   const requiresEmpCode = ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus);
+  let employeeName = currentEmp || "Unassigned";
 
   if (requiresEmpCode) {
     const employeeCode = prompt("🔍 Enter Employee Code:");
@@ -87,7 +87,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
     }
   }
 
-  // ✅ Proceed to update
+  // ✅ 3. Update the order now
   try {
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
       current_status: newStatus,
