@@ -5,20 +5,19 @@ const ColourCodeModal = ({ onSubmit, onCancel }) => {
   const [code, setCode] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
 
-  const handleSubmit = () => {
-        if (!code.trim()) {
-      alert("❌ Colour Code is required! CCM");
+  const handleSubmit = (e) => {
+    if (e) e.preventDefault(); // prevent page reload on Enter
+
+    if (!code.trim()) {
+      alert("❌ Colour Code is required!");
       return;
     }
-      if (!employeeCode.trim()) {
+    if (!employeeCode.trim()) {
       alert("❌ Employee Code is required!");
       return;
     }
-   onSubmit({
-  colourCode: code.trim(),
-  employeeCode: employeeCode.trim()
-});
-    
+
+    onSubmit({ colourCode: code.trim(), employeeCode: employeeCode.trim() });
   };
 
   return (
@@ -29,32 +28,41 @@ const ColourCodeModal = ({ onSubmit, onCancel }) => {
             <h5 className="modal-title">🎨 Enter Colour & Employee Code</h5>
             <button type="button" className="btn-close" onClick={onCancel}></button>
           </div>
-          <div className="modal-body">
-            <div className="mb-3">
-              <label className="form-label">Colour Code</label>
-              <input
-                type="text"
-                className="form-control"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="e.g. 5W (HV4L)"
-                autoFocus
-              />
+
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body">
+              <div className="mb-3">
+                <label className="form-label">Colour Code</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="e.g. 5W (HV4L)"
+                  autoFocus
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label">Employee Code</label>
+                <input
+                  type="password"
+                  className="form-control"
+                  value={employeeCode}
+                  onChange={(e) => setEmployeeCode(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="mb-3">
-              <label className="form-label">Employee Code</label>
-              <input
-                type="password"
-                className="form-control"
-                value={employeeCode}
-                onChange={(e) => setEmployeeCode(e.target.value)}
-              />
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={onCancel}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Submit
+              </button>
             </div>
-          </div>
-          <div className="modal-footer">
-            <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleSubmit}>Submit</button>
-          </div>
+          </form>
         </div>
       </div>
     </div>
