@@ -60,26 +60,40 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   const isNewMixAndReady = newStatus === "Ready" && order.category === "New Mix";
   const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
 
-  // ✅ 1. FIRST — handle New Mix → Ready where modal is needed
+  // ✅ 1. Trigger modal only
   if (isNewMixAndReady && isColourMissing) {
     setPendingColourUpdate({
       orderId: order.transaction_id,
       newStatus,
-      employeeName: "", // let modal collect it
+      employeeName: "", // let modal handle
     });
     return;
   }
 
-  // ✅ 2. THEN — for all other status changes, always ask for emp code
+  // ✅ 2. Always ask for Emp Code when required
   const requiresEmpCode = ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus);
   let employeeName = currentEmp || "Unassigned";
 
-  if (requiresEmpCode) {
-    const employeeCode = prompt("🔍 Enter Employee Code:");
-    if (!employeeCode) return alert("❌ Employee Code required!");
+  // 🧠 If passed in currentEmp is a *code*, fetch its name
+  const isLikelyCode = currentEmp && !currentEmp.includes(" "); // crude check
+
+  if (requiresEmpCode && isLikelyCode) {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
+      if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
+      employeeName = res.data.employee_name;
+    } catch {
+      return alert("❌ Error verifying employee code!");
+    }
+  }
+
+  // 🧨 If no empName still, prompt
+  if (requiresEmpCode && (!employeeName || employeeName === "Unassigned")) {
+    const code = prompt("🔍 Enter Employee Code:");
+    if (!code) return alert("❌ Employee Code required!");
 
     try {
-      const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${code}`);
       if (!res.data?.employee_name) return alert("❌ Invalid code!");
       employeeName = res.data.employee_name;
     } catch {
@@ -87,7 +101,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
     }
   }
 
-  // ✅ 3. Update the order now
+  // ✅ 3. Update order
   try {
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
       current_status: newStatus,
@@ -104,7 +118,6 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
     console.error(err);
   }
 };
-
 
   
     const calculateETA = (order) => {
