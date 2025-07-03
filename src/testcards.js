@@ -59,32 +59,35 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   let updatedColourCode = colourCode;
 
   const isNewMixAndReady = newStatus === "Ready" && order.category === "New Mix";
-const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
+  const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
 
-// ❌ Do NOT prompt if New Mix → Ready, because modal will handle both
-if (!isNewMixAndReady && ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus)) {
-  const employeeCode = prompt("🔍 Enter Employee Code:");
-  if (!employeeCode) return alert("❌ Employee Code required!");
-
-  try {
-    const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
-    if (!res.data?.employee_name) return alert("❌ Invalid code!");
-    employeeName = res.data.employee_name;
-  } catch {
-    return alert("❌ Unable to verify employee!");
+  // ✅ Handle New Mix → Ready case first (use modal, no prompt!)
+  if (isNewMixAndReady && isColourMissing) {
+    setPendingColourUpdate({
+      orderId: order.transaction_id,
+      newStatus,
+      employeeName: "", // We'll get emp name from modal
+    });
+    return;
   }
-}
 
-// 🟨 Now if it's New Mix + Ready and missing colour, open modal
-if (isNewMixAndReady && isColourMissing) {
-  setPendingColourUpdate({
-    orderId: order.transaction_id,
-    newStatus,
-    employeeName,
-  });
-  return;
-}
+  // ✅ For all other cases, prompt for Employee Code if needed
+  const requiresEmpCode = ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus);
 
+  if (requiresEmpCode) {
+    const employeeCode = prompt("🔍 Enter Employee Code:");
+    if (!employeeCode) return alert("❌ Employee Code required!");
+
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
+      if (!res.data?.employee_name) return alert("❌ Invalid code!");
+      employeeName = res.data.employee_name;
+    } catch {
+      return alert("❌ Unable to verify employee!");
+    }
+  }
+
+  // ✅ Proceed to update
   try {
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
       current_status: newStatus,
@@ -101,6 +104,7 @@ if (isNewMixAndReady && isColourMissing) {
     console.error(err);
   }
 };
+
 
   
     const calculateETA = (order) => {
