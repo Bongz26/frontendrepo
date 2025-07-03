@@ -287,17 +287,26 @@ const renderActiveCard = (order) => (
 
 
 
-        <ColourCodeModal
-  onSubmit={({ colourCode, employeeCode }) => {
-    updateStatus(
+   <ColourCodeModal
+      onSubmit={({ colourCode, employeeCode }) => {
+        console.log("Updating order with:", {
+          id: pendingColourUpdate.orderId,
+          newStatus: pendingColourUpdate.newStatus,
+          colourCode,
+          employeeCode
+    });
+updateStatus(
       { transaction_id: pendingColourUpdate.orderId },
       pendingColourUpdate.newStatus,
       colourCode,
-      employeeCode // now passed directly instead of relying on preloaded one
+      employeeCode
     );
+
     setPendingColourUpdate(null);
   }}
-  />
+  onCancel={() => setPendingColourUpdate(null)}
+/>
+
 )}
     </div>
   );
