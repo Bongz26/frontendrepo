@@ -59,7 +59,7 @@ const getModalCategoryClass = (cat) => {
 
   const alwaysAskEmpCode = ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus);
 
-  if (!currentEmp && alwaysAskEmpCode) {
+  if (alwaysAskEmpCode) {
     const employeeCode = prompt("🔍 Enter Employee Code:");
     if (!employeeCode) return alert("❌ Employee Code required!");
 
@@ -100,6 +100,7 @@ const getModalCategoryClass = (cat) => {
     console.error(err);
   }
 };
+
 
 
     const calculateETA = (order) => {
