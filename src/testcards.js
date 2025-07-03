@@ -58,33 +58,32 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   let employeeName = currentEmp || "Unassigned";
   let updatedColourCode = colourCode;
 
-  const alwaysAskEmpCode = ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus);
-
-  // ✅ Only prompt if no currentEmp is passed in (e.g. from modal)
-  if (alwaysAskEmpCode && (!currentEmp || currentEmp === "Unassigned")) {
-    const employeeCode = prompt("🔍 Enter Employee Code: ");
-    if (!employeeCode) return alert("❌ Employee Code required!");
-
-    try {
-      const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
-      if (!res.data?.employee_name) return alert("❌ Invalid code!");
-      employeeName = res.data.employee_name;
-    } catch {
-      return alert("❌ Unable to verify employee!");
-    }
-  }
-
   const isNewMixAndReady = newStatus === "Ready" && order.category === "New Mix";
-  const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
+const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
 
-  if (isNewMixAndReady && isColourMissing) {
-    setPendingColourUpdate({
-      orderId: order.transaction_id,
-      newStatus,
-      employeeName,
-    });
-    return;
+// ❌ Do NOT prompt if New Mix → Ready, because modal will handle both
+if (!isNewMixAndReady && ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus)) {
+  const employeeCode = prompt("🔍 Enter Employee Code:");
+  if (!employeeCode) return alert("❌ Employee Code required!");
+
+  try {
+    const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
+    if (!res.data?.employee_name) return alert("❌ Invalid code!");
+    employeeName = res.data.employee_name;
+  } catch {
+    return alert("❌ Unable to verify employee!");
   }
+}
+
+// 🟨 Now if it's New Mix + Ready and missing colour, open modal
+if (isNewMixAndReady && isColourMissing) {
+  setPendingColourUpdate({
+    orderId: order.transaction_id,
+    newStatus,
+    employeeName,
+  });
+  return;
+}
 
   try {
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
