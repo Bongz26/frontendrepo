@@ -54,45 +54,53 @@ const getModalCategoryClass = (cat) => {
   }
 };
   const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
-    let employeeName = currentEmp || "Unassigned";
-    let updatedColourCode = colourCode;
+  let employeeName = currentEmp || "Unassigned";
+  let updatedColourCode = colourCode;
 
-    if ( !currentEmp && (
-          ["Re-Mixing", "Mixing", "Spraying"].includes(newStatus) ||
-      (newStatus === "Ready" && order.category !== "New Mix"))
-      ) {
-  const employeeCode = prompt("🔍 Enter Employee Code:");
+  const alwaysAskEmpCode = ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus);
 
-      try {
-        const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
-        if (!res.data?.employee_name) return alert("❌ Invalid code!");
-        employeeName = res.data.employee_name;
-      } catch {
-        return alert("❌ Unable to verify employee!");
-      }
-    }
-
-    if (newStatus === "Ready" && (!updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending")) {
-      setPendingColourUpdate({ orderId: order.transaction_id, newStatus, employeeName });
-      return;
-    }
+  if (!currentEmp && alwaysAskEmpCode) {
+    const employeeCode = prompt("🔍 Enter Employee Code:");
+    if (!employeeCode) return alert("❌ Employee Code required!");
 
     try {
-      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
-        current_status: newStatus,
-        assigned_employee: employeeName,
-        colour_code: updatedColourCode,
-        userRole
-      });
-
-      setRecentlyUpdatedId(order.transaction_id);
-      setTimeout(() => setRecentlyUpdatedId(null), 2000);
-      setTimeout(fetchOrders, 500);
-    } catch (err) {
-      alert("❌ Error updating status!");
-      console.error(err);
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
+      if (!res.data?.employee_name) return alert("❌ Invalid code!");
+      employeeName = res.data.employee_name;
+    } catch {
+      return alert("❌ Unable to verify employee!");
     }
-  };
+  }
+
+  const isNewMixAndReady = newStatus === "Ready" && order.category === "New Mix";
+  const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
+
+  if (isNewMixAndReady && isColourMissing) {
+    setPendingColourUpdate({
+      orderId: order.transaction_id,
+      newStatus,
+      employeeName,
+    });
+    return;
+  }
+
+  try {
+    await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
+      current_status: newStatus,
+      assigned_employee: employeeName,
+      colour_code: updatedColourCode,
+      userRole,
+    });
+
+    setRecentlyUpdatedId(order.transaction_id);
+    setTimeout(() => setRecentlyUpdatedId(null), 2000);
+    setTimeout(fetchOrders, 500);
+  } catch (err) {
+    alert("❌ Error updating status!");
+    console.error(err);
+  }
+};
+
 
     const calculateETA = (order) => {
     const waitingOrders = orders.filter(o => o.current_status === "Waiting");
