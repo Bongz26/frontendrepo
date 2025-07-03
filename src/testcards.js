@@ -57,9 +57,11 @@ const getModalCategoryClass = (cat) => {
     let employeeName = currentEmp || "Unassigned";
     let updatedColourCode = colourCode;
 
-    if (["Re-Mixing", "Mixing", "Spraying"].includes(newStatus)|| (newStatus === "Ready" && order.category !== "New Mix")) {
-      const employeeCode = prompt("🔍 Enter Employee Code:");
-      if (!employeeCode) return alert("❌ Employee Code required!");
+    if ( !currentEmp && (
+          ["Re-Mixing", "Mixing", "Spraying"].includes(newStatus) ||
+      (newStatus === "Ready" && order.category !== "New Mix"))
+      ) {
+  const employeeCode = prompt("🔍 Enter Employee Code:");
 
       try {
         const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
