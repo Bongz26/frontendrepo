@@ -14,7 +14,11 @@ const ColourCodeModal = ({ onSubmit, onCancel }) => {
       alert("❌ Employee Code is required!");
       return;
     }
-    onSubmit(code.trim());
+   onSubmit({
+  colourCode: code.trim(),
+  employeeCode: employeeCode.trim()
+});
+    
   };
 
   return (
