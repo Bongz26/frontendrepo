@@ -53,13 +53,15 @@ const getModalCategoryClass = (cat) => {
       return "modal-category-default";
   }
 };
-  const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
+
+const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   let employeeName = currentEmp || "Unassigned";
   let updatedColourCode = colourCode;
 
   const alwaysAskEmpCode = ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus);
 
-  if (alwaysAskEmpCode) {
+  // ✅ Only prompt if no currentEmp is passed in (e.g. from modal)
+  if (alwaysAskEmpCode && (!currentEmp || currentEmp === "Unassigned")) {
     const employeeCode = prompt("🔍 Enter Employee Code:");
     if (!employeeCode) return alert("❌ Employee Code required!");
 
@@ -101,8 +103,7 @@ const getModalCategoryClass = (cat) => {
   }
 };
 
-
-
+  
     const calculateETA = (order) => {
     const waitingOrders = orders.filter(o => o.current_status === "Waiting");
     const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
