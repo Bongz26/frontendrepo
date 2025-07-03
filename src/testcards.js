@@ -284,17 +284,19 @@ const renderActiveCard = (order) => (
   </div>
 )}
       {pendingColourUpdate && (
+
+
+
         <ColourCodeModal
-          onSubmit={(code) => {
-            updateStatus(
-              pendingColourUpdate.orderId,
-              pendingColourUpdate.newStatus,
-              code,
-              pendingColourUpdate.employeeName
-          );
-            setPendingColourUpdate(null);
-          }}
-         onCancel={() => setPendingColourUpdate(null)}
+  onSubmit={({ colourCode, employeeCode }) => {
+    updateStatus(
+      { transaction_id: pendingColourUpdate.orderId },
+      pendingColourUpdate.newStatus,
+      colourCode,
+      employeeCode // now passed directly instead of relying on preloaded one
+    );
+    setPendingColourUpdate(null);
+  }}
   />
 )}
     </div>
