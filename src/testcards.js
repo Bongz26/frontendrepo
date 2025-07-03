@@ -62,7 +62,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
 
   // ✅ Only prompt if no currentEmp is passed in (e.g. from modal)
   if (alwaysAskEmpCode && (!currentEmp || currentEmp === "Unassigned")) {
-    const employeeCode = prompt("🔍 Enter Employee Code:");
+    const employeeCode = prompt("🔍 Enter Employee Code: ");
     if (!employeeCode) return alert("❌ Employee Code required!");
 
     try {
