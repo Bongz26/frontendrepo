@@ -55,53 +55,36 @@ const getModalCategoryClass = (cat) => {
 };
 
 const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
+  let employeeName = currentEmp || "Unassigned";
   let updatedColourCode = colourCode;
 
   const isNewMixAndReady = newStatus === "Ready" && order.category === "New Mix";
-  const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
+const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
 
-  // ✅ 1. Trigger modal only
-  if (isNewMixAndReady && isColourMissing) {
-    setPendingColourUpdate({
-      orderId: order.transaction_id,
-      newStatus,
-      employeeName: "", // let modal handle
-    });
-    return;
+// ❌ Do NOT prompt if New Mix → Ready, because modal will handle both
+if (!isNewMixAndReady && ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus)) {
+  const employeeCode = prompt("🔍 Enter Employee Code:");
+  if (!employeeCode) return alert("❌ Employee Code required!");
+
+  try {
+    const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
+    if (!res.data?.employee_name) return alert("❌ Invalid code!");
+    employeeName = res.data.employee_name;
+  } catch {
+    return alert("❌ Unable to verify employee!");
   }
+}
 
-  // ✅ 2. Always ask for Emp Code when required
-  const requiresEmpCode = ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus);
-  let employeeName = currentEmp || "Unassigned";
+// 🟨 Now if it's New Mix + Ready and missing colour, open modal
+if (isNewMixAndReady && isColourMissing) {
+  setPendingColourUpdate({
+    orderId: order.transaction_id,
+    newStatus,
+    employeeName,
+  });
+  return;
+}
 
-  // 🧠 If passed in currentEmp is a *code*, fetch its name
-  const isLikelyCode = currentEmp && !currentEmp.includes(" "); // crude check
-
-  if (requiresEmpCode && isLikelyCode) {
-    try {
-      const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
-      if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
-      employeeName = res.data.employee_name;
-    } catch {
-      return alert("❌ Error verifying employee code!");
-    }
-  }
-
-  // 🧨 If no empName still, prompt
-  if (requiresEmpCode && (!employeeName || employeeName === "Unassigned")) {
-    const code = prompt("🔍 Enter Employee Code:");
-    if (!code) return alert("❌ Employee Code required!");
-
-    try {
-      const res = await axios.get(`${BASE_URL}/api/employees?code=${code}`);
-      if (!res.data?.employee_name) return alert("❌ Invalid code!");
-      employeeName = res.data.employee_name;
-    } catch {
-      return alert("❌ Unable to verify employee!");
-    }
-  }
-
-  // ✅ 3. Update order
   try {
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
       current_status: newStatus,
