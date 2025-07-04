@@ -265,6 +265,8 @@ Track ID       : TRK-${order.transaction_id}
       eta,
     };
 
+   console.log("🟡 Order being sent to backend:", newOrder);
+
     await axios.post(`${BASE_URL}/api/orders`, newOrder);
     triggerToast("✅ Order placed successfully");
 
