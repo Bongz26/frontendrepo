@@ -173,16 +173,12 @@ Track ID       : TRK-${order.transaction_id}
   setLoading(true);
 
   const today = formatDateDDMMYYYY();
-  const startTime = new Date().toISOString(); // ✅ Fresh every time
+  const startTime = new Date().toISOString();
+  let suffix;
 
-   let suffix;
-
-// If "Order", auto-generate suffix
   if (orderType === "Order") {
     suffix = Math.floor(1000 + Math.random() * 9000);
-  } 
-  else {
-    // If "Paid", validate 4-digit input
+  } else {
     if (!/^\d{4}$/.test(transSuffix)) {
       triggerToast("❌ Paid orders require a 4-digit Transaction ID", "danger");
       setLoading(false);
@@ -190,13 +186,13 @@ Track ID       : TRK-${order.transaction_id}
     }
     suffix = transSuffix;
   }
-  
+
   const fullTransactionID =
     orderType === "Paid"
       ? `${today}-PO-${suffix}`
       : `${today}-ORD-${suffix}`;
 
-  // ✅ Basic Validation
+  // Validations...
   if (!validateContact(clientContact)) {
     triggerToast("⚠️ Enter *10-digit* phone number, not name", "danger");
     setLoading(false);
@@ -221,91 +217,81 @@ Track ID       : TRK-${order.transaction_id}
     return;
   }
 
-  if (orderType !== "Order" && transSuffix.length !== 4) {
-    triggerToast("❌ Paid orders require a 4-digit Transaction ID", "danger");
-    setLoading(false);
-    return;
-  }
+  try {
+    // 🔍 Fetch existing orders
+    const existingOrders = await axios.get(`${BASE_URL}/api/orders`);
 
-  const newOrder = {
-    transaction_id: finalTransactionID,
-    customer_name: clientName,
-    client_contact: clientContact,
-    paint_type: paintType,
-    colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
-    category,
-    paint_quantity: paintQuantity,
-    current_status: "Waiting",
-    order_type: orderType,
-    start_time: startTime,
-    eta,
-  };
- 
-try {
-  // 🔍 Fetch existing orders
-  const existingOrders = await axios.get(`${BASE_URL}/api/orders`);
-
-  let finalTransactionID = fullTransactionID;
-let isDuplicate = existingOrders.data.some(
-  (o) => o.transaction_id === finalTransactionID
-);
-
-// Retry logic only for "Order" type
-if (isDuplicate && orderType === "Order") {
-  let retries = 0;
-  let newSuffix;
-  do {
-    newSuffix = Math.floor(1000 + Math.random() * 9000);
-    finalTransactionID = `${today}-ORD-${newSuffix}`;
-    isDuplicate = existingOrders.data.some(
+    let finalTransactionID = fullTransactionID;
+    let isDuplicate = existingOrders.data.some(
       (o) => o.transaction_id === finalTransactionID
     );
-    retries++;
-  } while (isDuplicate && retries < 5);
 
-  if (isDuplicate) {
-    triggerToast("⚠️ Could not generate unique Transaction ID", "danger");
+    // Retry logic only for "Order" type
+    if (isDuplicate && orderType === "Order") {
+      let retries = 0;
+      let newSuffix;
+      do {
+        newSuffix = Math.floor(1000 + Math.random() * 9000);
+        finalTransactionID = `${today}-ORD-${newSuffix}`;
+        isDuplicate = existingOrders.data.some(
+          (o) => o.transaction_id === finalTransactionID
+        );
+        retries++;
+      } while (isDuplicate && retries < 5);
+
+      if (isDuplicate) {
+        triggerToast("⚠️ Could not generate unique Transaction ID", "danger");
+        setLoading(false);
+        return;
+      }
+    } else if (isDuplicate) {
+      triggerToast("⚠️ Duplicate Transaction ID. Please use a different 4-digit ID.", "danger");
+      setLoading(false);
+      return;
+    }
+
+    // ✅ Now safe to create the order with finalTransactionID
+    const newOrder = {
+      transaction_id: finalTransactionID,
+      customer_name: clientName,
+      client_contact: clientContact,
+      paint_type: paintType,
+      colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
+      category,
+      paint_quantity: paintQuantity,
+      current_status: "Waiting",
+      order_type: orderType,
+      start_time: startTime,
+      eta,
+    };
+
+    await axios.post(`${BASE_URL}/api/orders`, newOrder);
+    triggerToast("✅ Order placed successfully");
+
+    localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
+    setShowForm(false);
+    setTimeout(() => printReceipt(newOrder), 300);
+
+    // Reset form
+    setTransSuffix("");
+    setClientName("");
+    setClientContact("");
+    setPaintType("");
+    setColorCode("");
+    setPaintQuantity("");
+    setCategory("New Mix");
+    setOrderType("Walk-in");
+    setStartTime(new Date().toISOString());
+
+  } catch (error) {
+    console.error("Order error:", error);
+    triggerToast("❌ Could not place order - Check for duplicate", "danger");
+  } finally {
     setLoading(false);
-    return;
   }
-} else if (isDuplicate) {
-  // For 'Paid' type, do NOT retry. Just show error.
-  triggerToast("⚠️ Duplicate Transaction ID. Please use a different 4-digit ID.", "danger");
-  setLoading(false);
-  return;
-}
 
-
-  // ✅ Submit new order
-  await axios.post(`${BASE_URL}/api/orders`, newOrder);
-  triggerToast("✅ Order placed successfully");
-
-  // Save to localStorage
-  localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
-
-  setShowForm(false);
-  setTimeout(() => printReceipt(newOrder), 300);
-
-  // Reset form
-  setTransSuffix("");
-  setClientName("");
-  setClientContact("");
-  setPaintType("");
-  setColorCode("");
-  setPaintQuantity("");
-  setCategory("New Mix");
-  setOrderType("Walk-in");
-  setStartTime(new Date().toISOString());
-
-} catch (error) {
-  console.error("Order error:", error);
-  triggerToast("❌ Could not place order - Check for duplicate", "danger");
-} finally {
-  setLoading(false);
-}
   setContactSuggestions([]);
 };
-
 
   const formatMinutesToHours = (minutes) => {
     const hrs = Math.floor(minutes / 60);
