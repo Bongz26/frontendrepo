@@ -30,6 +30,7 @@ const AddOrder = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userRole, setUserRole] = useState("Admin");
+  const [contactSuggestions, setContactSuggestions] = useState([]);
 
   const triggerToast = (message, type = "success") => {
     setToastMessage(message);
@@ -85,6 +86,14 @@ const AddOrder = () => {
 
   const handleContactChange = (value) => {
   setClientContact(value);
+
+  // Suggestion logic
+  const keys = Object.keys(localStorage);
+  const matches = keys.filter(k => k.startsWith("client_") && k.includes(value));
+  const suggestions = matches.map(k => k.replace("client_", ""));
+  setContactSuggestions(suggestions);
+
+  // Auto-fill name if exact match
   if (/^\d{10}$/.test(value)) {
     const stored = localStorage.getItem(`client_${value}`);
     if (stored) {
@@ -92,6 +101,16 @@ const AddOrder = () => {
       setClientName(parsed.name);
     }
   }
+};
+
+const handleContactSuggestionClick = (number) => {
+  setClientContact(number);
+  const stored = localStorage.getItem(`client_${number}`);
+  if (stored) {
+    const parsed = JSON.parse(stored);
+    setClientName(parsed.name);
+  }
+  setContactSuggestions([]);
 };
 
 
@@ -264,7 +283,7 @@ try {
 } finally {
   setLoading(false);
 }
-  
+  setContactSuggestions([]);
 };
 
 
@@ -387,51 +406,69 @@ try {
             )}
           </div>
 
-         {showForm && (
-            <form onSubmit={handleSubmit}>
-            <div className="row">
-              {formFields.map((field, idx) => (
-                <div key={idx} className={`col-md-${field.col || 6} mb-3`}>
-                  <label className="form-label">{field.label}</label>
-                  {field.type === "select" ? (
-                    <select
-                      className="form-select"
-                      value={field.value}
-                      onChange={(e) => field.onChange?.(e.target.value)}
-                      required={field.required}
-                    >
-                      <option value="">Select</option>
-                      {field.options.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={field.type}
-                      name={field.name}
-                      className="form-control"
-                      value={field.value}
-                      onChange={(e) => {
-  
-if (typeof field.onChange === "function") {
-    field.onChange(e.target?.value ?? "");
-  }
-}}
-                   required={field.required}
-                      disabled={field.disabled}
-                      placeholder={field.placeholder}
-                    />
-                  )}
-                </div>
+        {showForm && (
+  <form onSubmit={handleSubmit}>
+    <div className="row">
+      {formFields.map((field, idx) => (
+        <div key={idx} className={`col-md-${field.col || 6} mb-3`}>
+          <label className="form-label">{field.label}</label>
+          {field.type === "select" ? (
+            <select
+              className="form-select"
+              value={field.value}
+              onChange={(e) => field.onChange?.(e.target.value)}
+              required={field.required}
+            >
+              <option value="">Select</option>
+              {field.options.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
               ))}
-            </div>
+            </select>
+          ) : (
+            <>
+              <input
+                type={field.type}
+                name={field.name}
+                className="form-control"
+                value={field.value}
+                onChange={(e) => {
+                  if (typeof field.onChange === "function") {
+                    field.onChange(e.target?.value ?? "");
+                  }
+                }}
+                required={field.required}
+                disabled={field.disabled}
+                placeholder={field.placeholder}
+              />
 
-            <button type="submit" className="btn btn-success w-100 mt-3" disabled={loading}>
-                    {loading ? "Processing..." : "➕ Add Order"}
-            </button>
-          </form>)}
+              {/* 👇 Contact suggestions appear only under the contact field */}
+              {field.name === "clientContact" && contactSuggestions.length > 0 && (
+                <ul className="list-group mt-1">
+                  {contactSuggestions.map((num) => (
+                    <li
+                      key={num}
+                      className="list-group-item list-group-item-action"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => handleContactSuggestionClick(num)}
+                    >
+                      {num}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+
+    <button type="submit" className="btn btn-success w-100 mt-3" disabled={loading}>
+      {loading ? "Processing..." : "➕ Add Order"}
+    </button>
+  </form>
+)}
         </div>
       </div>
 
