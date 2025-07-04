@@ -44,19 +44,7 @@ const AddOrder = () => {
     ).padStart(2, "0")}${date.getFullYear()}`;
   };
 
-  useEffect(() => {
-    const today = new Date();
-    const formattedDate = today.toLocaleDateString("en-GB").replace(/\//g, "");
 
-    if (orderType === "Order") {
-      const randomDigits = Math.floor(1000 + Math.random() * 9000);
-      setTransSuffix(`${randomDigits}`);
-    } else if (orderType === "Paid") {
-      setTransSuffix("");
-    }
-
-    setStartTime(today.toISOString());
-  }, [orderType]);
 
   useEffect(() => {
     axios
@@ -162,82 +150,99 @@ Track ID       : TRK-${order.transaction_id}
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  setLoading(true);
 
-    const today = formatDateDDMMYYYY();
-    const fullTransactionID =
-      orderType === "Paid"
-        ? `${today}-PO-${transSuffix}`
-        : `${today}-${transSuffix}`;
+  const today = formatDateDDMMYYYY();
+  const startTime = new Date().toISOString(); // ✅ Fresh every time
 
-    if (!validateContact(clientContact)) {
-      triggerToast("⚠️ Enter *10-digit* phone number, not name", "danger");
-      setLoading(false);
-      return;
-    }
-    if (!paintType.trim()) {
-      triggerToast("❌ Car Details required", "danger");
-      setLoading(false);
-      return;
-    }
-    if (!colorCode.trim() && category !== "New Mix") {
-      triggerToast("❌ Colour Code required", "danger");
-      setLoading(false);
-      return;
-    }
-    if (!paintQuantity) {
-      triggerToast("❌ Select paint quantity", "danger");
-      setLoading(false);
-      return;
-    }
-    if (orderType !== "Order" && transSuffix.length !== 4) {
-      triggerToast("❌ Paid orders require a 4-digit Transaction ID", "danger");
-      setLoading(false);
-      return;
-    }
+  let suffix = transSuffix;
 
-    const newOrder = {
-      transaction_id: fullTransactionID,
-      customer_name: clientName,
-      client_contact: clientContact,
-      paint_type: paintType,
-      colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
-      category,
-      paint_quantity: paintQuantity,
-      current_status: "Waiting",
-      order_type: orderType,
-      start_time: startTime,
-      eta,
-    };
+  // ✅ Ensure unique suffix for "Order" type (not Paid)
+  if (orderType === "Order") {
+    suffix = Math.floor(1000 + Math.random() * 9000);
+  }
 
-    try {
-      await axios.post(`${BASE_URL}/api/orders`, newOrder);
-      triggerToast("✅ Order placed successfully");
-      
-    // ✅ Save to localStorage
-      localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
-      
+  const fullTransactionID =
+    orderType === "Paid"
+      ? `${today}-PO-${suffix}`
+      : `${today}-ORD-${suffix}`;
 
-    // ✅ Hide form
-      setShowForm(false);
-      setTimeout(() => printReceipt(newOrder), 300);
+  // ✅ Basic Validation
+  if (!validateContact(clientContact)) {
+    triggerToast("⚠️ Enter *10-digit* phone number, not name", "danger");
+    setLoading(false);
+    return;
+  }
 
-      setTransSuffix("");
-      setClientName("");
-      setClientContact("");
-      setPaintType("");
-      setColorCode("");
-      setPaintQuantity("");
-      setCategory("New Mix");
-      setOrderType("Walk-in");
-      setStartTime(new Date().toISOString());
-    } catch {
-      triggerToast("❌ Could not place order - Check for duplicate", "danger");
-    } finally {
-      setLoading(false);
-    }
+  if (!paintType.trim()) {
+    triggerToast("❌ Car Details required", "danger");
+    setLoading(false);
+    return;
+  }
+
+  if (!colorCode.trim() && category !== "New Mix") {
+    triggerToast("❌ Colour Code required", "danger");
+    setLoading(false);
+    return;
+  }
+
+  if (!paintQuantity) {
+    triggerToast("❌ Select paint quantity", "danger");
+    setLoading(false);
+    return;
+  }
+
+  if (orderType !== "Order" && transSuffix.length !== 4) {
+    triggerToast("❌ Paid orders require a 4-digit Transaction ID", "danger");
+    setLoading(false);
+    return;
+  }
+
+  const newOrder = {
+    transaction_id: fullTransactionID,
+    customer_name: clientName,
+    client_contact: clientContact,
+    paint_type: paintType,
+    colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
+    category,
+    paint_quantity: paintQuantity,
+    current_status: "Waiting",
+    order_type: orderType,
+    start_time: startTime,
+    eta,
   };
+
+  try {
+    await axios.post(`${BASE_URL}/api/orders`, newOrder);
+    triggerToast("✅ Order placed successfully");
+
+    // ✅ Save client info to localStorage
+    localStorage.setItem(
+      `client_${clientContact}`,
+      JSON.stringify({ name: clientName })
+    );
+
+    // ✅ Reset form fields
+    setTransSuffix("");
+    setClientName("");
+    setClientContact("");
+    setPaintType("");
+    setColorCode("");
+    setPaintQuantity("");
+    setCategory("New Mix");
+    setOrderType("Walk-in");
+
+    // ✅ Hide form & print
+    setShowForm(false);
+    setTimeout(() => printReceipt(newOrder), 300);
+  } catch (error) {
+    triggerToast("❌ Could not place order - Check for duplicate", "danger");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const formatMinutesToHours = (minutes) => {
     const hrs = Math.floor(minutes / 60);
