@@ -317,7 +317,7 @@ Track ID       : TRK-${order.transaction_id}
       required: orderType !== "Order",
       placeholder: "Enter 4-digit ID"
     },
-    { label: "Client Contact", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
+    { label: "Cell Number", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
     { label: "Client Name", type: "text", value: clientName, onChange: (val) => setClientName(val), required: true },
     { label: "Category", type: "select", value: category, onChange: (val) => setCategory(val), options: ["New Mix", "Mix More", "Colour Code"], required: true },
     { label: "Car Details", type: "text", value: paintType, onChange: (val) => setPaintType(val), required: true },
