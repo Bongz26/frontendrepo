@@ -156,13 +156,22 @@ Track ID       : TRK-${order.transaction_id}
   const today = formatDateDDMMYYYY();
   const startTime = new Date().toISOString(); // ✅ Fresh every time
 
-  let suffix = transSuffix;
+   let suffix;
 
-  // ✅ Ensure unique suffix for "Order" type (not Paid)
+// If "Order", auto-generate suffix
   if (orderType === "Order") {
     suffix = Math.floor(1000 + Math.random() * 9000);
+  } 
+  else {
+    // If "Paid", validate 4-digit input
+    if (!/^\d{4}$/.test(transSuffix)) {
+      triggerToast("❌ Paid orders require a 4-digit Transaction ID", "danger");
+      setLoading(false);
+      return;
+    }
+    suffix = transSuffix;
   }
-
+  
   const fullTransactionID =
     orderType === "Paid"
       ? `${today}-PO-${suffix}`
@@ -212,35 +221,50 @@ Track ID       : TRK-${order.transaction_id}
     start_time: startTime,
     eta,
   };
+ 
+try {
+  // 🔍 Fetch existing orders
+  const existingOrders = await axios.get(`${BASE_URL}/api/orders`);
 
-  try {
-    await axios.post(`${BASE_URL}/api/orders`, newOrder);
-    triggerToast("✅ Order placed successfully");
+  // 🛑 Check for duplicate transaction ID
+  const isDuplicate = existingOrders.data.some(
+    (o) => o.transaction_id === fullTransactionID
+  );
 
-    // ✅ Save client info to localStorage
-    localStorage.setItem(
-      `client_${clientContact}`,
-      JSON.stringify({ name: clientName })
-    );
-
-    // ✅ Reset form fields
-    setTransSuffix("");
-    setClientName("");
-    setClientContact("");
-    setPaintType("");
-    setColorCode("");
-    setPaintQuantity("");
-    setCategory("New Mix");
-    setOrderType("Walk-in");
-
-    // ✅ Hide form & print
-    setShowForm(false);
-    setTimeout(() => printReceipt(newOrder), 300);
-  } catch (error) {
-    triggerToast("❌ Could not place order - Check for duplicate", "danger");
-  } finally {
+  if (isDuplicate) {
+    triggerToast("⚠️ Duplicate Transaction ID, please try again", "danger");
     setLoading(false);
+    return;
   }
+
+  // ✅ Submit new order
+  await axios.post(`${BASE_URL}/api/orders`, newOrder);
+  triggerToast("✅ Order placed successfully");
+
+  // Save to localStorage
+  localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
+
+  setShowForm(false);
+  setTimeout(() => printReceipt(newOrder), 300);
+
+  // Reset form
+  setTransSuffix("");
+  setClientName("");
+  setClientContact("");
+  setPaintType("");
+  setColorCode("");
+  setPaintQuantity("");
+  setCategory("New Mix");
+  setOrderType("Walk-in");
+  setStartTime(new Date().toISOString());
+
+} catch (error) {
+  console.error("Order error:", error);
+  triggerToast("❌ Could not place order - Check for duplicate", "danger");
+} finally {
+  setLoading(false);
+}
+  
 };
 
 
