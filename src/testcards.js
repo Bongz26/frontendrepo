@@ -102,10 +102,10 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   }
 
   // ✅ 3. Update order
-  try {
+  try {console.log(`Assigned employee: "${employeeName}"`);
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
       current_status: newStatus,
-      assigned_employee: employeeName,
+      assigned_employee: employeeName || "Unassigned",
       colour_code: updatedColourCode,
       userRole,
     });
