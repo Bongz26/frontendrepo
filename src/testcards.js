@@ -107,7 +107,13 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   }
 
   // ✅ 3. Update order
-  try {console.log(`Assigned employee: "${employeeName}"`);
+  try {
+
+    console.log("📦 Updating order with:", {
+    status: newStatus,
+    code: currentEmp,
+    name: employeeName,
+  });
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
       current_status: newStatus,
       assigned_employee: employeeName || "Unassigned",
@@ -177,7 +183,7 @@ const renderWaitingCard = (order) => (
               order,
               e.target.value,
               order.colour_code,
-              order.assigned_employee
+              order.assigned_employee_code
             )
           }
         >
