@@ -168,12 +168,13 @@ Track ID       : TRK-${order.transaction_id}
     win.print();
   };
 
-  const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
 
   const today = formatDateDDMMYYYY();
   const startTime = new Date().toISOString();
+
   let suffix;
 
   if (orderType === "Order") {
@@ -192,7 +193,7 @@ Track ID       : TRK-${order.transaction_id}
       ? `${today}-PO-${suffix}`
       : `${today}-ORD-${suffix}`;
 
-  // Validations...
+  // ✅ Basic Validation
   if (!validateContact(clientContact)) {
     triggerToast("⚠️ Enter *10-digit* phone number, not name", "danger");
     setLoading(false);
@@ -218,7 +219,6 @@ Track ID       : TRK-${order.transaction_id}
   }
 
   try {
-    // 🔍 Fetch existing orders
     const existingOrders = await axios.get(`${BASE_URL}/api/orders`);
 
     let finalTransactionID = fullTransactionID;
@@ -226,7 +226,6 @@ Track ID       : TRK-${order.transaction_id}
       (o) => o.transaction_id === finalTransactionID
     );
 
-    // Retry logic only for "Order" type
     if (isDuplicate && orderType === "Order") {
       let retries = 0;
       let newSuffix;
@@ -250,7 +249,7 @@ Track ID       : TRK-${order.transaction_id}
       return;
     }
 
-    // ✅ Now safe to create the order with finalTransactionID
+    // ✅ Correct position: after retry logic
     const newOrder = {
       transaction_id: finalTransactionID,
       customer_name: clientName,
@@ -262,19 +261,19 @@ Track ID       : TRK-${order.transaction_id}
       current_status: "Waiting",
       order_type: orderType,
       start_time: startTime,
-      eta,
     };
 
-   console.log("🟡 Order being sent to backend:", newOrder);
+    console.log("🛠 Order being sent to backend: ", newOrder);
 
     await axios.post(`${BASE_URL}/api/orders`, newOrder);
     triggerToast("✅ Order placed successfully");
 
     localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
+
     setShowForm(false);
     setTimeout(() => printReceipt(newOrder), 300);
 
-    // Reset form
+    // Reset
     setTransSuffix("");
     setClientName("");
     setClientContact("");
@@ -294,6 +293,7 @@ Track ID       : TRK-${order.transaction_id}
 
   setContactSuggestions([]);
 };
+
 
   const formatMinutesToHours = (minutes) => {
     const hrs = Math.floor(minutes / 60);
