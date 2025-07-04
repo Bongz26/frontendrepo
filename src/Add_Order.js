@@ -228,7 +228,7 @@ Track ID       : TRK-${order.transaction_id}
   }
 
   const newOrder = {
-    transaction_id: fullTransactionID,
+    transaction_id: finalTransactionID,
     customer_name: clientName,
     client_contact: clientContact,
     paint_type: paintType,
@@ -245,16 +245,36 @@ try {
   // 🔍 Fetch existing orders
   const existingOrders = await axios.get(`${BASE_URL}/api/orders`);
 
-  // 🛑 Check for duplicate transaction ID
-  const isDuplicate = existingOrders.data.some(
-    (o) => o.transaction_id === fullTransactionID
-  );
+  let finalTransactionID = fullTransactionID;
+let isDuplicate = existingOrders.data.some(
+  (o) => o.transaction_id === finalTransactionID
+);
+
+// Retry logic only for "Order" type
+if (isDuplicate && orderType === "Order") {
+  let retries = 0;
+  let newSuffix;
+  do {
+    newSuffix = Math.floor(1000 + Math.random() * 9000);
+    finalTransactionID = `${today}-ORD-${newSuffix}`;
+    isDuplicate = existingOrders.data.some(
+      (o) => o.transaction_id === finalTransactionID
+    );
+    retries++;
+  } while (isDuplicate && retries < 5);
 
   if (isDuplicate) {
-    triggerToast("⚠️ Duplicate Transaction ID, please try again", "danger");
+    triggerToast("⚠️ Could not generate unique Transaction ID", "danger");
     setLoading(false);
     return;
   }
+} else if (isDuplicate) {
+  // For 'Paid' type, do NOT retry. Just show error.
+  triggerToast("⚠️ Duplicate Transaction ID. Please use a different 4-digit ID.", "danger");
+  setLoading(false);
+  return;
+}
+
 
   // ✅ Submit new order
   await axios.post(`${BASE_URL}/api/orders`, newOrder);
