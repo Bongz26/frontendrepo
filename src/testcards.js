@@ -54,69 +54,51 @@ const getModalCategoryClass = (cat) => {
   }
 };
 
-const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
+const updateStatus = async (order, newStatus, colourCode, currentEmpCode) => {
   let updatedColourCode = colourCode;
-
-  const isNewMixAndReady = newStatus === "Ready" && order.category === "New Mix";
-  const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
-
-  // ✅ 1. Trigger modal only
-  if (isNewMixAndReady && isColourMissing) {
-    setPendingColourUpdate({
-      orderId: order.transaction_id,
-      newStatus,
-      employeeName: "", // let modal handle
-    });
-    return;
-  }
-
-  // ✅ 2. Always ask for Emp Code when required
   const requiresEmpCode = ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus);
-  let employeeName = currentEmp || "Unassigned";
+  let employeeCode = currentEmpCode || "";
+  let employeeName = "";
 
-  // 🧠 If passed in currentEmp is a *code*, fetch its name
-  const isLikelyCode = currentEmp && !currentEmp.includes(" "); // crude check
+  const isLikelyCode = employeeCode && !employeeCode.includes(" ");
 
- if (requiresEmpCode && isLikelyCode) {
-  try {
-    const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
-    if (res.data?.employee_name) {
+  if (requiresEmpCode && isLikelyCode) {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
+      if (!res.data?.employee_name) {
+        alert("❌ Invalid employee code!");
+        return;
+      }
       employeeName = res.data.employee_name;
-    } else {
-      console.warn(`⚠️ No employee found for code "${currentEmp}". Using code as name.`);
-      employeeName = currentEmp; // Fallback to code
+    } catch (err) {
+      console.warn(`⚠️ Failed to fetch employee for code "${employeeCode}". Using code as name.`, err);
+      employeeName = employeeCode; // fallback
     }
-  } catch (err) {
-    console.warn(`⚠️ Failed to fetch employee for code "${currentEmp}". Using code as name.`, err);
-    employeeName = currentEmp; // Fallback to code
-  }
-}
-
-  // 🧨 If no empName still, prompt
-  if (requiresEmpCode && (!employeeName || employeeName === "Unassigned")) {
+  } else if (requiresEmpCode && (!employeeCode || employeeCode === "Unassigned")) {
     const code = prompt("🔍 Enter Employee Code:");
     if (!code) return alert("❌ Employee Code required!");
 
     try {
       const res = await axios.get(`${BASE_URL}/api/employees?code=${code}`);
       if (!res.data?.employee_name) return alert("❌ Invalid code!");
+      employeeCode = code;
       employeeName = res.data.employee_name;
     } catch {
       return alert("❌ Unable to verify employee!");
     }
   }
 
-  // ✅ 3. Update order
-  try {
-
-    console.log("📦 Updating order with:", {
+  // ✅ Log the final employeeCode + employeeName
+  console.log(`📦 Updating order with:`, {
     status: newStatus,
-    code: currentEmp,
-    name: employeeName,
+    employee_code: employeeCode,
+    employee_name: employeeName
   });
+
+  try {
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
       current_status: newStatus,
-      assigned_employee: employeeName || "Unassigned",
+      assigned_employee_code: employeeCode,
       colour_code: updatedColourCode,
       userRole,
     });
@@ -229,7 +211,7 @@ const renderActiveCard = (order) => (
               order,
               e.target.value,
               order.colour_code,
-              order.assigned_employee
+              order.employee_code 
             )
           }
         >
