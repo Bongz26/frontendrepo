@@ -77,15 +77,20 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   // 🧠 If passed in currentEmp is a *code*, fetch its name
   const isLikelyCode = currentEmp && !currentEmp.includes(" "); // crude check
 
-  if (requiresEmpCode && isLikelyCode) {
-    try {
-      const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
-      if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
+ if (requiresEmpCode && isLikelyCode) {
+  try {
+    const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
+    if (res.data?.employee_name) {
       employeeName = res.data.employee_name;
-    } catch {
-      return alert("❌ Error verifying employee code!");
+    } else {
+      console.warn(`⚠️ No employee found for code "${currentEmp}". Using code as name.`);
+      employeeName = currentEmp; // Fallback to code
     }
+  } catch (err) {
+    console.warn(`⚠️ Failed to fetch employee for code "${currentEmp}". Using code as name.`, err);
+    employeeName = currentEmp; // Fallback to code
   }
+}
 
   // 🧨 If no empName still, prompt
   if (requiresEmpCode && (!employeeName || employeeName === "Unassigned")) {
