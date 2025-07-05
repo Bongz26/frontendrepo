@@ -122,6 +122,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
       assigned_employee: employeeName,
       colour_code: updatedColourCode,
       userRole,
+      old_status: order.current_status 
     });
     
   // 🔐 Log audit
