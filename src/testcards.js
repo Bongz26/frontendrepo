@@ -62,7 +62,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
 const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
 
 // ❌ Do NOT prompt if New Mix → Ready, because modal will handle both
-if (!isNewMixAndReady && ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus)) {
+if (!isNewMixAndReady && !currentEmp && ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus)) {
   const employeeCode = prompt("🔍 Enter Employee Code:");
   if (!employeeCode) return alert("❌ Employee Code required!");
 
@@ -298,6 +298,7 @@ const renderActiveCard = (order) => (
 
    <ColourCodeModal
       onSubmit={({ colourCode, employeeCode }) => {
+        console.log("✅ updateStatus called from modal", colourCode, employeeCode); 
         console.log("Updating order with:", {
           id: pendingColourUpdate.orderId,
           newStatus: pendingColourUpdate.newStatus,
