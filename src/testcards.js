@@ -54,6 +54,15 @@ const getModalCategoryClass = (cat) => {
   }
 };
 
+const logAuditTrail = async (logData) => {
+  try {
+    await axios.post(`${BASE_URL}/api/audit-logs`, logData);
+    console.log("📘 Audit logged:", logData);
+  } catch (err) {
+    console.warn("⚠️ Failed to log audit:", err.message);
+  }
+};
+
 const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   let employeeName = currentEmp || "Unassigned";
   let updatedColourCode = colourCode;
