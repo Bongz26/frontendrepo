@@ -58,33 +58,51 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   let employeeName = currentEmp || "Unassigned";
   let updatedColourCode = colourCode;
 
-  const isNewMixAndReady = newStatus === "Ready" && order.category === "New Mix";
-const isColourMissing = !updatedColourCode || updatedColourCode.trim() === "" || updatedColourCode === "Pending";
+  const isNewMix = order.category === "New Mix";
+  const isEligibleCategory = ["New Mix", "Mix More", "Colour Code"].includes(order.category);
+  const isPromptNeeded =
+    // Rule 1: If it's eligible category and changing to Mixing
+    (isEligibleCategory && newStatus === "Mixing") ||
 
-// ❌ Do NOT prompt if New Mix → Ready, because modal will handle both
-if (!isNewMixAndReady && !currentEmp && ["Mixing", "Spraying", "Re-Mixing", "Ready"].includes(newStatus)) {
-  const employeeCode = prompt("🔍 Enter Employee Code:");
-  if (!employeeCode) return alert("❌ Employee Code required!");
+    // Rule 2: If it's eligible category and current status is Mixing, Spraying, Re-Mixing
+    (isEligibleCategory &&
+      ["Mixing", "Spraying", "Re-Mixing"].includes(order.current_status));
 
-  try {
-    const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
-    if (!res.data?.employee_name) return alert("❌ Invalid code!");
-    employeeName = res.data.employee_name;
-  } catch {
-    return alert("❌ Unable to verify employee!");
+  const isNewMixAndReady =
+    isNewMix &&
+    ["Mixing", "Spraying", "Re-Mixing"].includes(order.current_status) &&
+    newStatus === "Ready";
+
+  const isColourMissing =
+    !updatedColourCode ||
+    updatedColourCode.trim() === "" ||
+    updatedColourCode === "Pending";
+
+  // 🟨 New Mix → Ready? Show modal
+  if (isNewMixAndReady && isColourMissing) {
+    setPendingColourUpdate({
+      orderId: order.transaction_id,
+      newStatus,
+      employeeName, // might still be Unassigned, will be corrected in modal
+    });
+    return;
   }
-}
 
-// 🟨 Now if it's New Mix + Ready and missing colour, open modal
-if (isNewMixAndReady && isColourMissing) {
-  setPendingColourUpdate({
-    orderId: order.transaction_id,
-    newStatus,
-    employeeName,
-  });
-  return;
-}
+  // 🔐 Show Employee Prompt if required by Rule 1 or Rule 2
+  if (isPromptNeeded && !currentEmp) {
+    const employeeCode = prompt("🔍 Enter Employee Code:");
+    if (!employeeCode) return alert("❌ Employee Code required!");
 
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
+      if (!res.data?.employee_name) return alert("❌ Invalid code!");
+      employeeName = res.data.employee_name;
+    } catch {
+      return alert("❌ Unable to verify employee!");
+    }
+  }
+
+  // ✅ Final update to DB
   try {
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
       current_status: newStatus,
@@ -101,6 +119,7 @@ if (isNewMixAndReady && isColourMissing) {
     console.error(err);
   }
 };
+
 
   
     const calculateETA = (order) => {
