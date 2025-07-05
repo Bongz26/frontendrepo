@@ -123,6 +123,15 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
       colour_code: updatedColourCode,
       userRole,
     });
+    
+  // 🔐 Log audit
+    await logAuditTrail({
+      transaction_id: order.transaction_id,
+      fromStatus,
+      toStatus,
+      employee: employeeName,
+      userRole,
+    });
 
     setRecentlyUpdatedId(order.transaction_id);
     setTimeout(() => setRecentlyUpdatedId(null), 2000);
