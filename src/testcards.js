@@ -89,7 +89,12 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   }
 
   // 🔐 Show Employee Prompt if required by Rule 1 or Rule 2
-  if (isPromptNeeded && !currentEmp) {
+  console.log("🧪 Checking if prompt needed:", {
+  isPromptNeeded,
+  currentEmp,
+  shouldPrompt: isPromptNeeded && (!currentEmp || currentEmp === "Unassigned" || currentEmp === ""),
+  });
+  if (isPromptNeeded && (!currentEmp || currentEmp === "Unassigned" || currentEmp === "")) {
     const employeeCode = prompt("🔍 Enter Employee Code:");
     if (!employeeCode) return alert("❌ Employee Code required!");
 
