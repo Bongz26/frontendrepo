@@ -58,43 +58,51 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   let employeeName = currentEmp || "Unassigned";
   let updatedColourCode = colourCode;
 
-  const isNewMix = order.category === "New Mix";
-  const isEligibleCategory = ["New Mix", "Mix More", "Colour Code"].includes(order.category);
-  const isPromptNeeded =
-    // Rule 1: If it's eligible category and changing to Mixing
-    (isEligibleCategory && newStatus === "Mixing") ||
+  const category = order.category;
+  const fromStatus = order.current_status;
+  const toStatus = newStatus;
 
-    // Rule 2: If it's eligible category and current status is Mixing, Spraying, Re-Mixing
-    (isEligibleCategory &&
-      ["Mixing", "Spraying", "Re-Mixing"].includes(order.current_status));
+  const isNewMix = category === "New Mix";
 
+  // 🟨 Rule 3: New Mix → Ready → needs modal
   const isNewMixAndReady =
     isNewMix &&
-    ["Mixing", "Spraying", "Re-Mixing"].includes(order.current_status) &&
-    newStatus === "Ready";
+    ["Mixing", "Spraying", "Re-Mixing"].includes(fromStatus) &&
+    toStatus === "Ready";
 
   const isColourMissing =
     !updatedColourCode ||
     updatedColourCode.trim() === "" ||
     updatedColourCode === "Pending";
 
-  // 🟨 New Mix → Ready? Show modal
   if (isNewMixAndReady && isColourMissing) {
     setPendingColourUpdate({
       orderId: order.transaction_id,
       newStatus,
-      employeeName, // might still be Unassigned, will be corrected in modal
+      employeeName,
     });
     return;
   }
 
-  // 🔐 Show Employee Prompt if required by Rule 1 or Rule 2
-  console.log("🧪 Checking if prompt needed:", {
-  isPromptNeeded,
-  currentEmp,
-  shouldPrompt: isPromptNeeded && (!currentEmp || currentEmp === "Unassigned" || currentEmp === ""),
-  });
-  if (isPromptNeeded && (!currentEmp || currentEmp === "Unassigned" || currentEmp === "")) {
+  // 🔐 Rules 1 & 2
+  const shouldPromptEmp = (() => {
+    const eligibleCats = ["New Mix", "Mix More", "Colour Code"];
+
+    // Rule 1: If going to Mixing
+    if (eligibleCats.includes(category) && toStatus === "Mixing") return true;
+
+    // Rule 2: From Mixing/Spraying/Re-Mixing to any status
+    if (
+      eligibleCats.includes(category) &&
+      ["Mixing", "Spraying", "Re-Mixing"].includes(fromStatus)
+    ) {
+      return true;
+    }
+
+    return false;
+  })();
+
+  if (shouldPromptEmp) {
     const employeeCode = prompt("🔍 Enter Employee Code:");
     if (!employeeCode) return alert("❌ Employee Code required!");
 
@@ -107,10 +115,10 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
     }
   }
 
-  // ✅ Final update to DB
+  // ✅ Final update
   try {
     await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
-      current_status: newStatus,
+      current_status: toStatus,
       assigned_employee: employeeName,
       colour_code: updatedColourCode,
       userRole,
@@ -124,6 +132,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
     console.error(err);
   }
 };
+
 
 
   
