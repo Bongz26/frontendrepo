@@ -150,29 +150,32 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   })();
 
   if (shouldPromptEmp) {
-    if (currentEmp === "Unassigned") {
-      // Prompt user if not already provided
-      const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
-      if (!empCodeFromPrompt) return alert("❌ Employee Code required!");
-
-      try {
-        const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
-        if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
-        employeeName = res.data.employee_name;
-      } catch {
-        return alert("❌ Unable to verify employee!");
-      }
-    } else {
-      // Employee code came from modal or was passed in
-      try {
-        const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
-        if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
-        employeeName = res.data.employee_name;
-      } catch {
-        return alert("❌ Unable to verify employee!");
-      }
+  // If passed currentEmp is not a full name, treat it as a code and verify
+  if (currentEmp && currentEmp !== "Unassigned" && currentEmp.split(" ").length < 2) {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
+      if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
+      employeeName = res.data.employee_name;
+    } catch {
+      return alert("❌ Unable to verify employee!");
+    }
+  } else if (!currentEmp || currentEmp === "Unassigned") {
+    // Prompt if not assigned
+    const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
+    if (!empCodeFromPrompt) return alert("❌ Employee Code required!");
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
+      if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
+      employeeName = res.data.employee_name;
+    } catch {
+      return alert("❌ Unable to verify employee!");
     }
   } else {
+    // Already a valid full name
+    employeeName = currentEmp;
+  }
+}
+ else {
     // If no prompt required, use existing employee name
     employeeName = order.assigned_employee || "Unassigned";
   }
