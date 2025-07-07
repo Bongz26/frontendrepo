@@ -7,6 +7,30 @@ import LoginPopup from "./LoginPopup";
 import ColourCodeModal from "./ColourCodeModal";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
+  
+  function ElapsedTime({ statusStartedAt }) {
+  const [minutesElapsed, setMinutesElapsed] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!statusStartedAt) return;
+
+    const calculateMinutes = () => {
+      const start = new Date(statusStartedAt).getTime();
+      const now = Date.now();
+      const diffMs = now - start;
+      const mins = Math.floor(diffMs / 60000);
+      setMinutesElapsed(mins >= 0 ? mins : 0);
+    };
+
+    calculateMinutes(); // initial run
+
+    const intervalId = setInterval(calculateMinutes, 60000); // every minute
+
+    return () => clearInterval(intervalId); // clean up
+  }, [statusStartedAt]);
+
+  return <span>⏱ {minutesElapsed} min</span>;
+}
 
 const CardView = () => {
   const [orders, setOrders] = useState([]);
@@ -17,7 +41,6 @@ const CardView = () => {
   const [pendingColourUpdate, setPendingColourUpdate] = useState(null);
   const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null); // For modal
-
   const handleLogin = () => setShowLogin(true);
 
   const fetchOrders = useCallback(async () => {
@@ -53,6 +76,31 @@ const getModalCategoryClass = (cat) => {
       return "modal-category-default";
   }
 };
+
+  function ElapsedTime({ statusStartedAt }) {
+
+
+  useEffect(() => {
+    if (!statusStartedAt) return;
+
+    const calculateMinutes = () => {
+      const start = new Date(statusStartedAt).getTime();
+      const now = Date.now();
+      const diffMs = now - start;
+      const mins = Math.floor(diffMs / 60000);
+      setMinutesElapsed(mins >= 0 ? mins : 0);
+    };
+
+    calculateMinutes(); // initial calculation
+
+    const intervalId = setInterval(calculateMinutes, 60000); // update every minute
+
+    return () => clearInterval(intervalId); // cleanup on unmount
+  }, [statusStartedAt]);
+
+  return <span>⏱ {minutesElapsed} min</span>;
+}
+
 
 const logAuditTrail = async (logData) => {
   try {
@@ -153,14 +201,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   }
 };
 
-    const getMinutesSince = (timestamp) => {
-      if (!timestamp) return null;
-      const now = new Date();
-      const entered = new Date(timestamp);
-      const diffMs = now - entered;
-      return Math.floor(diffMs / 60000); // Minutes
-    };
-
+  
   
    /* const calculateETA = (order) => {
     const waitingOrders = orders.filter(o => o.current_status === "Waiting");
@@ -202,8 +243,8 @@ const renderWaitingCard = (order) => (
         <small className="text-muted">({order.client_contact})</small>
       </div>
       <div className="text-end">
-        <small className="text-muted">
-          ⏱{getMinutesSince(order.status_started_at)} min in {order.current_status}
+       <small className="text-muted">
+           <ElapsedTime statusStartedAt={order.status_started_at} /> in {order.current_status}
         </small><br />
         <select
           className="form-select form-select-sm mt-1"
@@ -250,9 +291,9 @@ const renderActiveCard = (order) => (
       </div>
 
           <div className="text-end">
-            <small className="text-muted">
-        ⏱ {getMinutesSince(order.status_started_at)} min in {order.current_status}
-        </small><br />
+           <small className="text-muted">
+              <ElapsedTime statusStartedAt={order.status_started_at} /> in {order.current_status}
+          </small><br />
           <span className="badge bg-secondary mb-1">{order.current_status}</span><br />
           <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small><br />
           <select
