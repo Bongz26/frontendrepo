@@ -103,37 +103,51 @@ const logAuditTrail = async (logData) => {
   }
 };
 
-  const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
-    const category = order.category;
-    const fromStatus = order.current_status;
-    const toStatus = newStatus;
-    let updatedColourCode = colourCode;
-    let employeeName = "Unassigned";
+const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
+  const category = order.category;
+  const fromStatus = order.current_status;
+  const toStatus = newStatus;
+  let updatedColourCode = colourCode;
+  let employeeName = "Unassigned";
 
-    // Rules
-    const isFromWaitingToMixing = fromStatus === "Waiting" && toStatus === "Mixing" &&
-      ["New Mix", "Mix More", "Colour Code"].includes(category);
-    const isMixingToSpraying = fromStatus === "Mixing" && toStatus === "Spraying";
-    const isSprayingToRemix = fromStatus === "Spraying" && toStatus === "Re-Mixing";
-    const isSprayingToReadyNewMix = fromStatus === "Spraying" && toStatus === "Ready" && category === "New Mix";
-    const isSprayingToReadyOthers = fromStatus === "Spraying" && toStatus === "Ready" && ["Mix More", "Colour Code"].includes(category);
+  // Rules
+  const isFromWaitingToMixing =
+    fromStatus === "Waiting" &&
+    toStatus === "Mixing" &&
+    ["New Mix", "Mix More", "Colour Code"].includes(category);
 
-    const shouldPromptEmp = isFromWaitingToMixing || isMixingToSpraying || isSprayingToRemix || isSprayingToReadyOthers;
+  const isMixingToSpraying = fromStatus === "Mixing" && toStatus === "Spraying";
+  const isSprayingToRemix = fromStatus === "Spraying" && toStatus === "Re-Mixing";
+  const isSprayingToReadyNewMix =
+    fromStatus === "Spraying" &&
+    toStatus === "Ready" &&
+    category === "New Mix";
+  const isSprayingToReadyOthers =
+    fromStatus === "Spraying" &&
+    toStatus === "Ready" &&
+    ["Mix More", "Colour Code"].includes(category);
 
-    if (isSprayingToReadyNewMix && (!colourCode || colourCode === "Pending")) {
-      setPendingColourUpdate({
-        orderId: order.transaction_id,
-        newStatus: toStatus,
-        employeeName: currentEmp,
-      });
-      return;
-    }
+  const shouldPromptEmp =
+    isFromWaitingToMixing ||
+    isMixingToSpraying ||
+    isSprayingToRemix ||
+    isSprayingToReadyOthers;
 
-   if (shouldPromptEmp) {
-  // No employee assigned yet ➝ prompt for code
-  if (!currentEmp || currentEmp === "Unassigned") {
+  // If it's Ready (New Mix), and colour code is still missing — show modal
+  if (isSprayingToReadyNewMix && (!colourCode || colourCode === "Pending")) {
+    setPendingColourUpdate({
+      orderId: order.transaction_id,
+      newStatus: toStatus,
+      employeeName: currentEmp,
+    });
+    return;
+  }
+
+  // Always prompt if employee verification is needed
+  if (shouldPromptEmp) {
     const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
     if (!empCodeFromPrompt) return alert("❌ Employee Code required!");
+
     try {
       const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
       if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
@@ -142,36 +156,27 @@ const logAuditTrail = async (logData) => {
       return alert("❌ Unable to verify employee!");
     }
   } else {
-   
-try {
-  const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
-  if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
-  employeeName = res.data.employee_name;
-} catch {
-  return alert("❌ Unable to verify employee!");
-}
-
+    // Use existing employee assignment
+    employeeName = order.assigned_employee || "Unassigned";
   }
-} else {
-  employeeName = order.assigned_employee || "Unassigned";
-}
 
-    try {
-      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
-        current_status: toStatus,
-        assigned_employee: employeeName,
-        colour_code: updatedColourCode,
-        userRole,
-        old_status: fromStatus,
-      });
+  // Update backend
+  try {
+    await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
+      current_status: toStatus,
+      assigned_employee: employeeName,
+      colour_code: updatedColourCode,
+      userRole,
+      old_status: fromStatus,
+    });
 
-      await logAuditTrail({
-        transaction_id: order.transaction_id,
-        fromStatus,
-        toStatus,
-        employee: employeeName,
-        userRole,
-      });
+    await logAuditTrail({
+      transaction_id: order.transaction_id,
+      fromStatus,
+      toStatus,
+      employee: employeeName,
+      userRole,
+    });
 
     setRecentlyUpdatedId(order.transaction_id);
     setTimeout(() => setRecentlyUpdatedId(null), 2000);
@@ -181,6 +186,7 @@ try {
     console.error(err);
   }
 };
+
    /* const calculateETA = (order) => {
     const waitingOrders = orders.filter(o => o.current_status === "Waiting");
     const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
