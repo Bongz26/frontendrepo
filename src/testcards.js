@@ -104,7 +104,7 @@ const logAuditTrail = async (logData) => {
 };
 
 const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
-  let employeeName = currentEmp || "Unassigned";
+  let employeeName = "Unassigned"; // Start safe
   let updatedColourCode = colourCode;
 
   const category = order.category;
@@ -124,11 +124,12 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
     updatedColourCode.trim() === "" ||
     updatedColourCode === "Pending";
 
+  // 👇 Check if we need to pop up the ColourCodeModal
   if (isNewMixAndReady && isColourMissing) {
     setPendingColourUpdate({
       orderId: order.transaction_id,
       newStatus,
-      employeeName,
+      employeeName: currentEmp,
     });
     return;
   }
@@ -137,10 +138,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   const shouldPromptEmp = (() => {
     const eligibleCats = ["New Mix", "Mix More", "Colour Code"];
 
-    // Rule 1: If going to Mixing
     if (eligibleCats.includes(category) && toStatus === "Mixing") return true;
-
-    // Rule 2: From Mixing/Spraying/Re-Mixing to any status
     if (
       eligibleCats.includes(category) &&
       ["Mixing", "Spraying", "Re-Mixing"].includes(fromStatus)
@@ -152,16 +150,31 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   })();
 
   if (shouldPromptEmp) {
-    const employeeCode = prompt("🔍 Enter Employee Code:");
-    if (!employeeCode) return alert("❌ Employee Code required!");
+    if (currentEmp === "Unassigned") {
+      // Prompt user if not already provided
+      const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
+      if (!empCodeFromPrompt) return alert("❌ Employee Code required!");
 
-    try {
-      const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
-      if (!res.data?.employee_name) return alert("❌ Invalid code!");
-      employeeName = res.data.employee_name;
-    } catch {
-      return alert("❌ Unable to verify employee!");
+      try {
+        const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
+        if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
+        employeeName = res.data.employee_name;
+      } catch {
+        return alert("❌ Unable to verify employee!");
+      }
+    } else {
+      // Employee code came from modal or was passed in
+      try {
+        const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
+        if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
+        employeeName = res.data.employee_name;
+      } catch {
+        return alert("❌ Unable to verify employee!");
+      }
     }
+  } else {
+    // If no prompt required, use existing employee name
+    employeeName = order.assigned_employee || "Unassigned";
   }
 
   // ✅ Final update
@@ -171,8 +184,26 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
       assigned_employee: employeeName,
       colour_code: updatedColourCode,
       userRole,
-      old_status: order.current_status 
+      old_status: fromStatus,
     });
+
+    await logAuditTrail({
+      transaction_id: order.transaction_id,
+      fromStatus,
+      toStatus,
+      employee: employeeName,
+      userRole,
+    });
+
+    setRecentlyUpdatedId(order.transaction_id);
+    setTimeout(() => setRecentlyUpdatedId(null), 2000);
+    setTimeout(fetchOrders, 500);
+  } catch (err) {
+    alert("❌ Error updating status!");
+    console.error(err);
+  }
+};
+
 
     
   // 🔐 Log audit
