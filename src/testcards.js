@@ -8,29 +8,29 @@ import ColourCodeModal from "./ColourCodeModal";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
   
-  function ElapsedTime({ statusStartedAt }) {
+  function ElapsedTime({ statusStartedAt, fallbackTime }) {
   const [minutesElapsed, setMinutesElapsed] = React.useState(0);
 
   React.useEffect(() => {
-    if (!statusStartedAt) return;
+    const validTime = statusStartedAt || fallbackTime;
+    if (!validTime) return;
 
     const calculateMinutes = () => {
-      const start = new Date(statusStartedAt).getTime();
+      const start = new Date(validTime).getTime();
       const now = Date.now();
       const diffMs = now - start;
       const mins = Math.floor(diffMs / 60000);
       setMinutesElapsed(mins >= 0 ? mins : 0);
     };
 
-    calculateMinutes(); // initial run
-
-    const intervalId = setInterval(calculateMinutes, 60000); // every minute
-
-    return () => clearInterval(intervalId); // clean up
-  }, [statusStartedAt]);
+    calculateMinutes();
+    const intervalId = setInterval(calculateMinutes, 60000);
+    return () => clearInterval(intervalId);
+  }, [statusStartedAt, fallbackTime]);
 
   return <span>⏱ {minutesElapsed} min</span>;
 }
+
 
 const CardView = () => {
   const [orders, setOrders] = useState([]);
@@ -220,8 +220,10 @@ const renderWaitingCard = (order) => (
       </div>
       <div className="text-end">
        <small className="text-muted">
-           <ElapsedTime statusStartedAt={order.status_started_at} /> in {order.current_status}
-        </small><br />
+           <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time}
+        />
+        
+      </small><br />
         <select
           className="form-select form-select-sm mt-1"
           style={{ minWidth: "120px" }}
