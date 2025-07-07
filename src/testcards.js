@@ -129,31 +129,37 @@ const logAuditTrail = async (logData) => {
       return;
     }
 
-    if (shouldPromptEmp) {
-      if (currentEmp && currentEmp !== "Unassigned" && currentEmp.split(" ").length < 2) {
-        try {
-          const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
-          if (!res.data?.employee_name) return alert("\u274C Invalid employee code!");
-          employeeName = res.data.employee_name;
-        } catch {
-          return alert("\u274C Unable to verify employee!");
-        }
-      } else if (!currentEmp || currentEmp === "Unassigned") {
-        const empCodeFromPrompt = prompt("\ud83d\udd0d Enter Employee Code:");
-        if (!empCodeFromPrompt) return alert("\u274C Employee Code required!");
-        try {
-          const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
-          if (!res.data?.employee_name) return alert("\u274C Invalid employee code!");
-          employeeName = res.data.employee_name;
-        } catch {
-          return alert("\u274C Unable to verify employee!");
-        }
-      } else {
-        employeeName = currentEmp;
-      }
-    } else {
-      employeeName = order.assigned_employee || "Unassigned";
+   if (shouldPromptEmp) {
+  // No employee assigned yet ➝ prompt for code
+  if (!currentEmp || currentEmp === "Unassigned") {
+    const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
+    if (!empCodeFromPrompt) return alert("❌ Employee Code required!");
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
+      if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
+      employeeName = res.data.employee_name;
+    } catch {
+      return alert("❌ Unable to verify employee!");
     }
+  } else {
+    try {
+      // Try validate as name first
+      const resByName = await axios.get(`${BASE_URL}/api/employees?name=${currentEmp}`);
+      if (resByName.data?.employee_name) {
+        employeeName = resByName.data.employee_name;
+      } else {
+        // If not found as name, treat as code
+        const resByCode = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
+        if (!resByCode.data?.employee_name) return alert("❌ Invalid employee code!");
+        employeeName = resByCode.data.employee_name;
+      }
+    } catch {
+      return alert("❌ Unable to verify employee!");
+    }
+  }
+} else {
+  employeeName = order.assigned_employee || "Unassigned";
+}
 
     try {
       await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
