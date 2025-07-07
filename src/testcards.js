@@ -404,12 +404,17 @@ const renderActiveCard = (order) => (
           colourCode,
           employeeCode
     });
-updateStatus(
-      { transaction_id: pendingColourUpdate.orderId },
-      pendingColourUpdate.newStatus,
-      colourCode,
-      employeeCode
-    );
+
+    const fullOrder = orders.find(
+      o => o.transaction_id === pendingColourUpdate.orderId
+        );
+
+    updateStatus(
+        fullOrder,
+        pendingColourUpdate.newStatus,
+        colourCode,
+        employeeCode
+      );
 
     setPendingColourUpdate(null);
   }}
