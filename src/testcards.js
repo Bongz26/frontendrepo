@@ -350,7 +350,7 @@ const renderActiveCard = (order) => (
           <div className="row">
               <div className="col-md-4">  {/* Narrower column for Waiting Orders */}
                 <h6 className="bg-primary text-white p-2">⏳ Waiting Orders: {waitingCount}</h6>
-                {orders.filter(o => o.current_status === "Waiting")
+                {orders.filter(o => o.current_status === "Waiting" && !o.archived)
                         .map(renderWaitingCard)}
           </div>
 
