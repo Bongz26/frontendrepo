@@ -8,28 +8,44 @@ import ColourCodeModal from "./ColourCodeModal";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
   
-  function ElapsedTime({ statusStartedAt, fallbackTime }) {
-  const [minutesElapsed, setMinutesElapsed] = React.useState(0);
+ function ElapsedTime({ statusStartedAt, fallbackTime }) {
+  const [displayTime, setDisplayTime] = React.useState("");
 
   React.useEffect(() => {
     const validTime = statusStartedAt || fallbackTime;
     if (!validTime) return;
 
-    const calculateMinutes = () => {
+    const updateElapsed = () => {
       const start = new Date(validTime).getTime();
       const now = Date.now();
       const diffMs = now - start;
-      const mins = Math.floor(diffMs / 60000);
-      setMinutesElapsed(mins >= 0 ? mins : 0);
+
+      if (diffMs < 0) {
+        setDisplayTime("0 min");
+        return;
+      }
+
+      const totalMinutes = Math.floor(diffMs / 60000);
+      const days = Math.floor(totalMinutes / 1440); // 1440 min/day
+      const hours = Math.floor((totalMinutes % 1440) / 60);
+      const minutes = totalMinutes % 60;
+
+      let parts = [];
+      if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
+      if (hours > 0) parts.push(`${hours} hr${hours > 1 ? "s" : ""}`);
+      if (minutes > 0 || parts.length === 0) parts.push(`${minutes} min`);
+
+      setDisplayTime(parts.join(" "));
     };
 
-    calculateMinutes();
-    const intervalId = setInterval(calculateMinutes, 60000);
-    return () => clearInterval(intervalId);
+    updateElapsed(); // Run immediately
+    const interval = setInterval(updateElapsed, 60000); // Update every minute
+    return () => clearInterval(interval);
   }, [statusStartedAt, fallbackTime]);
 
-  return <span>⏱ {minutesElapsed} min</span>;
+  return <span>⏱ {displayTime}</span>;
 }
+
 
 
 const CardView = () => {
@@ -220,8 +236,7 @@ const renderWaitingCard = (order) => (
       </div>
       <div className="text-end">
        <small className="text-muted">
-           <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time}
-        />
+           <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time}/> in {order.current_status}
         
       </small><br />
         <select
