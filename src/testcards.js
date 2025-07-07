@@ -133,6 +133,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
       userRole,
       old_status: order.current_status 
     });
+
     
   // 🔐 Log audit
     await logAuditTrail({
@@ -152,16 +153,22 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
   }
 };
 
-
+    const getMinutesSince = (timestamp) => {
+      if (!timestamp) return null;
+      const now = new Date();
+      const entered = new Date(timestamp);
+      const diffMs = now - entered;
+      return Math.floor(diffMs / 60000); // Minutes
+    };
 
   
-    const calculateETA = (order) => {
+   /* const calculateETA = (order) => {
     const waitingOrders = orders.filter(o => o.current_status === "Waiting");
     const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
     const base = order.category === "New Mix" ? 160 : order.category === "Colour Code" ? 90 : 45;
     return `${position * base} minutes`;
   };
-
+*/
 const getCategoryClass = (cat) => {
   switch (cat?.toLowerCase()) {
     case "mixing":
@@ -195,7 +202,10 @@ const renderWaitingCard = (order) => (
         <small className="text-muted">({order.client_contact})</small>
       </div>
       <div className="text-end">
-        <small className="text-muted">ETA: {calculateETA(order)}</small><br />
+        <small className="text-muted">
+          ⏱{getMinutesSince(order.status_started_at)} min in {order.current_status}
+        </small><br />
+       // <small className="text-muted">ETA: {calculateETA(order)}</small><br />
         <select
           className="form-select form-select-sm mt-1"
           style={{ minWidth: "120px" }}
@@ -240,23 +250,26 @@ const renderActiveCard = (order) => (
         <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
       </div>
 
-      <div className="text-end">
-        <span className="badge bg-secondary mb-1">{order.current_status}</span><br />
-        <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small><br />
-        <select
-          className="form-select form-select-sm mt-1"
-          style={{ minWidth: "130px" }}
-          onClick={(e) => e.stopPropagation()}
-          value={order.current_status}
-          onChange={(e) =>
-            updateStatus(
-              order,
-              e.target.value,
-              order.colour_code,
-              order.assigned_employee
-            )
-          }
-        >
+          <div className="text-end">
+            <small className="text-muted">
+        ⏱ {getMinutesSince(order.status_started_at)} min in {order.current_status}
+        </small><br />
+          <span className="badge bg-secondary mb-1">{order.current_status}</span><br />
+          <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small><br />
+          <select
+            className="form-select form-select-sm mt-1"
+        style={{ minWidth: "130px" }}
+        onClick={(e) => e.stopPropagation()}
+        value={order.current_status}
+        onChange={(e) =>
+          updateStatus(
+            order,
+            e.target.value,
+            order.colour_code,
+            order.assigned_employee
+          )
+        }
+      >
           <option value={order.current_status}>{order.current_status}</option>
           {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
           {order.current_status === "Spraying" && (
