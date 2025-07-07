@@ -203,29 +203,6 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
     console.error(err);
   }
 };
-
-
-    
-  // 🔐 Log audit
-    await logAuditTrail({
-      transaction_id: order.transaction_id,
-      fromStatus,
-      toStatus,
-      employee: employeeName,
-      userRole,
-    });
-
-    setRecentlyUpdatedId(order.transaction_id);
-    setTimeout(() => setRecentlyUpdatedId(null), 2000);
-    setTimeout(fetchOrders, 500);
-  } catch (err) {
-    alert("❌ Error updating status!");
-    console.error(err);
-  }
-};
-
-  
-  
    /* const calculateETA = (order) => {
     const waitingOrders = orders.filter(o => o.current_status === "Waiting");
     const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
