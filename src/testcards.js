@@ -77,30 +77,6 @@ const getModalCategoryClass = (cat) => {
   }
 };
 
-  function ElapsedTime({ statusStartedAt }) {
-
-
-  useEffect(() => {
-    if (!statusStartedAt) return;
-
-    const calculateMinutes = () => {
-      const start = new Date(statusStartedAt).getTime();
-      const now = Date.now();
-      const diffMs = now - start;
-      const mins = Math.floor(diffMs / 60000);
-      setMinutesElapsed(mins >= 0 ? mins : 0);
-    };
-
-    calculateMinutes(); // initial calculation
-
-    const intervalId = setInterval(calculateMinutes, 60000); // update every minute
-
-    return () => clearInterval(intervalId); // cleanup on unmount
-  }, [statusStartedAt]);
-
-  return <span>⏱ {minutesElapsed} min</span>;
-}
-
 
 const logAuditTrail = async (logData) => {
   try {
