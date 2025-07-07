@@ -142,20 +142,15 @@ const logAuditTrail = async (logData) => {
       return alert("❌ Unable to verify employee!");
     }
   } else {
-    try {
-      // Try validate as name first
-      const resByName = await axios.get(`${BASE_URL}/api/employees?name=${currentEmp}`);
-      if (resByName.data?.employee_name) {
-        employeeName = resByName.data.employee_name;
-      } else {
-        // If not found as name, treat as code
-        const resByCode = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
-        if (!resByCode.data?.employee_name) return alert("❌ Invalid employee code!");
-        employeeName = resByCode.data.employee_name;
-      }
-    } catch {
-      return alert("❌ Unable to verify employee!");
-    }
+   
+try {
+  const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
+  if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
+  employeeName = res.data.employee_name;
+} catch {
+  return alert("❌ Unable to verify employee!");
+}
+
   }
 } else {
   employeeName = order.assigned_employee || "Unassigned";
