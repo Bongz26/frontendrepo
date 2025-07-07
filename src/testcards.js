@@ -103,100 +103,74 @@ const logAuditTrail = async (logData) => {
   }
 };
 
-const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
-  let employeeName = "Unassigned"; // Start safe
-  let updatedColourCode = colourCode;
+  const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
+    const category = order.category;
+    const fromStatus = order.current_status;
+    const toStatus = newStatus;
+    let updatedColourCode = colourCode;
+    let employeeName = "Unassigned";
 
-  const category = order.category;
-  const fromStatus = order.current_status;
-  const toStatus = newStatus;
+    // Rules
+    const isFromWaitingToMixing = fromStatus === "Waiting" && toStatus === "Mixing" &&
+      ["New Mix", "Mix More", "Colour Code"].includes(category);
+    const isMixingToSpraying = fromStatus === "Mixing" && toStatus === "Spraying";
+    const isSprayingToRemix = fromStatus === "Spraying" && toStatus === "Re-Mixing";
+    const isSprayingToReadyNewMix = fromStatus === "Spraying" && toStatus === "Ready" && category === "New Mix";
+    const isSprayingToReadyOthers = fromStatus === "Spraying" && toStatus === "Ready" && ["Mix More", "Colour Code"].includes(category);
 
-  const isNewMix = category === "New Mix";
+    const shouldPromptEmp = isFromWaitingToMixing || isMixingToSpraying || isSprayingToRemix || isSprayingToReadyOthers;
 
-  // 🟨 Rule 3: New Mix → Ready → needs modal
-  const isNewMixAndReady =
-    isNewMix &&
-    ["Mixing", "Spraying", "Re-Mixing"].includes(fromStatus) &&
-    toStatus === "Ready";
-
-  const isColourMissing =
-    !updatedColourCode ||
-    updatedColourCode.trim() === "" ||
-    updatedColourCode === "Pending";
-
-  // 👇 Check if we need to pop up the ColourCodeModal
-  if (isNewMixAndReady && isColourMissing) {
-    setPendingColourUpdate({
-      orderId: order.transaction_id,
-      newStatus,
-      employeeName: currentEmp,
-    });
-    return;
-  }
-
-  // 🔐 Rules 1 & 2
-  const shouldPromptEmp = (() => {
-    const eligibleCats = ["New Mix", "Mix More", "Colour Code"];
-
-    if (eligibleCats.includes(category) && toStatus === "Mixing") return true;
-    if (
-      eligibleCats.includes(category) &&
-      ["Mixing", "Spraying", "Re-Mixing"].includes(fromStatus)
-    ) {
-      return true;
+    if (isSprayingToReadyNewMix && (!colourCode || colourCode === "Pending")) {
+      setPendingColourUpdate({
+        orderId: order.transaction_id,
+        newStatus: toStatus,
+        employeeName: currentEmp,
+      });
+      return;
     }
 
-    return false;
-  })();
+    if (shouldPromptEmp) {
+      if (currentEmp && currentEmp !== "Unassigned" && currentEmp.split(" ").length < 2) {
+        try {
+          const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
+          if (!res.data?.employee_name) return alert("\u274C Invalid employee code!");
+          employeeName = res.data.employee_name;
+        } catch {
+          return alert("\u274C Unable to verify employee!");
+        }
+      } else if (!currentEmp || currentEmp === "Unassigned") {
+        const empCodeFromPrompt = prompt("\ud83d\udd0d Enter Employee Code:");
+        if (!empCodeFromPrompt) return alert("\u274C Employee Code required!");
+        try {
+          const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
+          if (!res.data?.employee_name) return alert("\u274C Invalid employee code!");
+          employeeName = res.data.employee_name;
+        } catch {
+          return alert("\u274C Unable to verify employee!");
+        }
+      } else {
+        employeeName = currentEmp;
+      }
+    } else {
+      employeeName = order.assigned_employee || "Unassigned";
+    }
 
-  if (shouldPromptEmp) {
-  // If passed currentEmp is not a full name, treat it as a code and verify
-  if (currentEmp && currentEmp !== "Unassigned" && currentEmp.split(" ").length < 2) {
     try {
-      const res = await axios.get(`${BASE_URL}/api/employees?code=${currentEmp}`);
-      if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
-      employeeName = res.data.employee_name;
-    } catch {
-      return alert("❌ Unable to verify employee!");
-    }
-  } else if (!currentEmp || currentEmp === "Unassigned") {
-    // Prompt if not assigned
-    const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
-    if (!empCodeFromPrompt) return alert("❌ Employee Code required!");
-    try {
-      const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
-      if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
-      employeeName = res.data.employee_name;
-    } catch {
-      return alert("❌ Unable to verify employee!");
-    }
-  } else {
-    // Already a valid full name
-    employeeName = currentEmp;
-  }
-}
- else {
-    // If no prompt required, use existing employee name
-    employeeName = order.assigned_employee || "Unassigned";
-  }
+      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
+        current_status: toStatus,
+        assigned_employee: employeeName,
+        colour_code: updatedColourCode,
+        userRole,
+        old_status: fromStatus,
+      });
 
-  // ✅ Final update
-  try {
-    await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
-      current_status: toStatus,
-      assigned_employee: employeeName,
-      colour_code: updatedColourCode,
-      userRole,
-      old_status: fromStatus,
-    });
-
-    await logAuditTrail({
-      transaction_id: order.transaction_id,
-      fromStatus,
-      toStatus,
-      employee: employeeName,
-      userRole,
-    });
+      await logAuditTrail({
+        transaction_id: order.transaction_id,
+        fromStatus,
+        toStatus,
+        employee: employeeName,
+        userRole,
+      });
 
     setRecentlyUpdatedId(order.transaction_id);
     setTimeout(() => setRecentlyUpdatedId(null), 2000);
