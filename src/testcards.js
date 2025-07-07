@@ -118,6 +118,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
 
   const isMixingToSpraying = fromStatus === "Mixing" && toStatus === "Spraying";
   const isSprayingToRemix = fromStatus === "Spraying" && toStatus === "Re-Mixing";
+  const isRemixToSpraying = fromStatus === "Re-Mixing" && toStatus === "Spraying";
   const isSprayingToReadyNewMix =
     fromStatus === "Spraying" &&
     toStatus === "Ready" &&
@@ -131,6 +132,7 @@ const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
     isFromWaitingToMixing ||
     isMixingToSpraying ||
     isSprayingToRemix ||
+    isRemixToSpraying ||
     isSprayingToReadyOthers;
 
   // If it's Ready (New Mix), and colour code is still missing — show modal
