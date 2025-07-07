@@ -205,7 +205,7 @@ const renderWaitingCard = (order) => (
         <small className="text-muted">
           ⏱{getMinutesSince(order.status_started_at)} min in {order.current_status}
         </small><br />
-       // <small className="text-muted">ETA: {calculateETA(order)}</small><br />
+   /* {//<small className="text-muted">ETA: {calculateETA(order)}</small><br />}*/
         <select
           className="form-select form-select-sm mt-1"
           style={{ minWidth: "120px" }}
