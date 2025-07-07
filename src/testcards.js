@@ -236,8 +236,8 @@ const renderWaitingCard = (order) => (
       </div>
       <div className="text-end">
        <small className="text-muted">
-           <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time}/> in {order.current_status}
-        
+           <ElapsedTime statusStartedAt={order.status_started_at} 
+                        fallbackTime={order.start_time}/> in {order.current_status}
       </small><br />
         <select
           className="form-select form-select-sm mt-1"
@@ -285,7 +285,8 @@ const renderActiveCard = (order) => (
 
           <div className="text-end">
            <small className="text-muted">
-              <ElapsedTime statusStartedAt={order.status_started_at} /> in {order.current_status}
+              <ElapsedTime statusStartedAt={order.status_started_at} 
+                        fallbackTime={order.start_time}/> in {order.current_status}
           </small><br />
           <span className="badge bg-secondary mb-1">{order.current_status}</span><br />
           <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small><br />
