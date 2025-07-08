@@ -67,7 +67,8 @@ const AdminOrders = ({ userRole }) => {
                                     <th>Transaction ID</th>
                                     <th>Customer</th>
                                     <th>Customer No.</th>
-                                    <th>Amount</th>
+                                    <th>Quantity</th>
+                                    <th>Paint Details</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -78,6 +79,7 @@ const AdminOrders = ({ userRole }) => {
                                         <td>{order.customer_name}</td>
                                         <td>{order.client_contact}</td>
                                         <td>{order.paint_quantity || "0.00"}</td>
+                                        <td>{order.paint_type}</td>
                                         <td>
                                             <button
                                               className="btn btn-success btn-sm"
