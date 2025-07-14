@@ -168,6 +168,9 @@ Track ID       : TRK-${order.transaction_id}
     win.print();
   };
 
+
+
+
  const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
@@ -193,13 +196,34 @@ Track ID       : TRK-${order.transaction_id}
       ? `${today}-PO-${suffix}`
       : `${today}-ORD-${suffix}`;
 
+// Check for duplicate Transaction ID if it's a Paid order
+if (orderType === "Paid") {
+  try {
+    const checkRes = await axios.get(`${BASE_URL}/api/orders/check-id/${fullTransactionID}`);
+    if (checkRes.data.exists) {
+      triggerToast("❌ This Transaction ID is already used. Please enter a different 4-digit ID.", "danger");
+      setLoading(false);
+      return;
+    }
+  } catch (error) {
+    console.error("❌ Error checking transaction ID:", error.message);
+    triggerToast("❌ Could not verify Transaction ID. Try again.", "danger");
+    setLoading(false);
+    return;
+  }
+}
+
   // ✅ Basic Validation
   if (!validateContact(clientContact)) {
     triggerToast("⚠️ Enter *10-digit* phone number, not name", "danger");
     setLoading(false);
     return;
   }
-
+  if (!clientName.trim()) {
+    triggerToast("❌ Client name required", "danger");
+    setLoading(false);
+    return;
+  }
   if (!paintType.trim()) {
     triggerToast("❌ Car Details required", "danger");
     setLoading(false);
