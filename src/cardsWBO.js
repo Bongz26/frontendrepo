@@ -356,9 +356,77 @@ const renderActiveCard = (order) => (
 
   return (
     <div className="container mt-4">
-      {/* Existing UI content remains unchanged */}
+      {/* Queue System Header */}
+      <div className="card mb-3 shadow-sm border-0">
+        <div className="card-header bg-dark text-white d-flex justify-content-between">
+          <h5 className="mb-0">🎨 Queue System View</h5>
+          <button className="btn btn-light btn-sm" onClick={handleLogin}>Login as Admin</button>
+        </div>
+        <div className="card-body">
+          {showLogin && (
+            <LoginPopup
+              onLogin={(role) => setUserRole(role)}
+              onClose={() => setShowLogin(false)}
+            />
+          )}
+          {error && <div className="alert alert-danger">{error}</div>}
+          <button className="btn btn-outline-secondary mb-3" onClick={fetchOrders} disabled={loading}>
+            {loading ? "Refreshing..." : "🔄 Refresh"}
+          </button>
 
-      {/* Staff Manager for Admins */}
+          {/* Waiting and Active Orders */}
+          <div className="row">
+            <div className="col-md-4">
+              <h6 className="bg-primary text-white p-2">⏳ Waiting Orders: {waitingCount}</h6>
+              {orders.filter(o => o.current_status === "Waiting" && !o.archived).map(renderWaitingCard)}
+            </div>
+            <div className="col-md-8">
+              <h6 className="bg-success text-white p-2">🚀 Active Orders: {activeCount}</h6>
+              {orders.filter(o => !["Waiting", "Ready", "Complete"].includes(o.current_status)).map(renderActiveCard)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <div className="modal d-block" tabIndex="-1" onClick={() => setSelectedOrder(null)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className={`modal-content ${getModalCategoryClass(selectedOrder.category)}`}>
+              <div className="modal-header">
+                <h5 className="modal-title">🧾 Order Details</h5>
+                <button type="button" className="btn-close" onClick={() => setSelectedOrder(null)}></button>
+              </div>
+              <div className="modal-body">
+                <p><strong>Transaction ID:</strong> {selectedOrder.transaction_id}</p>
+                <p><strong>Customer:</strong> {selectedOrder.customer_name}</p>
+                <p><strong>Contact:</strong> {selectedOrder.client_contact}</p>
+                <p><strong>Paint:</strong> {selectedOrder.paint_type}</p>
+                <p><strong>Category:</strong> {selectedOrder.category}</p>
+                <p><strong>Quantity:</strong> {selectedOrder.paint_quantity}</p>
+                <p><strong>Colour Code:</strong> {selectedOrder.colour_code}</p>
+                <p><strong>Status:</strong> {selectedOrder.current_status}</p>
+                <p><strong>Order Type:</strong> {selectedOrder.order_type}</p>
+                <p><strong>Assigned To:</strong> {selectedOrder.assigned_employee || "Unassigned"}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Colour Code Modal */}
+      {pendingColourUpdate && (
+        <ColourCodeModal
+          onSubmit={({ colourCode, employeeCode }) => {
+            const fullOrder = orders.find(o => o.transaction_id === pendingColourUpdate.orderId);
+            updateStatus(fullOrder, pendingColourUpdate.newStatus, colourCode, employeeCode);
+            setPendingColourUpdate(null);
+          }}
+          onCancel={() => setPendingColourUpdate(null)}
+        />
+      )}
+
+      {/* Staff Manager */}
       {userRole === "Admin" && (
         <div className="card mt-4">
           <div className="card-header bg-info text-white">👥 Staff Manager</div>
@@ -372,23 +440,15 @@ const renderActiveCard = (order) => (
                     <td>{emp.code}</td>
                     <td>{emp.role}</td>
                     <td>
-                      <button className="btn btn-sm btn-danger" onClick={() => removeStaff(emp.code)}>Revoke</button>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => removeStaff(emp.code)}
+                      >🗑 Revoke</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <h6 className="mt-3">➕ Add New Staff</h6>
-            <input className="form-control mb-1" placeholder="Name" value={newStaff.name}
-                   onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })} />
-            <input className="form-control mb-1" placeholder="Code" value={newStaff.code}
-                   onChange={(e) => setNewStaff({ ...newStaff, code: e.target.value })} />
-            <select className="form-select mb-2" value={newStaff.role}
-                    onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}>
-              <option value="User">User</option>
-              <option value="Admin">Admin</option>
-            </select>
-            <button className="btn btn-primary" onClick={addStaff}>Add Staff</button>
           </div>
         </div>
       )}
