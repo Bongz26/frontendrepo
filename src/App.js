@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Dashboard from "./Dashboard"; // Adjust path if needed
 import CardView from "./testcards"; 
-import CardView from "./cardsWBO"
+import CardViewBO from "./cardsWBO"
 import TrackOrderPage from "./TrackOrderPage";
 import AddOrder from "./Add_Order";
 import AdminOrders from "./AdminOrders";
