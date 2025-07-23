@@ -21,7 +21,7 @@ const CardViewBO = () => {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BASE_URL}/orders`);
+      const response = await axios.get(`${BASE_URL}/api/orders`);
       setOrders(response.data);
       setLoading(false);
     } catch (err) {
@@ -42,7 +42,7 @@ const CardViewBO = () => {
 
   const updateStatus = async (order, newStatus, colourCode = null, employeeCode = null) => {
     try {
-      await axios.put(`${BASE_URL}/orders/${order.transaction_id}/status`, {
+      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}/status`, {
         status: newStatus,
         colour_code: colourCode,
         employee_code: employeeCode
