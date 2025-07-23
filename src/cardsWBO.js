@@ -136,9 +136,223 @@ const CardViewBO = () => {
       console.warn("⚠️ Failed to log audit:", err.message);
     }
   };
+const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
+  const category = order.category;
+  const fromStatus = order.current_status;
+  const toStatus = newStatus;
+  let updatedColourCode = colourCode;
+  let employeeName = "Unassigned";
 
-  // Existing logic continues here (renderWaitingCard, renderActiveCard, updateStatus, etc)
-  // You can append the rest of your large component logic here without changes.
+  // Rules
+  const isFromWaitingToMixing =
+    fromStatus === "Waiting" &&
+    toStatus === "Mixing" &&
+    ["New Mix", "Mix More", "Colour Code"].includes(category);
+
+  const isMixingToSpraying = fromStatus === "Mixing" && toStatus === "Spraying";
+  const isSprayingToRemix = fromStatus === "Spraying" && toStatus === "Re-Mixing";
+  const isRemixToSpraying = fromStatus === "Re-Mixing" && toStatus === "Spraying";
+  const isSprayingToReadyNewMix =
+    fromStatus === "Spraying" &&
+    toStatus === "Ready" &&
+    category === "New Mix";
+  const isSprayingToReadyOthers =
+    fromStatus === "Spraying" &&
+    toStatus === "Ready" &&
+    ["Mix More", "Colour Code"].includes(category);
+
+  const shouldPromptEmp =
+    isFromWaitingToMixing ||
+    isMixingToSpraying ||
+    isSprayingToRemix ||
+    isRemixToSpraying ||
+    isSprayingToReadyOthers;
+
+  // If it's Ready (New Mix), and colour code is still missing — show modal
+  if (isSprayingToReadyNewMix && (!colourCode || colourCode === "Pending")) {
+    setPendingColourUpdate({
+      orderId: order.transaction_id,
+      newStatus: toStatus,
+      employeeName: currentEmp,
+    });
+    return;
+  }
+
+  // Always prompt if employee verification is needed
+  if (shouldPromptEmp) {
+    const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
+    if (!empCodeFromPrompt) return alert("❌ Employee Code required!");
+
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
+      if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
+      employeeName = res.data.employee_name;
+    } catch {
+      return alert("❌ Unable to verify employee!");
+    }
+  } else {
+    // Use existing employee assignment
+    employeeName = order.assigned_employee || "Unassigned";
+  }
+
+  // Update backend
+  try {
+    await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
+      current_status: toStatus,
+      assigned_employee: employeeName,
+      colour_code: updatedColourCode,
+      userRole,
+      old_status: fromStatus,
+    });
+
+    await logAuditTrail({
+      transaction_id: order.transaction_id,
+      fromStatus,
+      toStatus,
+      employee: employeeName,
+      userRole,
+    });
+
+    setRecentlyUpdatedId(order.transaction_id);
+    setTimeout(() => setRecentlyUpdatedId(null), 2000);
+    setTimeout(fetchOrders, 500);
+  } catch (err) {
+    alert("❌ Error updating status!");
+    console.error(err);
+  }
+};
+
+   /* const calculateETA = (order) => {
+    const waitingOrders = orders.filter(o => o.current_status === "Waiting");
+    const position = waitingOrders.findIndex(o => o.transaction_id === order.transaction_id) + 1;
+    const base = order.category === "New Mix" ? 160 : order.category === "Colour Code" ? 90 : 45;
+    return `${position * base} minutes`;
+  };
+*/
+const getCategoryClass = (cat) => {
+  switch (cat?.toLowerCase()) {
+    case "mixing":
+      return "card-category-mixing";
+    case "spraying":
+      return "card-category-spraying";
+    case "re-mixing":
+      return "card-category-remix";
+    case "detailing":
+      return "card-category-detailing";
+    default:
+      return "card-category-default";
+  }
+};
+
+
+const renderWaitingCard = (order) => (
+  <div
+    key={order.transaction_id}
+    className={`card mb-2 px-3 py-2 shadow-sm border-0 ${
+      recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
+    }`}
+    style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
+    onClick={() => setSelectedOrder(order)}
+  >
+    <div className="d-flex justify-content-between">
+      <div>
+        <strong>{order.transaction_id}</strong> •{" "}
+        <span className="text-muted">{order.category}</span><br />
+        <span>{order.customer_name}</span>{" "}
+        <small className="text-muted">({order.client_contact})</small>
+      </div>
+      <div className="text-end">
+       <small className="text-muted">
+           <ElapsedTime statusStartedAt={order.status_started_at} 
+                        fallbackTime={order.start_time}/> in {order.current_status}
+      </small><br />
+        <select
+          className="form-select form-select-sm mt-1"
+          style={{ minWidth: "120px" }}
+          onClick={(e) => e.stopPropagation()}
+          value={order.current_status}
+
+          onChange={(e) =>
+            updateStatus(
+              order,
+              e.target.value,
+              order.colour_code,
+              order.assigned_employee
+            )
+          }
+        >
+          <option value={order.current_status}>{order.current_status}</option>
+          {order.current_status === "Waiting" && (
+            <option value="Mixing">Mixing</option>
+          )}
+        </select>
+      </div>
+    </div>
+  </div>
+);
+
+
+const renderActiveCard = (order) => (
+  <div
+    key={order.transaction_id}
+    className={`card mb-2 shadow-sm px-3 py-2 border-0 ${
+          recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
+    } ${getCategoryClass(order.category)}`}
+    style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
+    onClick={() => setSelectedOrder(order)}
+  >
+    <div className="d-flex justify-content-between">
+      <div>
+        <strong>🆔 {order.transaction_id}</strong> •{" "}
+        <span className="text-muted">{order.category}</span><br />
+        {order.customer_name} <small className="text-muted">({order.client_contact})</small><br />
+        🎨 <span className="text-muted">{order.paint_type}</span> — {order.paint_quantity}<br />
+        <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
+      </div>
+
+          <div className="text-end">
+           <small className="text-muted">
+              <ElapsedTime statusStartedAt={order.status_started_at} 
+                        fallbackTime={order.start_time}/> in {order.current_status}
+          </small><br />
+          <span className="badge bg-secondary mb-1">{order.current_status}</span><br />
+          <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small><br />
+          <select
+            className="form-select form-select-sm mt-1"
+        style={{ minWidth: "130px" }}
+        onClick={(e) => e.stopPropagation()}
+        value={order.current_status}
+        onChange={(e) =>
+          updateStatus(
+            order,
+            e.target.value,
+            order.colour_code,
+            order.assigned_employee
+          )
+        }
+      >
+          <option value={order.current_status}>{order.current_status}</option>
+          {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
+          {order.current_status === "Spraying" && (
+            <>
+              <option value="Re-Mixing">Back to Mixing</option>
+              <option value="Ready">Ready</option>
+            </>
+          )}
+          {order.current_status === "Re-Mixing" && <option value="Spraying">Spraying</option>}
+          {order.current_status === "Ready" && userRole === "Admin" && (
+            <option value="Complete">Complete</option>
+          )}
+        </select>
+      </div>
+    </div>
+  </div>
+);
+
+  const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
+  const activeCount = orders.filter(o =>
+    !["Waiting", "Ready", "Complete"].includes(o.current_status)
+  ).length;
 
   return (
     <div className="container mt-4">
