@@ -46,7 +46,7 @@ function ElapsedTime({ statusStartedAt, fallbackTime }) {
   return <span>⏱ {displayTime}</span>;
 }
 
-const CardView = () => {
+const CardViewBO = () => {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -182,4 +182,4 @@ const CardView = () => {
   );
 };
 
-export default CardView;
+export default CardViewBO;
