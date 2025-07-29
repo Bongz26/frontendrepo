@@ -231,7 +231,7 @@ const CardViewBO = () => {
 
     try {
       console.log("Updating order status:", { id: order.transaction_id, toStatus, employeeName, updatedColourCode, note: orderNote || order.note });
-      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}/status`, {
+      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
         current_status: toStatus,
         assigned_employee: employeeName,
         colour_code: updatedColourCode,
@@ -354,6 +354,8 @@ const CardViewBO = () => {
           {order.paint_quantity}
           <br />
           <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
+          <br />
+          <small className="text-muted">Note: {order.note || "No note"}</small>
         </div>
         <div className="text-end">
           <small className="text-muted">
@@ -465,8 +467,21 @@ const CardViewBO = () => {
   useEffect(() => {
     fetchOrders();
     if (userRole === "Admin") {
-      fetchStaff();
-      fetchArchivedOrders();
+      console.log("Admin logged in, fetching staff and archived orders");
+      const fetchWithRetry = async (fetchFn, name, retries = 3) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            await fetchFn();
+            console.log(`${name} fetched successfully`);
+            break;
+          } catch (err) {
+            console.error(`Attempt ${i + 1} failed for ${name}:`, err);
+            if (i === retries - 1) setError(`Failed to fetch ${name} after ${retries} attempts`);
+          }
+        }
+      };
+      fetchWithRetry(fetchStaff, "staff");
+      fetchWithRetry(fetchArchivedOrders, "archived orders");
     }
     const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
@@ -492,7 +507,10 @@ const CardViewBO = () => {
         <div className="card-body">
           {showLogin && (
             <LoginPopup
-              onLogin={(role) => setUserRole(role)}
+              onLogin={(role) => {
+                console.log("User logged in with role:", role);
+                setUserRole(role);
+              }}
               onClose={() => setShowLogin(false)}
             />
           )}
@@ -507,11 +525,13 @@ const CardViewBO = () => {
 
           {userRole === "Admin" ? (
             <>
-              {/* Admin Backoffice */}
               <div className="mb-3">
                 <button
                   className="btn btn-outline-info me-2"
-                  onClick={() => setShowArchivedOrders(!showArchivedOrders)}
+                  onClick={() => {
+                    setShowArchivedOrders(!showArchivedOrders);
+                    if (!showArchivedOrders) fetchArchivedOrders();
+                  }}
                 >
                   {showArchivedOrders ? "Hide Archived Orders" : "Show Archived Orders"}
                 </button>
@@ -526,7 +546,6 @@ const CardViewBO = () => {
                 </button>
               </div>
 
-              {/* Archived Orders */}
               {showArchivedOrders && (
                 <div className="mt-4">
                   <h6 className="bg-warning text-white p-2">📁 Archived Orders</h6>
@@ -538,7 +557,6 @@ const CardViewBO = () => {
                 </div>
               )}
 
-              {/* Deleted Orders */}
               {showDeletedOrders && (
                 <div className="mt-4">
                   <h6 className="bg-danger text-white p-2">🗑 Deleted Orders</h6>
@@ -550,7 +568,6 @@ const CardViewBO = () => {
                 </div>
               )}
 
-              {/* Staff Manager */}
               <div className="card mt-4">
                 <div className="card-header bg-info text-white">
                   👥 Staff Manager
@@ -679,7 +696,6 @@ const CardViewBO = () => {
             </>
           ) : (
             <>
-              {/* User/Staff View: Waiting and Active Orders */}
               <div className="row">
                 <div className="col-md-4">
                   <h6 className="bg-primary text-white p-2">
@@ -705,7 +721,6 @@ const CardViewBO = () => {
         </div>
       </div>
 
-      {/* Order Details Modal */}
       {selectedOrder && (
         <div className="modal d-block" tabIndex="-1" onClick={() => setSelectedOrder(null)}>
           <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
@@ -728,10 +743,8 @@ const CardViewBO = () => {
                 <p><strong>Colour Code:</strong> {selectedOrder.colour_code}</p>
                 <p><strong>Status:</strong> {selectedOrder.current_status}</p>
                 <p><strong>Order Type:</strong> {selectedOrder.order_type}</p>
-                <p>
-                  <strong>Assigned To:</strong>{" "}
-                  {selectedOrder.assigned_employee || "Unassigned"}
-                </p>
+                <p><strong>Assigned To:</strong>{" "}
+                  {selectedOrder.assigned_employee || "Unassigned"}</p>
                 <p><strong>Note:</strong> {selectedOrder.note || "No note"}</p>
                 {userRole === "Admin" && (
                   <div>
@@ -768,7 +781,6 @@ const CardViewBO = () => {
         </div>
       )}
 
-      {/* Colour Code Modal */}
       {pendingColourUpdate && (
         <ColourCodeModal
           onSubmit={({ colourCode, employeeCode }) => {
