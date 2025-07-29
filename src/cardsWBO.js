@@ -69,9 +69,12 @@ const CardViewBO = () => {
     setLoading(true);
     setError("");
     try {
+      console.log("Fetching orders from /api/orders");
       const response = await axios.get(`${BASE_URL}/api/orders`);
+      console.log("Orders response:", response.data);
       setOrders(response.data);
-    } catch {
+    } catch (err) {
+      console.error("Error fetching orders:", err);
       setError("Error fetching orders.");
     } finally {
       setLoading(false);
@@ -80,73 +83,91 @@ const CardViewBO = () => {
 
   const fetchStaff = useCallback(async () => {
     try {
+      console.log("Fetching staff from /api/staff");
       const response = await axios.get(`${BASE_URL}/api/staff`);
+      console.log("Staff response:", response.data);
       setStaffList(response.data);
     } catch (err) {
+      console.error("Error fetching staff:", err);
       setError("Error fetching staff list.");
     }
   }, []);
 
   const fetchArchivedOrders = useCallback(async () => {
     try {
+      console.log("Fetching archived orders from /api/orders/archived");
       const response = await axios.get(`${BASE_URL}/api/orders/archived`);
+      console.log("Archived orders response:", response.data);
       setArchivedOrders(response.data);
     } catch (err) {
+      console.error("Error fetching archived orders:", err);
       setError("Error fetching archived orders.");
     }
   }, []);
 
   const fetchDeletedOrders = useCallback(async () => {
     try {
+      console.log("Fetching deleted orders from /api/orders/deleted");
       const response = await axios.get(`${BASE_URL}/api/orders/deleted`);
+      console.log("Deleted orders response:", response.data);
       setDeletedOrders(response.data);
     } catch (err) {
+      console.error("Error fetching deleted orders:", err);
       setError("Error fetching deleted orders.");
     }
   }, []);
 
   const addStaff = async () => {
     try {
+      console.log("Adding staff:", newStaff);
       await axios.post(`${BASE_URL}/api/staff`, newStaff);
       setNewStaff({ employee_name: "", code: "", role: "" });
       setShowAddStaff(false);
       fetchStaff();
     } catch (err) {
+      console.error("Error adding staff:", err);
       setError("Error adding staff.");
     }
   };
 
   const editStaff = async (code) => {
     try {
+      console.log("Editing staff:", showEditStaff);
       await axios.put(`${BASE_URL}/api/staff/${code}`, showEditStaff);
       setShowEditStaff(null);
       fetchStaff();
     } catch (err) {
+      console.error("Error editing staff:", err);
       setError("Error editing staff.");
     }
   };
 
   const removeStaff = async (code) => {
     try {
+      console.log("Removing staff:", code);
       await axios.delete(`${BASE_URL}/api/staff/${code}`);
       setStaffList(staffList.filter(emp => emp.code !== code));
     } catch (err) {
+      console.error("Error removing staff:", err);
       setError("Error removing staff.");
     }
   };
 
   const deleteOrder = async (orderId) => {
     try {
+      console.log("Deleting order:", orderId);
       await axios.delete(`${BASE_URL}/api/orders/${orderId}`, { data: { userRole } });
       fetchOrders();
       setSelectedOrder(null);
     } catch (err) {
+      console.error("Error deleting order:", err);
       setError("Error deleting order.");
     }
   };
 
   const logAuditTrail = async (logData) => {
     try {
+      console.log("Logging audit:", logData);
       await axios.post(`${BASE_URL}/api/audit-logs`, logData);
       console.log("📘 Audit logged:", logData);
     } catch (err) {
@@ -196,7 +217,9 @@ const CardViewBO = () => {
       const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
       if (!empCodeFromPrompt) return alert("❌ Employee Code required!");
       try {
+        console.log("Verifying employee code:", empCodeFromPrompt);
         const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
+        console.log("Employee verification response:", res.data);
         if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
         employeeName = res.data.employee_name;
       } catch {
@@ -207,6 +230,7 @@ const CardViewBO = () => {
     }
 
     try {
+      console.log("Updating order status:", { id: order.transaction_id, toStatus, employeeName, updatedColourCode, note: orderNote || order.note });
       await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}/status`, {
         current_status: toStatus,
         assigned_employee: employeeName,
@@ -226,8 +250,8 @@ const CardViewBO = () => {
       setTimeout(() => setRecentlyUpdatedId(null), 2000);
       setTimeout(fetchOrders, 500);
     } catch (err) {
+      console.error("Error updating status:", err);
       alert("❌ Error updating status!");
-      console.error(err);
     }
   };
 
@@ -396,6 +420,8 @@ const CardViewBO = () => {
           {order.paint_quantity}
           <br />
           <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
+          <br />
+          <small className="text-muted">Note: {order.note || "No note"}</small>
         </div>
         <div className="text-end">
           <span className="badge bg-warning mb-1">Archived</span>
@@ -424,6 +450,8 @@ const CardViewBO = () => {
           {order.paint_quantity}
           <br />
           <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
+          <br />
+          <small className="text-muted">Note: {order.note || "No note"}</small>
         </div>
         <div className="text-end">
           <span className="badge bg-danger mb-1">Deleted</span>
@@ -438,10 +466,11 @@ const CardViewBO = () => {
     fetchOrders();
     if (userRole === "Admin") {
       fetchStaff();
+      fetchArchivedOrders();
     }
     const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
-  }, [fetchOrders, fetchStaff, userRole]);
+  }, [fetchOrders, fetchStaff, fetchArchivedOrders, userRole]);
 
   const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
   const activeCount = orders.filter(o =>
@@ -482,10 +511,7 @@ const CardViewBO = () => {
               <div className="mb-3">
                 <button
                   className="btn btn-outline-info me-2"
-                  onClick={() => {
-                    setShowArchivedOrders(!showArchivedOrders);
-                    if (!showArchivedOrders) fetchArchivedOrders();
-                  }}
+                  onClick={() => setShowArchivedOrders(!showArchivedOrders)}
                 >
                   {showArchivedOrders ? "Hide Archived Orders" : "Show Archived Orders"}
                 </button>
@@ -504,7 +530,11 @@ const CardViewBO = () => {
               {showArchivedOrders && (
                 <div className="mt-4">
                   <h6 className="bg-warning text-white p-2">📁 Archived Orders</h6>
-                  {archivedOrders.map(renderArchivedCard)}
+                  {archivedOrders.length > 0 ? (
+                    archivedOrders.map(renderArchivedCard)
+                  ) : (
+                    <p>No archived orders found.</p>
+                  )}
                 </div>
               )}
 
@@ -512,7 +542,11 @@ const CardViewBO = () => {
               {showDeletedOrders && (
                 <div className="mt-4">
                   <h6 className="bg-danger text-white p-2">🗑 Deleted Orders</h6>
-                  {deletedOrders.map(renderDeletedCard)}
+                  {deletedOrders.length > 0 ? (
+                    deletedOrders.map(renderDeletedCard)
+                  ) : (
+                    <p>No deleted orders found.</p>
+                  )}
                 </div>
               )}
 
@@ -603,39 +637,43 @@ const CardViewBO = () => {
                       </button>
                     </div>
                   )}
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Code</th>
-                        <th>Role</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {staffList.map(emp => (
-                        <tr key={emp.code}>
-                          <td>{emp.employee_name}</td>
-                          <td>{emp.code}</td>
-                          <td>{emp.role}</td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-warning me-2"
-                              onClick={() => setShowEditStaff(emp)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="btn btn-sm btn-danger"
-                              onClick={() => removeStaff(emp.code)}
-                            >
-                              🗑 Revoke
-                            </button>
-                          </td>
+                  {staffList.length > 0 ? (
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Code</th>
+                          <th>Role</th>
+                          <th>Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {staffList.map(emp => (
+                          <tr key={emp.code}>
+                            <td>{emp.employee_name}</td>
+                            <td>{emp.code}</td>
+                            <td>{emp.role}</td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-warning me-2"
+                                onClick={() => setShowEditStaff(emp)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => removeStaff(emp.code)}
+                              >
+                                🗑 Revoke
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p>No staff found.</p>
+                  )}
                 </div>
               </div>
             </>
