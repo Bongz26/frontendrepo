@@ -180,13 +180,25 @@ const CardViewBO = () => {
     }
   };
 
-  const logAuditTrail = async (logData) => {
+  const updateNote = async (order) => {
     try {
-      console.log("Logging audit:", logData);
-      await axios.post(`${BASE_URL}/api/audit-logs`, logData);
-      console.log("📘 Audit logged:", logData);
+      console.log("Updating note for order:", order.transaction_id, "note:", orderNote);
+      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
+        current_status: order.current_status,
+        assigned_employee: order.assigned_employee || null,
+        colour_code: order.colour_code || "Pending",
+        note: orderNote || null,
+        userRole,
+        old_status: order.current_status
+      });
+      setOrderNote("");
+      setSelectedOrder(null);
+      fetchOrders();
+      alert("✅ Note updated successfully!");
     } catch (err) {
-      console.warn("⚠️ Failed to log audit:", err.message);
+      console.error("Error updating note:", err);
+      setError(err.response?.data?.error || "Error updating note.");
+      alert(err.response?.data?.error || "Error updating note!");
     }
   };
 
@@ -254,17 +266,10 @@ const CardViewBO = () => {
         userRole,
         old_status: fromStatus,
       });
-      await logAuditTrail({
-        transaction_id: order.transaction_id,
-        fromStatus,
-        toStatus,
-        employee: employeeName,
-        userRole,
-      });
       setRecentlyUpdatedId(order.transaction_id);
       setTimeout(() => setRecentlyUpdatedId(null), 2000);
       setTimeout(fetchOrders, 500);
-      setOrderNote(""); // Clear note after saving
+      setOrderNote("");
     } catch (err) {
       console.error("Error updating status:", err);
       alert("❌ Error updating status!");
@@ -771,14 +776,7 @@ const CardViewBO = () => {
                   />
                   <button
                     className="btn btn-primary me-2"
-                    onClick={() =>
-                      updateStatus(
-                        selectedOrder,
-                        selectedOrder.current_status,
-                        selectedOrder.colour_code,
-                        selectedOrder.assigned_employee
-                      )
-                    }
+                    onClick={() => updateNote(selectedOrder)}
                   >
                     Save Note
                   </button>
