@@ -44,7 +44,7 @@ function ElapsedTime({ statusStartedAt, fallbackTime }) {
   return <span>⏱ {displayTime}</span>;
 }
 
-const CardViewBO = () => {
+const CardView = () => {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -154,14 +154,29 @@ const CardViewBO = () => {
   };
 
   const deleteOrder = async (orderId) => {
+    if (userRole !== "Admin") {
+      alert("❌ Only Admins can delete orders!");
+      return;
+    }
+
+    const note = prompt("Please provide a reason for deleting this order:");
+    if (!note || note.trim() === "") {
+      alert("❌ A note is required to delete an order!");
+      return;
+    }
+
     try {
-      console.log("Deleting order:", orderId);
-      await axios.delete(`${BASE_URL}/api/orders/${orderId}`, { data: { userRole } });
+      console.log("Deleting order:", orderId, "with note:", note);
+      await axios.delete(`${BASE_URL}/api/orders/${orderId}`, {
+        data: { userRole, note }
+      });
       fetchOrders();
       setSelectedOrder(null);
+      alert("✅ Order deleted successfully!");
     } catch (err) {
       console.error("Error deleting order:", err);
-      setError("Error deleting order.");
+      setError(err.response?.data?.error || "Error deleting order.");
+      alert(err.response?.data?.error || "Error deleting order!");
     }
   };
 
@@ -249,6 +264,7 @@ const CardViewBO = () => {
       setRecentlyUpdatedId(order.transaction_id);
       setTimeout(() => setRecentlyUpdatedId(null), 2000);
       setTimeout(fetchOrders, 500);
+      setOrderNote(""); // Clear note after saving
     } catch (err) {
       console.error("Error updating status:", err);
       alert("❌ Error updating status!");
@@ -746,35 +762,35 @@ const CardViewBO = () => {
                 <p><strong>Assigned To:</strong>{" "}
                   {selectedOrder.assigned_employee || "Unassigned"}</p>
                 <p><strong>Note:</strong> {selectedOrder.note || "No note"}</p>
-                {userRole === "Admin" && (
-                  <div>
-                    <textarea
-                      className="form-control mb-2"
-                      value={orderNote}
-                      onChange={(e) => setOrderNote(e.target.value)}
-                      placeholder="Add or edit note"
-                    />
-                    <button
-                      className="btn btn-primary me-2"
-                      onClick={() =>
-                        updateStatus(
-                          selectedOrder,
-                          selectedOrder.current_status,
-                          selectedOrder.colour_code,
-                          selectedOrder.assigned_employee
-                        )
-                      }
-                    >
-                      Save Note
-                    </button>
+                <div>
+                  <textarea
+                    className="form-control mb-2"
+                    value={orderNote}
+                    onChange={(e) => setOrderNote(e.target.value)}
+                    placeholder="Add or edit note"
+                  />
+                  <button
+                    className="btn btn-primary me-2"
+                    onClick={() =>
+                      updateStatus(
+                        selectedOrder,
+                        selectedOrder.current_status,
+                        selectedOrder.colour_code,
+                        selectedOrder.assigned_employee
+                      )
+                    }
+                  >
+                    Save Note
+                  </button>
+                  {userRole === "Admin" && (
                     <button
                       className="btn btn-danger"
                       onClick={() => deleteOrder(selectedOrder.transaction_id)}
                     >
                       Delete Order
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -802,4 +818,4 @@ const CardViewBO = () => {
   );
 };
 
-export default CardViewBO;
+export default CardView;
