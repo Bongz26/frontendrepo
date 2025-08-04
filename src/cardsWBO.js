@@ -166,7 +166,7 @@ const CardViewBO = () => {
         data: { userRole, note: cancelReason }
       });
       fetchOrders();
-      fetchDeletedOrders(); // Refresh deleted orders list
+      fetchDeletedOrders();
       setSelectedOrder(null);
       setShowCancelConfirm(null);
       setCancelReason("");
@@ -300,7 +300,135 @@ const CardViewBO = () => {
     }
   };
 
-  const renderOrderCard = (order) => (
+  const renderWaitingCard = (order) => (
+    <div
+      key={order.transaction_id}
+      className={`card mb-2 px-3 py-2 shadow-sm border-0 ${
+        recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
+      }`}
+      style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
+      onClick={() => setSelectedOrder(order)}
+    >
+      <div className="d-flex justify-content-between">
+        <div>
+          <strong>{order.transaction_id}</strong> •{" "}
+          <span className="text-muted">{order.category}</span>
+          <br />
+          <span>{order.customer_name}</span>{" "}
+          <small className="text-muted">({order.client_contact})</small>
+        </div>
+        <div className="text-end">
+          <small className="text-muted">
+            <ElapsedTime
+              statusStartedAt={order.status_started_at}
+              fallbackTime={order.start_time}
+            />{" "}
+            in {order.current_status}
+          </small>
+          <br />
+          <select
+            className="form-select form-select-sm mt-1"
+            style={{ minWidth: "120px" }}
+            onClick={(e) => e.stopPropagation()}
+            value={order.current_status}
+            onChange={(e) =>
+              updateStatus(
+                order,
+                e.target.value,
+                order.colour_code,
+                order.assigned_employee
+              )
+            }
+          >
+            <option value={order.current_status}>{order.current_status}</option>
+            {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderActiveCard = (order) => (
+    <div
+      key={order.transaction_id}
+      className={`card mb-2 shadow-sm px-3 py-2 border-0 ${
+        recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
+      } ${getCategoryClass(order.current_status)}`}
+      style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
+      onClick={() => setSelectedOrder(order)}
+    >
+      <div className="d-flex justify-content-between">
+        <div>
+          <strong>🆔 {order.transaction_id}</strong> •{" "}
+          <span className="text-muted">{order.category}</span>
+          <br />
+          {order.customer_name}{" "}
+          <small className="text-muted">({order.client_contact})</small>
+          <br />
+          🎨 <span className="text-muted">{order.paint_type}</span> —{" "}
+          {order.paint_quantity}
+          <br />
+          <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
+          <br />
+          <small className="text-muted">Note: {order.note || "No note"}</small>
+        </div>
+        <div className="text-end">
+          <small className="text-muted">
+            <ElapsedTime
+              statusStartedAt={order.status_started_at}
+              fallbackTime={order.start_time}
+            />{" "}
+            in {order.current_status}
+          </small>
+          <br />
+          <span
+            className={`badge ${
+              order.current_status === "Mixing" ? "bg-info" :
+              order.current_status === "Spraying" ? "bg-success" :
+              order.current_status === "Re-Mixing" ? "bg-warning" :
+              "bg-secondary"
+            } mb-1`}
+          >
+            {order.current_status}
+          </span>
+          <br />
+          <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small>
+          <br />
+          <select
+            className="form-select form-select-sm mt-1"
+            style={{ minWidth: "130px" }}
+            onClick={(e) => e.stopPropagation()}
+            value={order.current_status}
+            onChange={(e) =>
+              updateStatus(
+                order,
+                e.target.value,
+                order.colour_code,
+                order.assigned_employee
+              )
+            }
+          >
+            <option value={order.current_status}>{order.current_status}</option>
+            {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
+            {order.current_status === "Spraying" && (
+              <>
+                <option value="Re-Mixing">Back to Mixing</option>
+                <option value="Ready">Ready</option>
+              </>
+            )}
+            {order.current_status === "Re-Mixing" && (
+              <option value="Spraying">Spraying</option>
+            )}
+            {order.current_status === "Ready" && userRole === "Admin" && (
+              <option value="Complete">Complete</option>
+            )}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderUnifiedOrderCard = (order) => (
     <div
       key={order.transaction_id}
       className={`card mb-2 px-3 py-2 shadow-sm border-0 ${
@@ -455,6 +583,10 @@ const CardViewBO = () => {
     return () => clearInterval(interval);
   }, [fetchOrders, fetchStaff, fetchArchivedOrders, userRole]);
 
+  const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
+  const activeCount = orders.filter(o =>
+    !["Waiting", "Ready", "Complete"].includes(o.current_status)
+  ).length;
   const filteredOrders = orders.filter(o => 
     !["Ready", "Complete"].includes(o.current_status) &&
     (filterStatus === "All" || o.current_status === filterStatus) &&
@@ -483,41 +615,13 @@ const CardViewBO = () => {
             />
           )}
           {error && <div className="alert alert-danger">{error}</div>}
-          <div className="d-flex justify-content-between mb-3">
-            <button
-              className="btn btn-outline-secondary"
-              onClick={fetchOrders}
-              disabled={loading}
-            >
-              {loading ? "Refreshing..." : "🔄 Refresh"}
-            </button>
-            <div>
-              <select
-                className="form-select form-select-sm me-2"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                style={{ display: "inline-block", width: "auto" }}
-              >
-                <option value="All">All Statuses</option>
-                <option value="Waiting">Waiting</option>
-                <option value="Mixing">Mixing</option>
-                <option value="Spraying">Spraying</option>
-                <option value="Re-Mixing">Re-Mixing</option>
-              </select>
-              <select
-                className="form-select form-select-sm"
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                style={{ display: "inline-block", width: "auto" }}
-              >
-                <option value="All">All Categories</option>
-                <option value="New Mix">New Mix</option>
-                <option value="Mix More">Mix More</option>
-                <option value="Colour Code">Colour Code</option>
-                <option value="Detailing">Detailing</option>
-              </select>
-            </div>
-          </div>
+          <button
+            className="btn btn-outline-secondary mb-3"
+            onClick={fetchOrders}
+            disabled={loading}
+          >
+            {loading ? "Refreshing..." : "🔄 Refresh"}
+          </button>
 
           {userRole === "Admin" ? (
             <>
@@ -542,11 +646,38 @@ const CardViewBO = () => {
                 </button>
               </div>
 
+              <div className="d-flex justify-content-end mb-3">
+                <select
+                  className="form-select form-select-sm me-2"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  style={{ display: "inline-block", width: "auto" }}
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Waiting">Waiting</option>
+                  <option value="Mixing">Mixing</option>
+                  <option value="Spraying">Spraying</option>
+                  <option value="Re-Mixing">Re-Mixing</option>
+                </select>
+                <select
+                  className="form-select form-select-sm"
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  style={{ display: "inline-block", width: "auto" }}
+                >
+                  <option value="All">All Categories</option>
+                  <option value="New Mix">New Mix</option>
+                  <option value="Mix More">Mix More</option>
+                  <option value="Colour Code">Colour Code</option>
+                  <option value="Detailing">Detailing</option>
+                </select>
+              </div>
+
               <h6 className="bg-primary text-white p-2">
                 📋 All Orders ({filteredOrders.length})
               </h6>
               {filteredOrders.length > 0 ? (
-                filteredOrders.map(renderOrderCard)
+                filteredOrders.map(renderUnifiedOrderCard)
               ) : (
                 <p>No orders match the selected filters.</p>
               )}
@@ -700,41 +831,25 @@ const CardViewBO = () => {
               </div>
             </>
           ) : (
-            <div>
-              <h6 className="bg-primary text-white p-2">
-                📋 All Orders ({filteredOrders.length})
-              </h6>
-              <div className="d-flex justify-content-end mb-3">
-                <select
-                  className="form-select form-select-sm me-2"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  style={{ display: "inline-block", width: "auto" }}
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="Waiting">Waiting</option>
-                  <option value="Mixing">Mixing</option>
-                  <option value="Spraying">Spraying</option>
-                  <option value="Re-Mixing">Re-Mixing</option>
-                </select>
-                <select
-                  className="form-select form-select-sm"
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  style={{ display: "inline-block", width: "auto" }}
-                >
-                  <option value="All">All Categories</option>
-                  <option value="New Mix">New Mix</option>
-                  <option value="Mix More">Mix More</option>
-                  <option value="Colour Code">Colour Code</option>
-                  <option value="Detailing">Detailing</option>
-                </select>
+            <div className="row">
+              <div className="col-md-4">
+                <h6 className="bg-primary text-white p-2">
+                  ⏳ Waiting Orders: {waitingCount}
+                </h6>
+                {orders
+                  .filter(o => o.current_status === "Waiting" && !o.archived)
+                  .map(renderWaitingCard)}
               </div>
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map(renderOrderCard)
-              ) : (
-                <p>No orders match the selected filters.</p>
-              )}
+              <div className="col-md-8">
+                <h6 className="bg-success text-white p-2">
+                  🚀 Active Orders: {activeCount}
+                </h6>
+                {orders
+                  .filter(o =>
+                    !["Waiting", "Ready", "Complete"].includes(o.current_status)
+                  )
+                  .map(renderActiveCard)}
+              </div>
             </div>
           )}
         </div>
