@@ -62,6 +62,10 @@ const CardViewBO = () => {
   const [deletedOrders, setDeletedOrders] = useState([]);
   const [newStaff, setNewStaff] = useState({ employee_name: "", code: "", role: "" });
   const [orderNote, setOrderNote] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterCategory, setFilterCategory] = useState("All");
+  const [showCancelConfirm, setShowCancelConfirm] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const handleLogin = () => setShowLogin(true);
 
@@ -71,7 +75,6 @@ const CardViewBO = () => {
     try {
       console.log("Fetching orders from /api/orders");
       const response = await axios.get(`${BASE_URL}/api/orders`);
-      console.log("Orders response:", response.data);
       setOrders(response.data);
     } catch (err) {
       console.error("Error fetching orders:", err);
@@ -85,7 +88,6 @@ const CardViewBO = () => {
     try {
       console.log("Fetching staff from /api/staff");
       const response = await axios.get(`${BASE_URL}/api/staff`);
-      console.log("Staff response:", response.data);
       setStaffList(response.data);
     } catch (err) {
       console.error("Error fetching staff:", err);
@@ -97,7 +99,6 @@ const CardViewBO = () => {
     try {
       console.log("Fetching archived orders from /api/orders/archived");
       const response = await axios.get(`${BASE_URL}/api/orders/archived`);
-      console.log("Archived orders response:", response.data);
       setArchivedOrders(response.data);
     } catch (err) {
       console.error("Error fetching archived orders:", err);
@@ -109,7 +110,6 @@ const CardViewBO = () => {
     try {
       console.log("Fetching deleted orders from /api/orders/deleted");
       const response = await axios.get(`${BASE_URL}/api/orders/deleted`);
-      console.log("Deleted orders response:", response.data);
       setDeletedOrders(response.data);
     } catch (err) {
       console.error("Error fetching deleted orders:", err);
@@ -119,7 +119,6 @@ const CardViewBO = () => {
 
   const addStaff = async () => {
     try {
-      console.log("Adding staff:", newStaff);
       await axios.post(`${BASE_URL}/api/staff`, newStaff);
       setNewStaff({ employee_name: "", code: "", role: "" });
       setShowAddStaff(false);
@@ -132,7 +131,6 @@ const CardViewBO = () => {
 
   const editStaff = async (code) => {
     try {
-      console.log("Editing staff:", showEditStaff);
       await axios.put(`${BASE_URL}/api/staff/${code}`, showEditStaff);
       setShowEditStaff(null);
       fetchStaff();
@@ -144,7 +142,6 @@ const CardViewBO = () => {
 
   const removeStaff = async (code) => {
     try {
-      console.log("Removing staff:", code);
       await axios.delete(`${BASE_URL}/api/staff/${code}`);
       setStaffList(staffList.filter(emp => emp.code !== code));
     } catch (err) {
@@ -153,36 +150,36 @@ const CardViewBO = () => {
     }
   };
 
-  const deleteOrder = async (orderId) => {
+  const cancelOrder = async (orderId) => {
     if (userRole !== "Admin") {
-      alert("❌ Only Admins can delete orders!");
+      alert("❌ Only Admins can cancel orders!");
       return;
     }
 
-    const note = prompt("Please provide a reason for deleting this order:");
-    if (!note || note.trim() === "") {
-      alert("❌ A note is required to delete an order!");
+    if (!cancelReason || cancelReason.trim() === "") {
+      alert("❌ A reason is required to cancel an order!");
       return;
     }
 
     try {
-      console.log("Deleting order:", orderId, "with note:", note);
       await axios.delete(`${BASE_URL}/api/orders/${orderId}`, {
-        data: { userRole, note }
+        data: { userRole, note: cancelReason }
       });
       fetchOrders();
+      fetchDeletedOrders(); // Refresh deleted orders list
       setSelectedOrder(null);
-      alert("✅ Order deleted successfully!");
+      setShowCancelConfirm(null);
+      setCancelReason("");
+      alert("✅ Order cancelled successfully!");
     } catch (err) {
-      console.error("Error deleting order:", err);
-      setError(err.response?.data?.error || "Error deleting order.");
-      alert(err.response?.data?.error || "Error deleting order!");
+      console.error("Error cancelling order:", err);
+      setError(err.response?.data?.error || "Error cancelling order.");
+      alert(err.response?.data?.error || "Error cancelling order!");
     }
   };
 
   const updateNote = async (order) => {
     try {
-      console.log("Updating note for order:", order.transaction_id, "note:", orderNote);
       await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
         current_status: order.current_status,
         assigned_employee: order.assigned_employee || null,
@@ -244,9 +241,7 @@ const CardViewBO = () => {
       const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
       if (!empCodeFromPrompt) return alert("❌ Employee Code required!");
       try {
-        console.log("Verifying employee code:", empCodeFromPrompt);
         const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
-        console.log("Employee verification response:", res.data);
         if (!res.data?.employee_name) return alert("❌ Invalid employee code!");
         employeeName = res.data.employee_name;
       } catch {
@@ -257,7 +252,6 @@ const CardViewBO = () => {
     }
 
     try {
-      console.log("Updating order status:", { id: order.transaction_id, toStatus, employeeName, updatedColourCode, note: orderNote || order.note });
       await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
         current_status: toStatus,
         assigned_employee: employeeName,
@@ -306,60 +300,12 @@ const CardViewBO = () => {
     }
   };
 
-  const renderWaitingCard = (order) => (
+  const renderOrderCard = (order) => (
     <div
       key={order.transaction_id}
       className={`card mb-2 px-3 py-2 shadow-sm border-0 ${
         recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
-      }`}
-      style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
-      onClick={() => setSelectedOrder(order)}
-    >
-      <div className="d-flex justify-content-between">
-        <div>
-          <strong>{order.transaction_id}</strong> •{" "}
-          <span className="text-muted">{order.category}</span>
-          <br />
-          <span>{order.customer_name}</span>{" "}
-          <small className="text-muted">({order.client_contact})</small>
-        </div>
-        <div className="text-end">
-          <small className="text-muted">
-            <ElapsedTime
-              statusStartedAt={order.status_started_at}
-              fallbackTime={order.start_time}
-            />{" "}
-            in {order.current_status}
-          </small>
-          <br />
-          <select
-            className="form-select form-select-sm mt-1"
-            style={{ minWidth: "120px" }}
-            onClick={(e) => e.stopPropagation()}
-            value={order.current_status}
-            onChange={(e) =>
-              updateStatus(
-                order,
-                e.target.value,
-                order.colour_code,
-                order.assigned_employee
-              )
-            }
-          >
-            <option value={order.current_status}>{order.current_status}</option>
-            {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
-          </select>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderActiveCard = (order) => (
-    <div
-      key={order.transaction_id}
-      className={`card mb-2 shadow-sm px-3 py-2 border-0 ${
-        recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
-      } ${getCategoryClass(order.category)}`}
+      } ${getCategoryClass(order.current_status)}`}
       style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
       onClick={() => setSelectedOrder(order)}
     >
@@ -368,11 +314,8 @@ const CardViewBO = () => {
           <strong>🆔 {order.transaction_id}</strong> •{" "}
           <span className="text-muted">{order.category}</span>
           <br />
-          {order.customer_name}{" "}
+          <span>{order.customer_name}</span>{" "}
           <small className="text-muted">({order.client_contact})</small>
-          <br />
-          🎨 <span className="text-muted">{order.paint_type}</span> —{" "}
-          {order.paint_quantity}
           <br />
           <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
           <br />
@@ -387,7 +330,17 @@ const CardViewBO = () => {
             in {order.current_status}
           </small>
           <br />
-          <span className="badge bg-secondary mb-1">{order.current_status}</span>
+          <span
+            className={`badge ${
+              order.current_status === "Waiting" ? "bg-primary" :
+              order.current_status === "Mixing" ? "bg-info" :
+              order.current_status === "Spraying" ? "bg-success" :
+              order.current_status === "Re-Mixing" ? "bg-warning" :
+              "bg-secondary"
+            } mb-1`}
+          >
+            {order.current_status}
+          </span>
           <br />
           <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small>
           <br />
@@ -406,6 +359,7 @@ const CardViewBO = () => {
             }
           >
             <option value={order.current_status}>{order.current_status}</option>
+            {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
             {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
             {order.current_status === "Spraying" && (
               <>
@@ -439,9 +393,6 @@ const CardViewBO = () => {
           {order.customer_name}{" "}
           <small className="text-muted">({order.client_contact})</small>
           <br />
-          🎨 <span className="text-muted">{order.paint_type}</span> —{" "}
-          {order.paint_quantity}
-          <br />
           <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
           <br />
           <small className="text-muted">Note: {order.note || "No note"}</small>
@@ -469,9 +420,6 @@ const CardViewBO = () => {
           {order.customer_name}{" "}
           <small className="text-muted">({order.client_contact})</small>
           <br />
-          🎨 <span className="text-muted">{order.paint_type}</span> —{" "}
-          {order.paint_quantity}
-          <br />
           <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
           <br />
           <small className="text-muted">Note: {order.note || "No note"}</small>
@@ -488,7 +436,6 @@ const CardViewBO = () => {
   useEffect(() => {
     fetchOrders();
     if (userRole === "Admin") {
-      console.log("Admin logged in, fetching staff and archived orders");
       const fetchWithRetry = async (fetchFn, name, retries = 3) => {
         for (let i = 0; i < retries; i++) {
           try {
@@ -508,10 +455,11 @@ const CardViewBO = () => {
     return () => clearInterval(interval);
   }, [fetchOrders, fetchStaff, fetchArchivedOrders, userRole]);
 
-  const waitingCount = orders.filter(o => o.current_status === "Waiting").length;
-  const activeCount = orders.filter(o =>
-    !["Waiting", "Ready", "Complete"].includes(o.current_status)
-  ).length;
+  const filteredOrders = orders.filter(o => 
+    !["Ready", "Complete"].includes(o.current_status) &&
+    (filterStatus === "All" || o.current_status === filterStatus) &&
+    (filterCategory === "All" || o.category === filterCategory)
+  );
 
   return (
     <div className="container mt-4">
@@ -529,20 +477,47 @@ const CardViewBO = () => {
           {showLogin && (
             <LoginPopup
               onLogin={(role) => {
-                console.log("User logged in with role:", role);
                 setUserRole(role);
               }}
               onClose={() => setShowLogin(false)}
             />
           )}
           {error && <div className="alert alert-danger">{error}</div>}
-          <button
-            className="btn btn-outline-secondary mb-3"
-            onClick={fetchOrders}
-            disabled={loading}
-          >
-            {loading ? "Refreshing..." : "🔄 Refresh"}
-          </button>
+          <div className="d-flex justify-content-between mb-3">
+            <button
+              className="btn btn-outline-secondary"
+              onClick={fetchOrders}
+              disabled={loading}
+            >
+              {loading ? "Refreshing..." : "🔄 Refresh"}
+            </button>
+            <div>
+              <select
+                className="form-select form-select-sm me-2"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                style={{ display: "inline-block", width: "auto" }}
+              >
+                <option value="All">All Statuses</option>
+                <option value="Waiting">Waiting</option>
+                <option value="Mixing">Mixing</option>
+                <option value="Spraying">Spraying</option>
+                <option value="Re-Mixing">Re-Mixing</option>
+              </select>
+              <select
+                className="form-select form-select-sm"
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                style={{ display: "inline-block", width: "auto" }}
+              >
+                <option value="All">All Categories</option>
+                <option value="New Mix">New Mix</option>
+                <option value="Mix More">Mix More</option>
+                <option value="Colour Code">Colour Code</option>
+                <option value="Detailing">Detailing</option>
+              </select>
+            </div>
+          </div>
 
           {userRole === "Admin" ? (
             <>
@@ -566,6 +541,15 @@ const CardViewBO = () => {
                   {showDeletedOrders ? "Hide Deleted Orders" : "Show Deleted Orders"}
                 </button>
               </div>
+
+              <h6 className="bg-primary text-white p-2">
+                📋 All Orders ({filteredOrders.length})
+              </h6>
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map(renderOrderCard)
+              ) : (
+                <p>No orders match the selected filters.</p>
+              )}
 
               {showArchivedOrders && (
                 <div className="mt-4">
@@ -716,28 +700,42 @@ const CardViewBO = () => {
               </div>
             </>
           ) : (
-            <>
-              <div className="row">
-                <div className="col-md-4">
-                  <h6 className="bg-primary text-white p-2">
-                    ⏳ Waiting Orders: {waitingCount}
-                  </h6>
-                  {orders
-                    .filter(o => o.current_status === "Waiting" && !o.archived)
-                    .map(renderWaitingCard)}
-                </div>
-                <div className="col-md-8">
-                  <h6 className="bg-success text-white p-2">
-                    🚀 Active Orders: {activeCount}
-                  </h6>
-                  {orders
-                    .filter(o =>
-                      !["Waiting", "Ready", "Complete"].includes(o.current_status)
-                    )
-                    .map(renderActiveCard)}
-                </div>
+            <div>
+              <h6 className="bg-primary text-white p-2">
+                📋 All Orders ({filteredOrders.length})
+              </h6>
+              <div className="d-flex justify-content-end mb-3">
+                <select
+                  className="form-select form-select-sm me-2"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  style={{ display: "inline-block", width: "auto" }}
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Waiting">Waiting</option>
+                  <option value="Mixing">Mixing</option>
+                  <option value="Spraying">Spraying</option>
+                  <option value="Re-Mixing">Re-Mixing</option>
+                </select>
+                <select
+                  className="form-select form-select-sm"
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  style={{ display: "inline-block", width: "auto" }}
+                >
+                  <option value="All">All Categories</option>
+                  <option value="New Mix">New Mix</option>
+                  <option value="Mix More">Mix More</option>
+                  <option value="Colour Code">Colour Code</option>
+                  <option value="Detailing">Detailing</option>
+                </select>
               </div>
-            </>
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map(renderOrderCard)
+              ) : (
+                <p>No orders match the selected filters.</p>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -783,12 +781,53 @@ const CardViewBO = () => {
                   {userRole === "Admin" && (
                     <button
                       className="btn btn-danger"
-                      onClick={() => deleteOrder(selectedOrder.transaction_id)}
+                      onClick={() => setShowCancelConfirm(selectedOrder.transaction_id)}
                     >
-                      Delete Order
+                      Cancel Order
                     </button>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCancelConfirm && (
+        <div className="modal d-block" tabIndex="-1" onClick={() => setShowCancelConfirm(null)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Order Cancellation</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowCancelConfirm(null)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <p>Are you sure you want to cancel order <strong>{showCancelConfirm}</strong>?</p>
+                <textarea
+                  className="form-control mb-2"
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Enter reason for cancellation"
+                />
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowCancelConfirm(null)}
+                >
+                  Close
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={() => cancelOrder(showCancelConfirm)}
+                  disabled={!cancelReason.trim()}
+                >
+                  Confirm Cancellation
+                </button>
               </div>
             </div>
           </div>
