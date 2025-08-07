@@ -10,6 +10,7 @@ const AddOrder = () => {
   const [orderType, setOrderType] = useState("Paid");
   const [transactionID, setTransactionID] = useState("");
   const [transSuffix, setTransSuffix] = useState("");
+  const [orderCount, setOrderCount] = useState(1); // New state for number of orders
   const [clientName, setClientName] = useState("");
   const [clientContact, setClientContact] = useState("");
   const [category, setCategory] = useState("New Mix");
@@ -84,15 +85,13 @@ const AddOrder = () => {
 
   const handleContactChange = (value) => {
     setClientContact(value);
-    setNameSuggestions([]); // Clear name suggestions when editing contact
+    setNameSuggestions([]);
 
-    // Suggestion logic for contact
     const keys = Object.keys(localStorage);
     const matches = keys.filter(k => k.startsWith("client_") && k.includes(value));
     const suggestions = matches.map(k => k.replace("client_", ""));
     setContactSuggestions(suggestions);
 
-    // Auto-fill name if exact match
     if (/^\d{10}$/.test(value)) {
       const stored = localStorage.getItem(`client_${value}`);
       if (stored) {
@@ -115,9 +114,8 @@ const AddOrder = () => {
 
   const handleNameChange = (value) => {
     setClientName(value);
-    setContactSuggestions([]); // Clear contact suggestions when editing name
+    setContactSuggestions([]);
 
-    // Suggestion logic for name
     const keys = Object.keys(localStorage);
     const matches = keys.filter(k => {
       const stored = localStorage.getItem(k);
@@ -202,11 +200,20 @@ Track ID       : TRK-${order.transaction_id}
 
     const today = formatDateDDMMYYYY();
     const startTime = new Date().toISOString();
+    const count = parseInt(orderCount) || 1;
+
+    if (count < 1 || count > 10) {
+      triggerToast("❌ Number of orders must be between 1 and 10", "danger");
+      setLoading(false);
+      return;
+    }
 
     let suffix;
+    let baseTransactionID;
 
     if (orderType === "Order") {
       suffix = Math.floor(1000 + Math.random() * 9000);
+      baseTransactionID = `${today}-ORD-${suffix}`;
     } else {
       if (!/^\d{4}$/.test(transSuffix)) {
         triggerToast("❌ Paid orders require a 4-digit Transaction ID", "danger");
@@ -214,28 +221,7 @@ Track ID       : TRK-${order.transaction_id}
         return;
       }
       suffix = transSuffix;
-    }
-
-    const fullTransactionID =
-      orderType === "Paid"
-        ? `${today}-PO-${suffix}`
-        : `${today}-ORD-${suffix}`;
-
-    // Check for duplicate Transaction ID if it's a Paid order
-    if (orderType === "Paid") {
-      try {
-        const checkRes = await axios.get(`${BASE_URL}/api/orders/check-id/${fullTransactionID}`);
-        if (checkRes.data.exists) {
-          triggerToast("❌ This Transaction ID is already used. Please enter a different 4-digit ID.", "danger");
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.error("❌ Error checking transaction ID:", error.message);
-        triggerToast("❌ Could not verify Transaction ID. Try again.", "danger");
-        setLoading(false);
-        return;
-      }
+      baseTransactionID = `${today}-PO-${suffix}`;
     }
 
     // ✅ Basic Validation
@@ -254,13 +240,11 @@ Track ID       : TRK-${order.transaction_id}
       setLoading(false);
       return;
     }
-
     if (!colorCode.trim() && category !== "New Mix") {
       triggerToast("❌ Colour Code required", "danger");
       setLoading(false);
       return;
     }
-
     if (!paintQuantity) {
       triggerToast("❌ Select paint quantity", "danger");
       setLoading(false);
@@ -270,72 +254,88 @@ Track ID       : TRK-${order.transaction_id}
     try {
       const existingOrders = await axios.get(`${BASE_URL}/api/orders`);
 
-      let finalTransactionID = fullTransactionID;
-      let isDuplicate = existingOrders.data.some(
-        (o) => o.transaction_id === finalTransactionID
-      );
+      // Process multiple orders
+      const ordersToCreate = [];
+      for (let i = 1; i <= count; i++) {
+        let finalTransactionID = count > 1 ? `${baseTransactionID}-${i}` : baseTransactionID;
+        let isDuplicate = existingOrders.data.some(
+          (o) => o.transaction_id === finalTransactionID
+        );
 
-      if (isDuplicate && orderType === "Order") {
-        let retries = 0;
-        let newSuffix;
-        do {
-          newSuffix = Math.floor(1000 + Math.random() * 9000);
-          finalTransactionID = `${today}-ORD-${newSuffix}`;
-          isDuplicate = existingOrders.data.some(
-            (o) => o.transaction_id === finalTransactionID
-          );
-          retries++;
-        } while (isDuplicate && retries < 5);
+        if (isDuplicate && orderType === "Order") {
+          let retries = 0;
+          let newSuffix;
+          do {
+            newSuffix = Math.floor(1000 + Math.random() * 9000);
+            baseTransactionID = `${today}-ORD-${newSuffix}`;
+            finalTransactionID = count > 1 ? `${baseTransactionID}-${i}` : baseTransactionID;
+            isDuplicate = existingOrders.data.some(
+              (o) => o.transaction_id === finalTransactionID
+            );
+            retries++;
+          } while (isDuplicate && retries < 5);
 
-        if (isDuplicate) {
-          triggerToast("⚠️ Could not generate unique Transaction ID", "danger");
+          if (isDuplicate) {
+            triggerToast(`⚠️ Could not generate unique Transaction ID for order ${i}`, "danger");
+            setLoading(false);
+            return;
+          }
+        } else if (isDuplicate) {
+          triggerToast(`⚠️ Transaction ID ${finalTransactionID} already exists. Please use a different 4-digit ID.`, "danger");
           setLoading(false);
           return;
         }
-      } else if (isDuplicate) {
-        triggerToast("⚠️ Duplicate Transaction ID. Please use a different 4-digit ID.", "danger");
-        setLoading(false);
-        return;
+
+        if (orderType === "Paid") {
+          const checkRes = await axios.get(`${BASE_URL}/api/orders/check-id/${finalTransactionID}`);
+          if (checkRes.data.exists) {
+            triggerToast(`❌ Transaction ID ${finalTransactionID} is already used. Please enter a different 4-digit ID.`, "danger");
+            setLoading(false);
+            return;
+          }
+        }
+
+        const newOrder = {
+          transaction_id: finalTransactionID,
+          customer_name: clientName,
+          client_contact: clientContact,
+          paint_type: paintType,
+          colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
+          category,
+          paint_quantity: paintQuantity,
+          current_status: "Waiting",
+          order_type: orderType,
+          start_time: startTime,
+        };
+
+        ordersToCreate.push(newOrder);
       }
 
-      // ✅ Correct position: after retry logic
-      const newOrder = {
-        transaction_id: finalTransactionID,
-        customer_name: clientName,
-        client_contact: clientContact,
-        paint_type: paintType,
-        colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
-        category,
-        paint_quantity: paintQuantity,
-        current_status: "Waiting",
-        order_type: orderType,
-        start_time: startTime,
-      };
+      // Submit all orders
+      for (const order of ordersToCreate) {
+        await axios.post(`${BASE_URL}/api/orders`, order);
+        localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
+        setTimeout(() => printReceipt(order), 300);
+      }
 
-      console.log("🛠 Order being sent to backend: ", newOrder);
-
-      await axios.post(`${BASE_URL}/api/orders`, newOrder);
-      triggerToast("✅ Order placed successfully");
-
-      localStorage.setItem(`client_${clientContact}`, JSON.stringify({ name: clientName }));
+      triggerToast(`✅ ${count} order${count > 1 ? "s" : ""} placed successfully`);
 
       setShowForm(false);
-      setTimeout(() => printReceipt(newOrder), 300);
-
       // Reset
       setTransSuffix("");
+      setOrderCount(1);
       setClientName("");
       setClientContact("");
       setPaintType("");
       setColorCode("");
       setPaintQuantity("");
       setCategory("New Mix");
-      setOrderType("Walk-in");
+      setOrderType("Paid");
       setStartTime(new Date().toISOString());
 
     } catch (error) {
       console.error("Order error:", error);
-      triggerToast("❌ Could not place order - Check for duplicate", "danger");
+      triggerToast("❌ Could not place order(s) - Check for duplicate", "danger");
     } finally {
       setLoading(false);
     }
@@ -365,6 +365,14 @@ Track ID       : TRK-${order.transaction_id}
       disabled: orderType === "Order",
       required: orderType !== "Order",
       placeholder: "Enter 4-digit ID"
+    },
+    {
+      label: "Number of Orders",
+      type: "number",
+      value: orderCount,
+      onChange: (val) => setOrderCount(val),
+      required: true,
+      placeholder: "Enter number of orders (1-10)"
     },
     { label: "Cell Number", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
     { label: "Client Name", type: "text", name: "clientName", value: clientName, onChange: handleNameChange, required: true },
@@ -495,6 +503,8 @@ Track ID       : TRK-${order.transaction_id}
                           required={field.required}
                           disabled={field.disabled}
                           placeholder={field.placeholder}
+                          min={field.type === "number" ? 1 : undefined}
+                          max={field.type === "number" ? 10 : undefined}
                         />
                         {field.name === "clientContact" && contactSuggestions.length > 0 && (
                           <ul className="list-group mt-1">
@@ -531,7 +541,7 @@ Track ID       : TRK-${order.transaction_id}
               </div>
 
               <button type="submit" className="btn btn-success w-100 mt-3" disabled={loading}>
-                {loading ? "Processing..." : "➕ Add Order"}
+                {loading ? "Processing..." : `➕ Add ${orderCount > 1 ? `${orderCount} Orders` : "Order"}`}
               </button>
             </form>
           )}
