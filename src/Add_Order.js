@@ -8,15 +8,18 @@ const BASE_URL = "https://queue-backendser.onrender.com";
 const AddOrder = () => {
   const [showForm, setShowForm] = useState(false);
   const [orderType, setOrderType] = useState("Paid");
-  const [transactionID, setTransactionID] = useState("");
   const [transSuffix, setTransSuffix] = useState("");
-  const [orderCount, setOrderCount] = useState(1); // New state for number of orders
+  const [orderCount, setOrderCount] = useState(1);
+  const [orders, setOrders] = useState([
+    {
+      category: "New Mix",
+      paintType: "",
+      colorCode: "",
+      paintQuantity: "",
+    },
+  ]);
   const [clientName, setClientName] = useState("");
   const [clientContact, setClientContact] = useState("");
-  const [category, setCategory] = useState("New Mix");
-  const [paintType, setPaintType] = useState("");
-  const [colorCode, setColorCode] = useState("");
-  const [paintQuantity, setPaintQuantity] = useState("");
   const [startTime, setStartTime] = useState("");
   const [eta, setEta] = useState("");
 
@@ -64,10 +67,10 @@ const AddOrder = () => {
       "Mix More": 15,
       "Colour Code": 30,
     };
-    const base = baseTimes[category] || 15;
+    const base = baseTimes[orders[0]?.category] || 15;
     const jobPosition = activeCount + waitingCount + 1;
     setEta(jobPosition * base);
-  }, [category, activeCount, waitingCount]);
+  }, [orders, activeCount, waitingCount]);
 
   useEffect(() => {
     const lastContact = localStorage.getItem("last_contact");
@@ -139,6 +142,35 @@ const AddOrder = () => {
     setContactSuggestions([]);
   };
 
+  const handleOrderCountChange = (value) => {
+    const count = parseInt(value) || 1;
+    if (count < 1 || count > 10) {
+      triggerToast("❌ Number of orders must be between 1 and 10", "danger");
+      return;
+    }
+    setOrderCount(count);
+    setOrders((prev) => {
+      const newOrders = [...prev];
+      while (newOrders.length < count) {
+        newOrders.push({
+          category: "New Mix",
+          paintType: "",
+          colorCode: "",
+          paintQuantity: "",
+        });
+      }
+      return newOrders.slice(0, count);
+    });
+  };
+
+  const handleOrderChange = (index, field, value) => {
+    setOrders((prev) => {
+      const newOrders = [...prev];
+      newOrders[index] = { ...newOrders[index], [field]: value };
+      return newOrders;
+    });
+  };
+
   const handleSearch = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/api/orders/search`);
@@ -200,7 +232,7 @@ Track ID       : TRK-${order.transaction_id}
 
     const today = formatDateDDMMYYYY();
     const startTime = new Date().toISOString();
-    const count = parseInt(orderCount) || 1;
+    const count = orderCount;
 
     if (count < 1 || count > 10) {
       triggerToast("❌ Number of orders must be between 1 and 10", "danger");
@@ -235,20 +267,24 @@ Track ID       : TRK-${order.transaction_id}
       setLoading(false);
       return;
     }
-    if (!paintType.trim()) {
-      triggerToast("❌ Car Details required", "danger");
-      setLoading(false);
-      return;
-    }
-    if (!colorCode.trim() && category !== "New Mix") {
-      triggerToast("❌ Colour Code required", "danger");
-      setLoading(false);
-      return;
-    }
-    if (!paintQuantity) {
-      triggerToast("❌ Select paint quantity", "danger");
-      setLoading(false);
-      return;
+
+    for (let i = 0; i < count; i++) {
+      const order = orders[i];
+      if (!order.paintType.trim()) {
+        triggerToast(`❌ Car Details required for order ${i + 1}`, "danger");
+        setLoading(false);
+        return;
+      }
+      if (!order.colorCode.trim() && order.category !== "New Mix") {
+        triggerToast(`❌ Colour Code required for order ${i + 1}`, "danger");
+        setLoading(false);
+        return;
+      }
+      if (!order.paintQuantity) {
+        triggerToast(`❌ Select paint quantity for order ${i + 1}`, "danger");
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -256,8 +292,9 @@ Track ID       : TRK-${order.transaction_id}
 
       // Process multiple orders
       const ordersToCreate = [];
-      for (let i = 1; i <= count; i++) {
-        let finalTransactionID = count > 1 ? `${baseTransactionID}-${i}` : baseTransactionID;
+      for (let i = 0; i < count; i++) {
+        const order = orders[i];
+        let finalTransactionID = orderType === "Paid" && count > 1 ? `${baseTransactionID}-${i + 1}` : baseTransactionID;
         let isDuplicate = existingOrders.data.some(
           (o) => o.transaction_id === finalTransactionID
         );
@@ -268,7 +305,7 @@ Track ID       : TRK-${order.transaction_id}
           do {
             newSuffix = Math.floor(1000 + Math.random() * 9000);
             baseTransactionID = `${today}-ORD-${newSuffix}`;
-            finalTransactionID = count > 1 ? `${baseTransactionID}-${i}` : baseTransactionID;
+            finalTransactionID = count > 1 ? `${baseTransactionID}-${i + 1}` : baseTransactionID;
             isDuplicate = existingOrders.data.some(
               (o) => o.transaction_id === finalTransactionID
             );
@@ -276,7 +313,7 @@ Track ID       : TRK-${order.transaction_id}
           } while (isDuplicate && retries < 5);
 
           if (isDuplicate) {
-            triggerToast(`⚠️ Could not generate unique Transaction ID for order ${i}`, "danger");
+            triggerToast(`⚠️ Could not generate unique Transaction ID for order ${i + 1}`, "danger");
             setLoading(false);
             return;
           }
@@ -299,10 +336,10 @@ Track ID       : TRK-${order.transaction_id}
           transaction_id: finalTransactionID,
           customer_name: clientName,
           client_contact: clientContact,
-          paint_type: paintType,
-          colour_code: category === "New Mix" ? "Pending" : colorCode || "N/A",
-          category,
-          paint_quantity: paintQuantity,
+          paint_type: order.paintType,
+          colour_code: order.category === "New Mix" ? "Pending" : order.colorCode || "N/A",
+          category: order.category,
+          paint_quantity: order.paintQuantity,
           current_status: "Waiting",
           order_type: orderType,
           start_time: startTime,
@@ -324,13 +361,9 @@ Track ID       : TRK-${order.transaction_id}
       // Reset
       setTransSuffix("");
       setOrderCount(1);
+      setOrders([{ category: "New Mix", paintType: "", colorCode: "", paintQuantity: "" }]);
       setClientName("");
       setClientContact("");
-      setPaintType("");
-      setColorCode("");
-      setPaintQuantity("");
-      setCategory("New Mix");
-      setOrderType("Paid");
       setStartTime(new Date().toISOString());
 
     } catch (error) {
@@ -370,17 +403,19 @@ Track ID       : TRK-${order.transaction_id}
       label: "Number of Orders",
       type: "number",
       value: orderCount,
-      onChange: (val) => setOrderCount(val),
+      onChange: handleOrderCountChange,
       required: true,
       placeholder: "Enter number of orders (1-10)"
     },
     { label: "Cell Number", type: "text", name: "clientContact", value: clientContact, onChange: handleContactChange, required: true },
     { label: "Client Name", type: "text", name: "clientName", value: clientName, onChange: handleNameChange, required: true },
-    { label: "Category", type: "select", value: category, onChange: (val) => setCategory(val), options: ["New Mix", "Mix More", "Colour Code"], required: true },
-    { label: "Car Details", type: "text", value: paintType, onChange: (val) => setPaintType(val), required: true },
-    { label: "Colour Code", type: "text", value: colorCode, onChange: (val) => setColorCode(val), disabled: category === "New Mix" },
-    { label: "Paint Quantity", type: "select", value: paintQuantity, onChange: (val) => setPaintQuantity(val), options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
-    { label: "ETA", type: "text", value: formatMinutesToHours(eta), onChange: () => {}, disabled: true }
+  ];
+
+  const orderFields = [
+    { label: "Category", type: "select", name: "category", options: ["New Mix", "Mix More", "Colour Code"], required: true },
+    { label: "Car Details", type: "text", name: "paintType", required: true },
+    { label: "Colour Code", type: "text", name: "colorCode", disabled: (order) => order.category === "New Mix" },
+    { label: "Paint Quantity", type: "select", name: "paintQuantity", options: ["250ml", "500ml", "750ml", "1L", "1.25L", "1.5L", "2L", "2.5L", "3L", "4L", "5L", "10L"], required: true },
   ];
 
   return (
@@ -539,6 +574,44 @@ Track ID       : TRK-${order.transaction_id}
                   </div>
                 ))}
               </div>
+
+              {orders.map((order, index) => (
+                <div key={index} className="border p-3 mb-3 rounded">
+                  <h6>Order {index + 1}</h6>
+                  <div className="row">
+                    {orderFields.map((field, idx) => (
+                      <div key={idx} className="col-md-6 mb-3">
+                        <label className="form-label">{field.label}</label>
+                        {field.type === "select" ? (
+                          <select
+                            className="form-select"
+                            value={order[field.name]}
+                            onChange={(e) => handleOrderChange(index, field.name, e.target.value)}
+                            required={field.required}
+                          >
+                            <option value="">Select</option>
+                            {field.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={field.type}
+                            className="form-control"
+                            value={order[field.name]}
+                            onChange={(e) => handleOrderChange(index, field.name, e.target.value)}
+                            required={field.required}
+                            disabled={field.disabled && field.disabled(order)}
+                            placeholder={field.placeholder}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
 
               <button type="submit" className="btn btn-success w-100 mt-3" disabled={loading}>
                 {loading ? "Processing..." : `➕ Add ${orderCount > 1 ? `${orderCount} Orders` : "Order"}`}
