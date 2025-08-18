@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Toast, ToastContainer } from "react-bootstrap";
+import { Toast, ToastContainer, Modal, Button, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -11,6 +11,10 @@ const AdminOrders = ({ userRole }) => {
     const [toastMessage, setToastMessage] = useState("");
     const [toastType, setToastType] = useState("success");
     const [showToast, setShowToast] = useState(false);
+    const [showCodeModal, setShowCodeModal] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState(null);
+    const [employeeCode, setEmployeeCode] = useState("");
+    const [codeError, setCodeError] = useState("");
 
     useEffect(() => {
         fetchReadyOrders();
@@ -27,27 +31,57 @@ const AdminOrders = ({ userRole }) => {
             const response = await axios.get(`${BASE_URL}/api/orders/admin`);
             setReadyOrders(response.data);
         } catch (error) {
+            console.error("Error fetching orders:", error);
             triggerToast("❌ Error fetching ready orders.", "danger");
         }
     };
 
-    const markAsPaid = async (orderId) => {
+    const handleMarkAsPaidClick = (orderId) => {
         if (userRole !== "Admin") {
             triggerToast("❌ Only Admins can mark orders as Paid!", "danger");
             return;
         }
+        setSelectedOrderId(orderId);
+        setShowCodeModal(true);
+    };
+
+    const handleCodeSubmit = async () => {
+        if (!employeeCode.trim()) {
+            setCodeError("Employee code is required");
+            return;
+        }
 
         try {
-            await axios.put(`${BASE_URL}/api/orders/mark-paid/${orderId}`, { userRole });
-            triggerToast("✅ Order has been Completed!");
+            // Verify employee code with the backend
+            const response = await axios.get(`${BASE_URL}/api/employees`, {
+                params: { code: employeeCode.trim() }
+            });
+
+            // If employee code is valid, proceed with marking order as paid
+            await axios.put(`${BASE_URL}/api/orders/mark-paid/${selectedOrderId}`, { userRole });
+            triggerToast(`✅ Order has been Completed! Verified by: ${response.data.employee_name}`);
             fetchReadyOrders();
+            setShowCodeModal(false);
+            setEmployeeCode("");
+            setCodeError("");
         } catch (error) {
-            triggerToast("❌ Error marking order as Complete.", "danger");
+            if (error.response?.status === 404) {
+                setCodeError("Invalid employee code");
+            } else {
+                triggerToast("❌ Error marking order as Complete.", "danger");
+                setCodeError("Error verifying employee code");
+            }
         }
     };
 
+    const handleModalClose = () => {
+        setShowCodeModal(false);
+        setEmployeeCode("");
+        setCodeError("");
+    };
+
     return (
-         <div className="container mt-4">
+        <div className="container mt-4">
             <div className="card shadow-sm border-0">
                 <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 className="mb-0">💰 Incomplete Orders</h5>
@@ -82,10 +116,11 @@ const AdminOrders = ({ userRole }) => {
                                         <td>{order.paint_type}</td>
                                         <td>
                                             <button
-                                              className="btn btn-success btn-sm"
-                                              onClick={() => markAsPaid(order.transaction_id)}
+                                                className="btn btn-success btn-sm"
+                                                onClick={() => handleMarkAsPaidClick(order.transaction_id)}
+                                                disabled={showCodeModal} // Disable while modal is open
                                             >
-                                              {order.order_type === "Order" ? "💰 Mark as Paid" : "✅ Mark as Complete"}
+                                                {order.order_type === "Order" ? "💰 Mark as Paid" : "✅ Mark as Complete"}
                                             </button>
                                         </td>
                                     </tr>
@@ -97,6 +132,39 @@ const AdminOrders = ({ userRole }) => {
                     )}
                 </div>
             </div>
+
+            {/* Employee Code Modal */}
+            <Modal show={showCodeModal} onHide={handleModalClose} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Confirm Action</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form>
+                        <Form.Group controlId="employeeCode">
+                            <Form.Label>Enter Employee Code</Form.Label>
+                            <Form.Control
+                                type="text"
+                                value={employeeCode}
+                                onChange={(e) => setEmployeeCode(e.target.value)}
+                                isInvalid={!!codeError}
+                                placeholder="Enter your employee code"
+                                autoFocus
+                            />
+                            <Form.Control.Feedback type="invalid">
+                                {codeError}
+                            </Form.Control.Feedback>
+                        </Form.Group>
+                    </Form>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleModalClose}>
+                        Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleCodeSubmit}>
+                        Confirm
+                    </Button>
+                </Modal.Footer>
+            </Modal>
 
             {/* Toast Notifications */}
             <ToastContainer position="top-end" className="p-3">
