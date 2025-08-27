@@ -118,7 +118,7 @@ const AddOrder = () => {
       setClientName(parsed.name);
     }
     
-    setContactsuggestions([]);
+    setContactSuggestions([]);
     setNameSuggestions([]);
   };
 
