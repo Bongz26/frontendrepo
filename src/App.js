@@ -17,6 +17,7 @@ const App = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/track-order" element={<TrackOrderPage />} />
         <Route path="/add-order" element={<AddOrder />} />
+        <Route path="/add-" element={<AddOrderC />} />
         <Route path="/test-cards" element={<CardView />} />
         <Route path="/proqueue" element={<CardViewBO />} />
         <Route path="/admin-orders" element={<AdminOrders userRole="Admin" />} />
