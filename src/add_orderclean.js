@@ -5,7 +5,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 const BASE_URL = "https://queue-backendser.onrender.com";
 
-const AddOrder = () => {
+const AddOrderC = () => {
   const [showForm, setShowForm] = useState(false);
   const [orderType, setOrderType] = useState("Paid");
   const [poOption, setPoOption] = useState(""); // New state for PO option
