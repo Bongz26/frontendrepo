@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Toast, ToastContainer } from "react-bootstrap";
+import { Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./styles/queueStyles.css";
 import "./styles/queueSortStyles.css";
@@ -61,6 +62,7 @@ const ElapsedTime = ({ statusStartedAt, fallbackTime }) => {
 const CardViewBOC = () => {
   const [state, setState] = useState({
     orders: [],
+    readyOrders: [], // New state for Ready orders from /api/orders/admin
     archivedOrders: [],
     deletedOrders: [],
     userRole: "User",
@@ -75,12 +77,12 @@ const CardViewBOC = () => {
     showDeletedOrders: false,
     newStaff: { employee_name: "", code: "", role: "" },
     orderNote: "",
-    filterStatus: "All", // Default to "Ready" for Admins below
+    filterStatus: "All",
     filterCategory: "All",
     showCancelConfirm: null,
     cancelReason: "",
     loading: false,
-    showOnlyReady: false, // Toggle to show only Ready orders for Admins
+    showOnlyReady: false,
   });
 
   const { toast, triggerToast, setToast } = useToast();
@@ -103,6 +105,16 @@ const CardViewBOC = () => {
       triggerToast("Error fetching orders.", "danger");
     } finally {
       setState((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  const fetchReadyOrders = useCallback(async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/orders/admin`);
+      setState((prev) => ({ ...prev, readyOrders: response.data }));
+    } catch (err) {
+      console.error("Error fetching ready orders:", err);
+      triggerToast("❌ Error fetching ready orders.", "danger");
     }
   }, []);
 
@@ -195,6 +207,7 @@ const CardViewBOC = () => {
         data: { userRole: state.userRole, note: state.cancelReason },
       });
       fetchOrders();
+      fetchReadyOrders();
       fetchDeletedOrders();
       setState((prev) => ({
         ...prev,
@@ -221,10 +234,28 @@ const CardViewBOC = () => {
       });
       setState((prev) => ({ ...prev, orderNote: "", selectedOrder: null }));
       fetchOrders();
+      fetchReadyOrders();
       triggerToast("Note updated successfully!", "success");
     } catch (err) {
       console.error("Error updating note:", err);
       triggerToast(err.response?.data?.error || "Error updating note.", "danger");
+    }
+  };
+
+  const markAsPaid = async (orderId) => {
+    if (state.userRole !== "Admin") {
+      triggerToast("❌ Only Admins can mark orders as Paid!", "danger");
+      return;
+    }
+
+    try {
+      await axios.put(`${BASE_URL}/api/orders/mark-paid/${orderId}`, { userRole: state.userRole });
+      triggerToast("✅ Order has been Completed!");
+      fetchOrders();
+      fetchReadyOrders();
+    } catch (err) {
+      console.error("Error marking order as Complete:", err);
+      triggerToast("❌ Error marking order as Complete.", "danger");
     }
   };
 
@@ -286,7 +317,10 @@ const CardViewBOC = () => {
       });
       setState((prev) => ({ ...prev, recentlyUpdatedId: order.transaction_id }));
       setTimeout(() => setState((prev) => ({ ...prev, recentlyUpdatedId: null })), 2000);
-      setTimeout(fetchOrders, 500);
+      setTimeout(() => {
+        fetchOrders();
+        fetchReadyOrders();
+      }, 500);
       setState((prev) => ({ ...prev, orderNote: "" }));
       triggerToast("Status updated successfully!", "success");
     } catch (err) {
@@ -408,6 +442,38 @@ const CardViewBOC = () => {
     </div>
   );
 
+  const renderReadyOrderRow = (order) => (
+    <tr
+      key={order.transaction_id}
+      className={state.selectedOrder?.transaction_id === order.transaction_id ? "selected-order" : ""}
+      style={{ cursor: "pointer" }}
+      onClick={() => setState((prev) => ({ ...prev, selectedOrder: order }))}
+    >
+      <td>{order.transaction_id}</td>
+      <td>{order.customer_name}</td>
+      <td>{order.client_contact}</td>
+      <td>{order.paint_quantity || "0.00"}</td>
+      <td>{order.paint_type}</td>
+      <td>{order.po_type || "N/A"}</td>
+      <td>{order.note || "No note"}</td>
+      <td>{order.assigned_employee || "Unassigned"}</td>
+      <td>
+        <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time} />
+      </td>
+      <td>
+        <button
+          className="btn btn-success btn-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            markAsPaid(order.transaction_id);
+          }}
+        >
+          {order.order_type === "Order" ? "💰 Mark as Paid" : "✅ Mark as Complete"}
+        </button>
+      </td>
+    </tr>
+  );
+
   const renderArchivedCard = (order) => renderOrderCard(order, true);
   const renderDeletedCard = (order) => renderOrderCard(order, false, true);
 
@@ -428,16 +494,20 @@ const CardViewBOC = () => {
         }
       };
       fetchWithRetry(fetchStaff, "staff");
+      fetchWithRetry(fetchReadyOrders, "ready orders");
       fetchWithRetry(fetchArchivedOrders, "archived orders");
     }
-    const interval = setInterval(fetchOrders, 30000);
+    const interval = setInterval(() => {
+      fetchOrders();
+      if (state.userRole === "Admin") fetchReadyOrders();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [fetchOrders, fetchStaff, fetchArchivedOrders, state.userRole]);
+  }, [fetchOrders, fetchReadyOrders, fetchStaff, fetchArchivedOrders, state.userRole]);
 
   // Order filtering
   const waitingCount = state.orders.filter((o) => o.current_status === "Waiting").length;
   const activeCount = state.orders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length;
-  const readyCount = state.orders.filter((o) => o.current_status === "Ready").length;
+  const readyCount = state.readyOrders.length;
   const filteredOrders = state.orders.filter(
     (o) =>
       (state.userRole === "Admin" ? !["Complete"].includes(o.current_status) : !["Ready", "Complete"].includes(o.current_status)) &&
@@ -459,11 +529,14 @@ const CardViewBOC = () => {
           .modal-category-ready {
             border-left: 5px solid #6c757d;
           }
+          .selected-order td {
+            background-color: #fff3cd !important;
+          }
         `}
       </style>
 
       <div className="card mb-3 shadow-sm border-0">
-        <div className="card-header bg-dark text-white d-flex justify-content-between">
+        <div className="card-header bg-dark text-white d-flex justify-content-between align-items-center">
           <h5 className="mb-0">🎨 Queue System View</h5>
           <div>
             <span className="me-2">Role: {state.userRole}</span>
@@ -480,13 +553,25 @@ const CardViewBOC = () => {
             />
           )}
 
-          <button
-            className="btn btn-outline-secondary mb-3"
-            onClick={fetchOrders}
-            disabled={state.loading}
-          >
-            {state.loading ? "Refreshing..." : "🔄 Refresh"}
-          </button>
+          <div className="d-flex justify-content-between mb-3">
+            <button
+              className="btn btn-outline-secondary"
+              onClick={() => {
+                fetchOrders();
+                if (state.userRole === "Admin") fetchReadyOrders();
+              }}
+              disabled={state.loading}
+            >
+              {state.loading ? "Refreshing..." : "🔄 Refresh"}
+            </button>
+            <Link
+              to="/add-order"
+              className="btn btn-light fw-bold rounded-pill px-4 py-2"
+              style={{ fontSize: "1rem" }}
+            >
+              ← Back To Add Order
+            </Link>
+          </div>
 
           {state.userRole === "Admin" && (
             <div className="mb-3">
@@ -500,7 +585,7 @@ const CardViewBOC = () => {
                 {state.showArchivedOrders ? "Hide Archived Orders" : "Show Archived Orders"}
               </button>
               <button
-                className="btn btn-outline-danger"
+                className="btn btn-outline-danger me-2"
                 onClick={() => {
                   setState((prev) => ({ ...prev, showDeletedOrders: !prev.showDeletedOrders }));
                   if (!state.showDeletedOrders) fetchDeletedOrders();
@@ -509,7 +594,7 @@ const CardViewBOC = () => {
                 {state.showDeletedOrders ? "Hide Deleted Orders" : "Show Deleted Orders"}
               </button>
               <button
-                className="btn btn-outline-secondary ms-2"
+                className="btn btn-outline-secondary"
                 onClick={() => setState((prev) => ({ ...prev, showOnlyReady: !prev.showOnlyReady }))}
               >
                 {state.showOnlyReady ? "Show All Orders" : "Show Only Ready Orders"}
@@ -550,12 +635,37 @@ const CardViewBOC = () => {
               <h6 className="bg-secondary text-white p-2">
                 ✅ Ready Orders ({readyCount})
               </h6>
-              {filteredOrders.filter((o) => o.current_status === "Ready").length > 0 ? (
-                filteredOrders
-                  .filter((o) => o.current_status === "Ready")
-                  .map((order) => renderOrderCard(order))
+              {state.readyOrders.length > 0 ? (
+                <div className="card shadow-sm border-0 mb-3">
+                  <div className="card-body p-0">
+                    <table className="table table-bordered mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Transaction ID</th>
+                          <th>Customer</th>
+                          <th>Customer No.</th>
+                          <th>Quantity</th>
+                          <th>Paint Details</th>
+                          <th>PO Type</th>
+                          <th>Note</th>
+                          <th>Assigned To</th>
+                          <th>Time in Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {state.readyOrders
+                          .filter(
+                            (o) =>
+                              (state.filterCategory === "All" || o.category === state.filterCategory)
+                          )
+                          .map((order) => renderReadyOrderRow(order))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               ) : (
-                <p>No ready orders match the selected filters.</p>
+                <p className="text-muted">No ready orders found.</p>
               )}
 
               {!state.showOnlyReady && (
@@ -796,7 +906,7 @@ const CardViewBOC = () => {
                 <p><strong>Paint:</strong> {state.selectedOrder.paint_type}</p>
                 <p><strong>Category:</strong> {state.selectedOrder.category}</p>
                 <p><strong>Quantity:</strong> {state.selectedOrder.paint_quantity}</p>
-                <p><strong>Colour Code:</strong> {state.selectedOrder.colour_code}</p>
+                <p><strong>Colour Code:</strong> {state.selectedOrder.colour_code || "N/A"}</p>
                 <p><strong>Status:</strong> {state.selectedOrder.current_status}</p>
                 <p><strong>Order Type:</strong> {state.selectedOrder.order_type}</p>
                 <p><strong>PO Type:</strong> {state.selectedOrder.po_type || "N/A"}</p>
@@ -815,6 +925,14 @@ const CardViewBOC = () => {
                   >
                     Save Note
                   </button>
+                  {state.userRole === "Admin" && state.selectedOrder.current_status === "Ready" && (
+                    <button
+                      className="btn btn-success me-2"
+                      onClick={() => markAsPaid(state.selectedOrder.transaction_id)}
+                    >
+                      {state.selectedOrder.order_type === "Order" ? "💰 Mark as Paid" : "✅ Mark as Complete"}
+                    </button>
+                  )}
                   {state.userRole === "Admin" && (
                     <button
                       className="btn btn-danger"
@@ -874,7 +992,8 @@ const CardViewBOC = () => {
       {state.pendingColourUpdate && (
         <ColourCodeModal
           onSubmit={({ colourCode, employeeCode }) => {
-            const fullOrder = state.orders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId);
+            const fullOrder = state.orders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId) ||
+                             state.readyOrders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId);
             updateStatus(fullOrder, state.pendingColourUpdate.newStatus, colourCode, employeeCode);
             setState((prev) => ({ ...prev, pendingColourUpdate: null }));
           }}
@@ -890,7 +1009,7 @@ const CardViewBOC = () => {
           bg={toast.type}
           onClose={() => setToast((prev) => ({ ...prev, show: false }))}
           show={toast.show}
-          delay={toast.type === "danger" ? null : 4000}
+          delay={toast.type === "danger" ? null : 3500}
           autohide={toast.type !== "danger"}
         >
           <Toast.Header
