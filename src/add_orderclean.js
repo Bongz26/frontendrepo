@@ -890,4 +890,4 @@ Track ID       : TRK-${order.transaction_id}
   );
 };
 
-export default AddOrder;
+export default AddOrderC;
