@@ -75,14 +75,22 @@ const CardViewBOC = () => {
     showDeletedOrders: false,
     newStaff: { employee_name: "", code: "", role: "" },
     orderNote: "",
-    filterStatus: "All",
+    filterStatus: "All", // Default to "Ready" for Admins below
     filterCategory: "All",
     showCancelConfirm: null,
     cancelReason: "",
     loading: false,
+    showOnlyReady: false, // Toggle to show only Ready orders for Admins
   });
 
   const { toast, triggerToast, setToast } = useToast();
+
+  // Set default filter to "Ready" for Admins
+  useEffect(() => {
+    if (state.userRole === "Admin") {
+      setState((prev) => ({ ...prev, filterStatus: "Ready" }));
+    }
+  }, [state.userRole]);
 
   // Fetch functions
   const fetchOrders = useCallback(async () => {
@@ -322,7 +330,7 @@ const CardViewBOC = () => {
     }
   };
 
-  // Card rendering functions
+  // Card rendering function
   const renderOrderCard = (order, isArchived = false, isDeleted = false) => (
     <div
       key={order.transaction_id}
@@ -480,29 +488,37 @@ const CardViewBOC = () => {
             {state.loading ? "Refreshing..." : "🔄 Refresh"}
           </button>
 
-          {state.userRole === "Admin" ? (
-            <>
-              <div className="mb-3">
-                <button
-                  className="btn btn-outline-info me-2"
-                  onClick={() => {
-                    setState((prev) => ({ ...prev, showArchivedOrders: !prev.showArchivedOrders }));
-                    if (!state.showArchivedOrders) fetchArchivedOrders();
-                  }}
-                >
-                  {state.showArchivedOrders ? "Hide Archived Orders" : "Show Archived Orders"}
-                </button>
-                <button
-                  className="btn btn-outline-danger"
-                  onClick={() => {
-                    setState((prev) => ({ ...prev, showDeletedOrders: !prev.showDeletedOrders }));
-                    if (!state.showDeletedOrders) fetchDeletedOrders();
-                  }}
-                >
-                  {state.showDeletedOrders ? "Hide Deleted Orders" : "Show Deleted Orders"}
-                </button>
-              </div>
+          {state.userRole === "Admin" && (
+            <div className="mb-3">
+              <button
+                className="btn btn-outline-info me-2"
+                onClick={() => {
+                  setState((prev) => ({ ...prev, showArchivedOrders: !prev.showArchivedOrders }));
+                  if (!state.showArchivedOrders) fetchArchivedOrders();
+                }}
+              >
+                {state.showArchivedOrders ? "Hide Archived Orders" : "Show Archived Orders"}
+              </button>
+              <button
+                className="btn btn-outline-danger"
+                onClick={() => {
+                  setState((prev) => ({ ...prev, showDeletedOrders: !prev.showDeletedOrders }));
+                  if (!state.showDeletedOrders) fetchDeletedOrders();
+                }}
+              >
+                {state.showDeletedOrders ? "Hide Deleted Orders" : "Show Deleted Orders"}
+              </button>
+              <button
+                className="btn btn-outline-secondary ms-2"
+                onClick={() => setState((prev) => ({ ...prev, showOnlyReady: !prev.showOnlyReady }))}
+              >
+                {state.showOnlyReady ? "Show All Orders" : "Show Only Ready Orders"}
+              </button>
+            </div>
+          )}
 
+          {state.userRole === "Admin" && (
+            <>
               <div className="d-flex justify-content-end mb-3">
                 <select
                   className="form-select form-select-sm me-2"
@@ -531,29 +547,7 @@ const CardViewBOC = () => {
                 </select>
               </div>
 
-              <h6 className="bg-primary text-white p-2">
-                📋 Waiting Orders ({waitingCount})
-              </h6>
-              {filteredOrders.filter((o) => o.current_status === "Waiting").length > 0 ? (
-                filteredOrders
-                  .filter((o) => o.current_status === "Waiting")
-                  .map((order) => renderOrderCard(order))
-              ) : (
-                <p>No waiting orders match the selected filters.</p>
-              )}
-
-              <h6 className="bg-success text-white p-2 mt-3">
-                🚀 Active Orders ({activeCount})
-              </h6>
-              {filteredOrders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length > 0 ? (
-                filteredOrders
-                  .filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status))
-                  .map((order) => renderOrderCard(order))
-              ) : (
-                <p>No active orders match the selected filters.</p>
-              )}
-
-              <h6 className="bg-secondary text-white p-2 mt-3">
+              <h6 className="bg-secondary text-white p-2">
                 ✅ Ready Orders ({readyCount})
               </h6>
               {filteredOrders.filter((o) => o.current_status === "Ready").length > 0 ? (
@@ -562,6 +556,32 @@ const CardViewBOC = () => {
                   .map((order) => renderOrderCard(order))
               ) : (
                 <p>No ready orders match the selected filters.</p>
+              )}
+
+              {!state.showOnlyReady && (
+                <>
+                  <h6 className="bg-primary text-white p-2 mt-3">
+                    📋 Waiting Orders ({waitingCount})
+                  </h6>
+                  {filteredOrders.filter((o) => o.current_status === "Waiting").length > 0 ? (
+                    filteredOrders
+                      .filter((o) => o.current_status === "Waiting")
+                      .map((order) => renderOrderCard(order))
+                  ) : (
+                    <p>No waiting orders match the selected filters.</p>
+                  )}
+
+                  <h6 className="bg-success text-white p-2 mt-3">
+                    🚀 Active Orders ({activeCount})
+                  </h6>
+                  {filteredOrders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length > 0 ? (
+                    filteredOrders
+                      .filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status))
+                      .map((order) => renderOrderCard(order))
+                  ) : (
+                    <p>No active orders match the selected filters.</p>
+                  )}
+                </>
               )}
 
               {state.showArchivedOrders && (
@@ -731,7 +751,9 @@ const CardViewBOC = () => {
                 </div>
               </div>
             </>
-          ) : (
+          )}
+
+          {state.userRole !== "Admin" && (
             <div className="row">
               <div className="col-md-4">
                 <h6 className="bg-primary text-white p-2">
@@ -751,6 +773,7 @@ const CardViewBOC = () => {
               </div>
             </div>
           )}
+
         </div>
       </div>
 
