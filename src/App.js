@@ -5,6 +5,7 @@ import CardView from "./testcards";
 import CardViewBO from "./cardsWBO"
 import TrackOrderPage from "./TrackOrderPage";
 import AddOrder from "./Add_Order";
+import AddOrderC from "./add_orderclean";
 import AdminOrders from "./AdminOrders";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./styles/queueStyles.css";
