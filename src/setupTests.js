@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Toast, ToastContainer } from "react-bootstrap";
+import { Toast, ToastContainer, Collapse } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./styles/queueStyles.css";
@@ -62,7 +62,7 @@ const ElapsedTime = ({ statusStartedAt, fallbackTime }) => {
 const CardViewBOC = () => {
   const [state, setState] = useState({
     orders: [],
-    readyOrders: [], // New state for Ready orders from /api/orders/admin
+    readyOrders: [],
     archivedOrders: [],
     deletedOrders: [],
     userRole: "User",
@@ -79,10 +79,14 @@ const CardViewBOC = () => {
     orderNote: "",
     filterStatus: "All",
     filterCategory: "All",
+    filterPoType: "All",
     showCancelConfirm: null,
     cancelReason: "",
     loading: false,
     showOnlyReady: false,
+    showReady: true,
+    showWaiting: true,
+    showActive: true,
   });
 
   const { toast, triggerToast, setToast } = useToast();
@@ -272,8 +276,13 @@ const CardViewBOC = () => {
     const isRemixToSpraying = fromStatus === "Re-Mixing" && toStatus === "Spraying";
     const isSprayingToReadyNewMix = fromStatus === "Spraying" && toStatus === "Ready" && category === "New Mix";
     const isSprayingToReadyOthers = fromStatus === "Spraying" && toStatus === "Ready" && ["Mix More", "Colour Code"].includes(category);
-    const shouldPromptEmp =
+    let shouldPromptEmp =
       isFromWaitingToMixing || isMixingToSpraying || isSprayingToRemix || isRemixToSpraying || isSprayingToReadyOthers;
+
+    // For reverts from Ready, prompt for employee
+    if (fromStatus === "Ready") {
+      shouldPromptEmp = true;
+    }
 
     if (isSprayingToReadyNewMix && (!colourCode || colourCode === "Pending")) {
       setState((prev) => ({
@@ -327,6 +336,26 @@ const CardViewBOC = () => {
       console.error("Error updating status:", err);
       triggerToast("Error updating status!", "danger");
     }
+  };
+
+  // Handle revert from Ready
+  const handleRevert = async (order, newStatus) => {
+    if (!newStatus) return;
+
+    const reason = prompt(`Reason for reverting to ${newStatus}:`);
+    if (!reason?.trim()) {
+      triggerToast("Reason required!", "danger");
+      return;
+    }
+
+    setState((prev) => ({ ...prev, selectedOrder: order }));
+
+    const newNote = `${order.note ? order.note + "\n" : ""}Revert from Ready to ${newStatus}: ${reason}`;
+    setState((prev) => ({ ...prev, orderNote: newNote }));
+
+    await updateStatus(order, newStatus, order.colour_code, order.assigned_employee);
+
+    setState((prev) => ({ ...prev, orderNote: "", selectedOrder: null }));
   };
 
   // Styling for categories and selected order
@@ -417,9 +446,10 @@ const CardViewBOC = () => {
                 style={{ minWidth: "130px" }}
                 onClick={(e) => e.stopPropagation()}
                 value={order.current_status}
-                onChange={(e) =>
-                  updateStatus(order, e.target.value, order.colour_code, order.assigned_employee)
-                }
+                onChange={(e) => {
+                  e.stopPropagation();
+                  updateStatus(order, e.target.value, order.colour_code, order.assigned_employee);
+                }}
               >
                 <option value={order.current_status}>{order.current_status}</option>
                 {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
@@ -461,6 +491,19 @@ const CardViewBOC = () => {
         <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time} />
       </td>
       <td>
+        <select
+          className="form-select form-select-sm me-2"
+          style={{ display: "inline-block", width: "auto" }}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            e.stopPropagation();
+            handleRevert(order, e.target.value);
+          }}
+        >
+          <option value="">Revert to...</option>
+          <option value="Spraying">Spraying</option>
+          <option value="Re-Mixing">Re-Mixing</option>
+        </select>
         <button
           className="btn btn-success btn-sm"
           onClick={(e) => {
@@ -512,7 +555,8 @@ const CardViewBOC = () => {
     (o) =>
       (state.userRole === "Admin" ? !["Complete"].includes(o.current_status) : !["Ready", "Complete"].includes(o.current_status)) &&
       (state.filterStatus === "All" || o.current_status === state.filterStatus) &&
-      (state.filterCategory === "All" || o.category === state.filterCategory)
+      (state.filterCategory === "All" || o.category === state.filterCategory) &&
+      (state.filterPoType === "All" || o.po_type === state.filterPoType)
   );
 
   return (
@@ -537,7 +581,7 @@ const CardViewBOC = () => {
 
       <div className="card mb-3 shadow-sm border-0">
         <div className="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <h5 className="mb-0">🎨 Queue System View</h5>
+          <h5 className="mb-0">🎨 Queue System Dashboard</h5>
           <div>
             <span className="me-2">Role: {state.userRole}</span>
             <button className="btn btn-light btn-sm" onClick={() => setState((prev) => ({ ...prev, showLogin: true }))}>
@@ -619,7 +663,7 @@ const CardViewBOC = () => {
                   <option value="Ready">Ready</option>
                 </select>
                 <select
-                  className="form-select form-select-sm"
+                  className="form-select form-select-sm me-2"
                   value={state.filterCategory}
                   onChange={(e) => setState((prev) => ({ ...prev, filterCategory: e.target.value }))}
                   style={{ display: "inline-block", width: "auto" }}
@@ -630,67 +674,109 @@ const CardViewBOC = () => {
                   <option value="Colour Code">Colour Code</option>
                   <option value="Detailing">Detailing</option>
                 </select>
+                <select
+                  className="form-select form-select-sm"
+                  value={state.filterPoType}
+                  onChange={(e) => setState((prev) => ({ ...prev, filterPoType: e.target.value }))}
+                  style={{ display: "inline-block", width: "auto" }}
+                >
+                  <option value="All">All PO Types</option>
+                  <option value="Nexa">Nexa</option>
+                  <option value="Carvello">Carvello</option>
+                </select>
               </div>
 
               <h6 className="bg-secondary text-white p-2">
                 ✅ Ready Orders ({readyCount})
+                <button
+                  className="btn btn-sm btn-outline-light ms-2"
+                  onClick={() => setState((prev) => ({ ...prev, showReady: !prev.showReady }))}
+                >
+                  {state.showReady ? "Hide" : "Show"}
+                </button>
               </h6>
-              {state.readyOrders.length > 0 ? (
-                <div className="card shadow-sm border-0 mb-3">
-                  <div className="card-body p-0">
-                    <table className="table table-bordered mb-0">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Transaction ID</th>
-                          <th>Customer</th>
-                          <th>Customer No.</th>
-                          <th>Quantity</th>
-                          <th>Paint Details</th>
-                          <th>PO Type</th>
-                          <th>Note</th>
-                          <th>Assigned To</th>
-                          <th>Time in Status</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {state.readyOrders
-                          .filter(
-                            (o) =>
-                              (state.filterCategory === "All" || o.category === state.filterCategory)
-                          )
-                          .map((order) => renderReadyOrderRow(order))}
-                      </tbody>
-                    </table>
-                  </div>
+              <Collapse in={state.showReady}>
+                <div>
+                  {state.readyOrders.length > 0 ? (
+                    <div className="card shadow-sm border-0 mb-3">
+                      <div className="card-body p-0">
+                        <table className="table table-bordered mb-0">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Transaction ID</th>
+                              <th>Customer</th>
+                              <th>Customer No.</th>
+                              <th>Quantity</th>
+                              <th>Paint Details</th>
+                              <th>PO Type</th>
+                              <th>Note</th>
+                              <th>Assigned To</th>
+                              <th>Time in Status</th>
+                              <th>Revert</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {state.readyOrders
+                              .filter(
+                                (o) =>
+                                  (state.filterCategory === "All" || o.category === state.filterCategory) &&
+                                  (state.filterPoType === "All" || o.po_type === state.filterPoType)
+                              )
+                              .map((order) => renderReadyOrderRow(order))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-muted">No ready orders found.</p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-muted">No ready orders found.</p>
-              )}
+              </Collapse>
 
               {!state.showOnlyReady && (
                 <>
                   <h6 className="bg-primary text-white p-2 mt-3">
                     📋 Waiting Orders ({waitingCount})
+                    <button
+                      className="btn btn-sm btn-outline-light ms-2"
+                      onClick={() => setState((prev) => ({ ...prev, showWaiting: !prev.showWaiting }))}
+                    >
+                      {state.showWaiting ? "Hide" : "Show"}
+                    </button>
                   </h6>
-                  {filteredOrders.filter((o) => o.current_status === "Waiting").length > 0 ? (
-                    filteredOrders
-                      .filter((o) => o.current_status === "Waiting")
-                      .map((order) => renderOrderCard(order))
-                  ) : (
-                    <p>No waiting orders match the selected filters.</p>
-                  )}
+                  <Collapse in={state.showWaiting}>
+                    <div>
+                      {filteredOrders.filter((o) => o.current_status === "Waiting").length > 0 ? (
+                        filteredOrders
+                          .filter((o) => o.current_status === "Waiting")
+                          .map((order) => renderOrderCard(order))
+                      ) : (
+                        <p>No waiting orders match the selected filters.</p>
+                      )}
+                    </div>
+                  </Collapse>
 
                   <h6 className="bg-success text-white p-2 mt-3">
                     🚀 Active Orders ({activeCount})
+                    <button
+                      className="btn btn-sm btn-outline-light ms-2"
+                      onClick={() => setState((prev) => ({ ...prev, showActive: !prev.showActive }))}
+                    >
+                      {state.showActive ? "Hide" : "Show"}
+                    </button>
                   </h6>
-                  {filteredOrders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length > 0 ? (
-                    filteredOrders
-                      .filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status))
-                      .map((order) => renderOrderCard(order))
-                  ) : (
-                    <p>No active orders match the selected filters.</p>
-                  )}
+                  <Collapse in={state.showActive}>
+                    <div>
+                      {filteredOrders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length > 0 ? (
+                        filteredOrders
+                          .filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status))
+                          .map((order) => renderOrderCard(order))
+                      ) : (
+                        <p>No active orders match the selected filters.</p>
+                      )}
+                    </div>
+                  </Collapse>
                 </>
               )}
 
@@ -991,11 +1077,21 @@ const CardViewBOC = () => {
 
       {state.pendingColourUpdate && (
         <ColourCodeModal
-          onSubmit={({ colourCode, employeeCode }) => {
-            const fullOrder = state.orders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId) ||
-                             state.readyOrders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId);
-            updateStatus(fullOrder, state.pendingColourUpdate.newStatus, colourCode, employeeCode);
-            setState((prev) => ({ ...prev, pendingColourUpdate: null }));
+          onSubmit={async ({ colourCode, employeeCode }) => {
+            try {
+              const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
+              if (!res.data?.employee_name) {
+                triggerToast("Invalid employee code!", "danger");
+                return;
+              }
+              const employeeName = res.data.employee_name;
+              const fullOrder = state.orders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId) ||
+                               state.readyOrders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId);
+              updateStatus(fullOrder, state.pendingColourUpdate.newStatus, colourCode, employeeName);
+              setState((prev) => ({ ...prev, pendingColourUpdate: null }));
+            } catch {
+              triggerToast("Unable to verify employee!", "danger");
+            }
           }}
           onCancel={() => setState((prev) => ({ ...prev, pendingColourUpdate: null }))}
         />
