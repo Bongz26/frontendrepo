@@ -1,1099 +1,861 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Toast, ToastContainer, Collapse } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Toast, ToastContainer } from "react-bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./styles/queueStyles.css";
-import "./styles/queueSortStyles.css";
-import LoginPopup from "./LoginPopup";
-import ColourCodeModal from "./ColourCodeModal";
 
-const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
+const BASE_URL = "https://queue-backendser.onrender.com";
 
-// Custom hook for toast notifications
-const useToast = () => {
-  const [toast, setToast] = useState({ message: "", type: "success", show: false });
+const AddOrderC = () => {
+  const [showForm, setShowForm] = useState(false);
+  const [orderType, setOrderType] = useState("Paid");
+  const [poOption, setPoOption] = useState(""); // New state for PO option
+  const [transSuffix, setTransSuffix] = useState("");
+  const [orderCount, setOrderCount] = useState(1);
+  const [orders, setOrders] = useState([
+    {
+      category: "New Mix",
+      paintType: "",
+      colorCode: "",
+      paintQuantity: "",
+    },
+  ]);
+  const [clientName, setClientName] = useState("");
+  const [clientContact, setClientContact] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [eta, setEta] = useState("");
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [activeCount, setActiveCount] = useState(0);
+  const [waitingCount, setWaitingCount] = useState(0);
+
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
+  const [showToast, setShowToast] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [userRole, setUserRole] = useState("Admin");
+  const [contactSuggestions, setContactSuggestions] = useState([]);
+  const [nameSuggestions, setNameSuggestions] = useState([]);
 
   const triggerToast = (message, type = "success") => {
-    setToast({ message, type, show: true });
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
   };
 
-  return { toast, triggerToast, setToast };
-};
-
-// ElapsedTime component
-const ElapsedTime = ({ statusStartedAt, fallbackTime }) => {
-  const [displayTime, setDisplayTime] = useState("");
+  const formatDateDDMMYYYY = () => {
+    const date = new Date();
+    return `${String(date.getDate()).padStart(2, "0")}${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}${date.getFullYear()}`;
+  };
 
   useEffect(() => {
-    const validTime = statusStartedAt || fallbackTime;
-    if (!validTime) return;
+    axios
+      .get(`${BASE_URL}/api/orders`)
+      .then((res) => {
+        const orders = res.data;
+        setActiveCount(
+          orders.filter((o) => o.current_status === "In Progress").length
+        );
+        setWaitingCount(
+          orders.filter((o) => o.current_status === "Waiting").length
+        );
+      })
+      .catch(() => triggerToast("❌ Could not fetch job count", "danger"));
+  }, []);
 
-    const updateElapsed = () => {
-      const start = new Date(validTime).getTime();
-      const now = Date.now();
-      const diffMs = now - start;
-
-      if (diffMs < 0) {
-        setDisplayTime("0 min");
-        return;
-      }
-
-      const totalMinutes = Math.floor(diffMs / 60000);
-      const days = Math.floor(totalMinutes / 1440);
-      const hours = Math.floor((totalMinutes % 1440) / 60);
-      const minutes = totalMinutes % 60;
-
-      let parts = [];
-      if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
-      if (hours > 0) parts.push(`${hours} hr${hours > 1 ? "s" : ""}`);
-      if (minutes > 0 || parts.length === 0) parts.push(`${minutes} min`);
-      setDisplayTime(parts.join(" "));
+  useEffect(() => {
+    const baseTimes = {
+      "New Mix": 30,
+      "Mix More": 15,
+      "Colour Code": 30,
     };
+    const base = baseTimes[orders[0]?.category] || 15;
+    const jobPosition = activeCount + waitingCount + 1;
+    setEta(jobPosition * base);
+  }, [orders, activeCount, waitingCount]);
 
-    updateElapsed();
-    const interval = setInterval(updateElapsed, 60000);
-    return () => clearInterval(interval);
-  }, [statusStartedAt, fallbackTime]);
-
-  return <span>⏱ {displayTime}</span>;
-};
-
-const CardViewBOC = () => {
-  const [state, setState] = useState({
-    orders: [],
-    readyOrders: [],
-    archivedOrders: [],
-    deletedOrders: [],
-    userRole: "User",
-    showLogin: false,
-    pendingColourUpdate: null,
-    recentlyUpdatedId: null,
-    selectedOrder: null,
-    staffList: [],
-    showAddStaff: false,
-    showEditStaff: null,
-    showArchivedOrders: false,
-    showDeletedOrders: false,
-    newStaff: { employee_name: "", code: "", role: "" },
-    orderNote: "",
-    filterStatus: "All",
-    filterCategory: "All",
-    filterPoType: "All",
-    showCancelConfirm: null,
-    cancelReason: "",
-    loading: false,
-    showOnlyReady: false,
-    showReady: true,
-    showWaiting: true,
-    showActive: true,
-  });
-
-  const { toast, triggerToast, setToast } = useToast();
-
-  // Set default filter to "Ready" for Admins
   useEffect(() => {
-    if (state.userRole === "Admin") {
-      setState((prev) => ({ ...prev, filterStatus: "Ready" }));
-    }
-  }, [state.userRole]);
-
-  // Fetch functions
-  const fetchOrders = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true }));
-    try {
-      const response = await axios.get(`${BASE_URL}/api/orders`);
-      setState((prev) => ({ ...prev, orders: response.data }));
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-      triggerToast("Error fetching orders.", "danger");
-    } finally {
-      setState((prev) => ({ ...prev, loading: false }));
+    const lastContact = localStorage.getItem("last_contact");
+    if (lastContact) {
+      setClientContact(lastContact);
+      const saved = localStorage.getItem(`client_${lastContact}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setClientName(parsed.name);
+      }
     }
   }, []);
 
-  const fetchReadyOrders = useCallback(async () => {
-    try {
-      const response = await axios.get(`${BASE_URL}/api/orders/admin`);
-      setState((prev) => ({ ...prev, readyOrders: response.data }));
-    } catch (err) {
-      console.error("Error fetching ready orders:", err);
-      triggerToast("❌ Error fetching ready orders.", "danger");
-    }
-  }, []);
+  const validateContact = (input) => /^\d{10}$/.test(input);
 
-  const fetchStaff = useCallback(async () => {
-    try {
-      const response = await axios.get(`${BASE_URL}/api/staff`);
-      setState((prev) => ({ ...prev, staffList: response.data }));
-    } catch (err) {
-      console.error("Error fetching staff:", err);
-      triggerToast("Error fetching staff list.", "danger");
-    }
-  }, []);
+  const handleContactChange = (value) => {
+    setClientContact(value);
+    setNameSuggestions([]);
 
-  const fetchArchivedOrders = useCallback(async () => {
-    try {
-      const response = await axios.get(`${BASE_URL}/api/orders/archived`);
-      setState((prev) => ({ ...prev, archivedOrders: response.data }));
-    } catch (err) {
-      console.error("Error fetching archived orders:", err);
-      triggerToast("Error fetching archived orders.", "danger");
-    }
-  }, []);
+    const keys = Object.keys(localStorage);
+    const matches = keys.filter((k) =>
+      k.startsWith("client_") && k.includes(value)
+    );
+    const suggestions = matches.map((k) => k.replace("client_", ""));
+    setContactSuggestions(suggestions);
 
-  const fetchDeletedOrders = useCallback(async () => {
-    try {
-      const response = await axios.get(`${BASE_URL}/api/orders/deleted`);
-      setState((prev) => ({ ...prev, deletedOrders: response.data }));
-    } catch (err) {
-      console.error("Error fetching deleted orders:", err);
-      triggerToast("Error fetching deleted orders.", "danger");
-    }
-  }, []);
-
-  // Handlers
-  const addStaff = async () => {
-    try {
-      await axios.post(`${BASE_URL}/api/staff`, state.newStaff);
-      setState((prev) => ({
-        ...prev,
-        newStaff: { employee_name: "", code: "", role: "" },
-        showAddStaff: false,
-      }));
-      fetchStaff();
-      triggerToast("Staff added successfully!", "success");
-    } catch (err) {
-      console.error("Error adding staff:", err);
-      triggerToast("Error adding staff.", "danger");
+    if (/^\d{10}$/.test(value)) {
+      const stored = localStorage.getItem(`client_${value}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setClientName(parsed.name);
+      }
     }
   };
 
-  const editStaff = async (code) => {
+  const handleContactSuggestionClick = (number) => {
+    setClientContact(number);
+    const stored = localStorage.getItem(`client_${number}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setClientName(parsed.name);
+    }
+    
+    setContactSuggestions([]);
+    setNameSuggestions([]);
+  };
+
+  const handleNameChange = (value) => {
+    setClientName(value);
+    setContactSuggestions([]);
+
+    const keys = Object.keys(localStorage);
+    const matches = keys.filter((k) => {
+      const stored = localStorage.getItem(k);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.name.toLowerCase().includes(value.toLowerCase());
+      }
+      return false;
+    });
+    const suggestions = matches.map((k) => ({
+      number: k.replace("client_", ""),
+      name: JSON.parse(localStorage.getItem(k)).name,
+    }));
+    setNameSuggestions(suggestions);
+  };
+
+  const handleNameSuggestionClick = (number, name) => {
+    setClientContact(number);
+    setClientName(name);
+    setNameSuggestions([]);
+    setContactSuggestions([]);
+  };
+
+  const handleOrderCountChange = (value) => {
+    const count = parseInt(value) || 1;
+    if (count < 1 || count > 10) {
+      triggerToast("❌ Number of orders must be between 1 and 10", "danger");
+      return;
+    }
+    setOrderCount(count);
+    setOrders((prev) => {
+      const newOrders = [...prev];
+      while (newOrders.length < count) {
+        newOrders.push({
+          category: "New Mix",
+          paintType: "",
+          colorCode: "",
+          paintQuantity: "",
+        });
+      }
+      return newOrders.slice(0, count);
+    });
+  };
+
+  const handleOrderChange = (index, field, value) => {
+    setOrders((prev) => {
+      const newOrders = [...prev];
+      newOrders[index] = { ...newOrders[index], [field]: value };
+      return newOrders;
+    });
+  };
+
+  const handleSearch = async () => {
     try {
-      await axios.put(`${BASE_URL}/api/staff/${code}`, state.showEditStaff);
-      setState((prev) => ({ ...prev, showEditStaff: null }));
-      fetchStaff();
-      triggerToast("Staff updated successfully!", "success");
-    } catch (err) {
-      console.error("Error editing staff:", err);
-      triggerToast("Error editing staff.", "danger");
+      const res = await axios.get(`${BASE_URL}/api/orders/search`);
+      const filtered = res.data.filter(
+        (order) =>
+          order.transaction_id.includes(searchTerm) ||
+          order.client_contact.includes(searchTerm) ||
+          order.customer_name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setSearchResults(filtered);
+    } catch {
+      triggerToast("❌ Could not search orders", "danger");
     }
   };
 
-  const removeStaff = async (code) => {
-    try {
-      await axios.delete(`${BASE_URL}/api/staff/${code}`);
-      setState((prev) => ({
-        ...prev,
-        staffList: prev.staffList.filter((emp) => emp.code !== code),
-      }));
-      triggerToast("Staff removed successfully!", "success");
-    } catch (err) {
-      console.error("Error removing staff:", err);
-      triggerToast("Error removing staff.", "danger");
+  // New: Handle Enter key for search and Clear button
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSearch();
     }
   };
 
-  const cancelOrder = async (orderId) => {
-    if (state.userRole !== "Admin") {
-      triggerToast("Only Admins can cancel orders!", "danger");
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    setSearchResults([]);
+  };
+
+  const printReceipt = (order) => {
+    const win = window.open("", "_blank", "width=600,height=400");
+    if (!win) {
+      triggerToast("❌ Printing blocked", "danger");
       return;
     }
 
-    if (!state.cancelReason || state.cancelReason.trim() === "") {
-      triggerToast("A reason is required to cancel an order!", "danger");
+    const formatLine = (label, value) => `${label.padEnd(15)}: ${value}`;
+    const receipt = `
+=============================================
+      PROCUSHION QUEUE SYSTEM - RECEIPT
+=============================================
+${formatLine("Order No.", `#${order.transaction_id}`)}
+${formatLine("Client", order.customer_name)}
+${formatLine("Contact", order.client_contact)}
+${formatLine("Car Details", order.paint_type)}
+${formatLine("Colour Code", order.colour_code)} ${
+      order.colour_code === "Pending" ? "(To be assigned)" : ""
+    }
+${formatLine("Category", order.category)}
+
+Track ID       : TRK-${order.transaction_id}
+
+----------------------------------------
+  WhatsApp Support: 083 579 6982
+----------------------------------------
+
+     Thank you for your order!
+========================================
+`;
+
+    win.document.write(`
+      <html><head><title>Receipt</title>
+      <style>body{font-family:monospace;white-space:pre;font-size:12px;margin:0;padding:10px;}</style>
+      </head><body>${receipt}</body></html>
+    `);
+    win.document.close();
+    win.print();
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const today = formatDateDDMMYYYY();
+    const startTime = new Date().toISOString();
+    const count = orderCount;
+
+    if (count < 1 || count > 10) {
+      triggerToast("❌ Number of orders must be between 1 and 10", "danger");
+      setLoading(false);
       return;
     }
 
-    try {
-      await axios.delete(`${BASE_URL}/api/orders/${orderId}`, {
-        data: { userRole: state.userRole, note: state.cancelReason },
-      });
-      fetchOrders();
-      fetchReadyOrders();
-      fetchDeletedOrders();
-      setState((prev) => ({
-        ...prev,
-        selectedOrder: null,
-        showCancelConfirm: null,
-        cancelReason: "",
-      }));
-      triggerToast("Order cancelled successfully!", "success");
-    } catch (err) {
-      console.error("Error cancelling order:", err);
-      triggerToast(err.response?.data?.error || "Error cancelling order.", "danger");
-    }
-  };
+    let suffix;
+    let baseTransactionID;
 
-  const updateNote = async (order) => {
-    try {
-      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
-        current_status: order.current_status,
-        assigned_employee: order.assigned_employee || null,
-        colour_code: order.colour_code || "Pending",
-        note: state.orderNote || null,
-        userRole: state.userRole,
-        old_status: order.current_status,
-      });
-      setState((prev) => ({ ...prev, orderNote: "", selectedOrder: null }));
-      fetchOrders();
-      fetchReadyOrders();
-      triggerToast("Note updated successfully!", "success");
-    } catch (err) {
-      console.error("Error updating note:", err);
-      triggerToast(err.response?.data?.error || "Error updating note.", "danger");
-    }
-  };
-
-  const markAsPaid = async (orderId) => {
-    if (state.userRole !== "Admin") {
-      triggerToast("❌ Only Admins can mark orders as Paid!", "danger");
-      return;
-    }
-
-    try {
-      await axios.put(`${BASE_URL}/api/orders/mark-paid/${orderId}`, { userRole: state.userRole });
-      triggerToast("✅ Order has been Completed!");
-      fetchOrders();
-      fetchReadyOrders();
-    } catch (err) {
-      console.error("Error marking order as Complete:", err);
-      triggerToast("❌ Error marking order as Complete.", "danger");
-    }
-  };
-
-  const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
-    const { category, current_status: fromStatus } = order;
-    const toStatus = newStatus;
-    let updatedColourCode = colourCode;
-    let employeeName = currentEmp || "Unassigned";
-
-    const isFromWaitingToMixing =
-      fromStatus === "Waiting" && toStatus === "Mixing" && ["New Mix", "Mix More", "Colour Code"].includes(category);
-    const isMixingToSpraying = fromStatus === "Mixing" && toStatus === "Spraying";
-    const isSprayingToRemix = fromStatus === "Spraying" && toStatus === "Re-Mixing";
-    const isRemixToSpraying = fromStatus === "Re-Mixing" && toStatus === "Spraying";
-    const isSprayingToReadyNewMix = fromStatus === "Spraying" && toStatus === "Ready" && category === "New Mix";
-    const isSprayingToReadyOthers = fromStatus === "Spraying" && toStatus === "Ready" && ["Mix More", "Colour Code"].includes(category);
-    let shouldPromptEmp =
-      isFromWaitingToMixing || isMixingToSpraying || isSprayingToRemix || isRemixToSpraying || isSprayingToReadyOthers;
-
-    // For reverts from Ready, prompt for employee
-    if (fromStatus === "Ready") {
-      shouldPromptEmp = true;
-    }
-
-    if (isSprayingToReadyNewMix && (!colourCode || colourCode === "Pending")) {
-      setState((prev) => ({
-        ...prev,
-        pendingColourUpdate: {
-          orderId: order.transaction_id,
-          newStatus: toStatus,
-          employeeName: currentEmp,
-        },
-      }));
-      return;
-    }
-
-    if (shouldPromptEmp) {
-      const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
-      if (!empCodeFromPrompt) {
-        triggerToast("Employee Code required!", "danger");
+    if (orderType === "Order") {
+      suffix = Math.floor(1000 + Math.random() * 9000);
+      baseTransactionID = `${today}-ORD-${suffix}`;
+    } else {
+      if (!/^\d{4}$/.test(transSuffix)) {
+        triggerToast("❌ Paid orders require a 4-digit Transaction ID", "danger");
+        setLoading(false);
         return;
       }
-      try {
-        const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
-        if (!res.data?.employee_name) {
-          triggerToast("Invalid employee code!", "danger");
+      // New: Validate PO option for Paid orders
+      if (!poOption) {
+        triggerToast("❌ Please select a PO option (Nexa or Carvello) for Paid orders", "danger");
+        setLoading(false);
+        return;
+      }
+      suffix = transSuffix;
+      baseTransactionID = `${today}-PO-${suffix}`;
+    }
+
+    // ✅ Basic Validation
+    if (!validateContact(clientContact)) {
+      triggerToast("⚠️ Enter *10-digit* phone number, not name", "danger");
+      setLoading(false);
+      return;
+    }
+    if (!clientName.trim()) {
+      triggerToast("❌ Client name required", "danger");
+      setLoading(false);
+      return;
+    }
+
+    for (let i = 0; i < count; i++) {
+      const order = orders[i];
+      if (!order.paintType.trim()) {
+        triggerToast(`❌ Car Details required for order ${i + 1}`, "danger");
+        setLoading(false);
+        return;
+      }
+      if (!order.colorCode.trim() && order.category !== "New Mix") {
+        triggerToast(`❌ Colour Code required for order ${i + 1}`, "danger");
+        setLoading(false);
+        return;
+      }
+      if (!order.paintQuantity) {
+        triggerToast(`❌ Select paint quantity for order ${i + 1}`, "danger");
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
+      const existingOrders = await axios.get(`${BASE_URL}/api/orders`);
+      const ordersToCreate = [];
+
+      // Process multiple orders
+      for (let i = 0; i < count; i++) {
+        const order = orders[i];
+        let finalTransactionID = count > 1 ? `${baseTransactionID}-${i + 1}` : baseTransactionID;
+
+        // Check for duplicates in existing orders
+        let isDuplicate = existingOrders.data.some(
+          (o) => o.transaction_id === finalTransactionID
+        );
+
+        if (isDuplicate && orderType === "Order") {
+          let retries = 0;
+          let newSuffix;
+          do {
+            newSuffix = Math.floor(1000 + Math.random() * 9000);
+            baseTransactionID = `${today}-ORD-${newSuffix}`;
+            finalTransactionID = count > 1 ? `${baseTransactionID}-${i + 1}` : baseTransactionID;
+            isDuplicate = existingOrders.data.some(
+              (o) => o.transaction_id === finalTransactionID
+            );
+            retries++;
+          } while (isDuplicate && retries < 5);
+
+          if (isDuplicate) {
+            triggerToast(`⚠️ Could not generate unique Transaction ID for order ${i + 1}`, "danger");
+            setLoading(false);
+            return;
+          }
+        } else if (isDuplicate) {
+          triggerToast(`⚠️ Transaction ID ${finalTransactionID} already exists. Please use a different 4-digit ID.`, "danger");
+          setLoading(false);
           return;
         }
-        employeeName = res.data.employee_name;
-      } catch {
-        triggerToast("Unable to verify employee!", "danger");
-        return;
-      }
-    }
 
-    try {
-      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
-        current_status: toStatus,
-        assigned_employee: employeeName,
-        colour_code: updatedColourCode,
-        note: state.orderNote || order.note,
-        userRole: state.userRole,
-        old_status: fromStatus,
-      });
-      setState((prev) => ({ ...prev, recentlyUpdatedId: order.transaction_id }));
-      setTimeout(() => setState((prev) => ({ ...prev, recentlyUpdatedId: null })), 2000);
-      setTimeout(() => {
-        fetchOrders();
-        fetchReadyOrders();
-      }, 500);
-      setState((prev) => ({ ...prev, orderNote: "" }));
-      triggerToast("Status updated successfully!", "success");
-    } catch (err) {
-      console.error("Error updating status:", err);
-      triggerToast("Error updating status!", "danger");
-    }
-  };
-
-  // Handle revert from Ready
-  const handleRevert = async (order, newStatus) => {
-    if (!newStatus) return;
-
-    const reason = prompt(`Reason for reverting to ${newStatus}:`);
-    if (!reason?.trim()) {
-      triggerToast("Reason required!", "danger");
-      return;
-    }
-
-    setState((prev) => ({ ...prev, selectedOrder: order }));
-
-    const newNote = `${order.note ? order.note + "\n" : ""}Revert from Ready to ${newStatus}: ${reason}`;
-    setState((prev) => ({ ...prev, orderNote: newNote }));
-
-    await updateStatus(order, newStatus, order.colour_code, order.assigned_employee);
-
-    setState((prev) => ({ ...prev, orderNote: "", selectedOrder: null }));
-  };
-
-  // Styling for categories and selected order
-  const getCategoryClass = (cat) => {
-    switch (cat?.toLowerCase()) {
-      case "mixing":
-        return "card-category-mixing";
-      case "spraying":
-        return "card-category-spraying";
-      case "re-mixing":
-        return "card-category-remix";
-      case "detailing":
-        return "card-category-detailing";
-      case "ready":
-        return "card-category-ready";
-      default:
-        return "card-category-default";
-    }
-  };
-
-  const getModalCategoryClass = (cat) => {
-    switch (cat?.toLowerCase()) {
-      case "mixing":
-        return "modal-category-mixing";
-      case "spraying":
-        return "modal-category-spraying";
-      case "re-mixing":
-        return "modal-category-remix";
-      case "detailing":
-        return "modal-category-detailing";
-      case "ready":
-        return "modal-category-ready";
-      default:
-        return "modal-category-default";
-    }
-  };
-
-  // Card rendering function
-  const renderOrderCard = (order, isArchived = false, isDeleted = false) => (
-    <div
-      key={order.transaction_id}
-      className={`card mb-2 px-3 py-2 shadow-sm border-0 ${
-        state.recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
-      } ${getCategoryClass(order.current_status)} ${
-        state.selectedOrder?.transaction_id === order.transaction_id ? "selected-order" : ""
-      }`}
-      style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
-      onClick={() => setState((prev) => ({ ...prev, selectedOrder: order }))}
-    >
-      <div className="d-flex justify-content-between">
-        <div>
-          <strong>🆔 {order.transaction_id}</strong> • <span className="text-muted">{order.category}</span>
-          <br />
-          <span>{order.customer_name}</span> <small className="text-muted">({order.client_contact})</small>
-          <br />
-          <small className="text-muted">🎨 {order.paint_type} — {order.paint_quantity}</small>
-          <br />
-          <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
-          <br />
-          <small className="text-muted">PO Type: {order.po_type || "N/A"}</small>
-          <br />
-          <small className="text-muted">Note: {order.note || "No note"}</small>
-        </div>
-        <div className="text-end">
-          <small className="text-muted">
-            <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time} /> in {order.current_status}
-          </small>
-          <br />
-          <span
-            className={`badge ${
-              order.current_status === "Waiting" ? "bg-primary" :
-              order.current_status === "Mixing" ? "bg-info" :
-              order.current_status === "Spraying" ? "bg-success" :
-              order.current_status === "Re-Mixing" ? "bg-warning" :
-              order.current_status === "Ready" ? "bg-secondary" :
-              "bg-dark"
-            } mb-1`}
-          >
-            {order.current_status}
-          </span>
-          <br />
-          <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small>
-          {!isArchived && !isDeleted && (
-            <>
-              <br />
-              <select
-                className="form-select form-select-sm mt-1"
-                style={{ minWidth: "130px" }}
-                onClick={(e) => e.stopPropagation()}
-                value={order.current_status}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  updateStatus(order, e.target.value, order.colour_code, order.assigned_employee);
-                }}
-              >
-                <option value={order.current_status}>{order.current_status}</option>
-                {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
-                {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
-                {order.current_status === "Spraying" && (
-                  <>
-                    <option value="Re-Mixing">Back to Mixing</option>
-                    <option value="Ready">Ready</option>
-                  </>
-                )}
-                {order.current_status === "Re-Mixing" && <option value="Spraying">Spraying</option>}
-                {order.current_status === "Ready" && state.userRole === "Admin" && (
-                  <option value="Complete">Complete</option>
-                )}
-              </select>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderReadyOrderRow = (order) => (
-    <tr
-      key={order.transaction_id}
-      className={state.selectedOrder?.transaction_id === order.transaction_id ? "selected-order" : ""}
-      style={{ cursor: "pointer" }}
-      onClick={() => setState((prev) => ({ ...prev, selectedOrder: order }))}
-    >
-      <td>{order.transaction_id}</td>
-      <td>{order.customer_name}</td>
-      <td>{order.client_contact}</td>
-      <td>{order.paint_quantity || "0.00"}</td>
-      <td>{order.paint_type}</td>
-      <td>{order.po_type || "N/A"}</td>
-      <td>{order.note || "No note"}</td>
-      <td>{order.assigned_employee || "Unassigned"}</td>
-      <td>
-        <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time} />
-      </td>
-      <td>
-        <select
-          className="form-select form-select-sm me-2"
-          style={{ display: "inline-block", width: "auto" }}
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) => {
-            e.stopPropagation();
-            handleRevert(order, e.target.value);
-          }}
-        >
-          <option value="">Revert to...</option>
-          <option value="Spraying">Spraying</option>
-          <option value="Re-Mixing">Re-Mixing</option>
-        </select>
-        <button
-          className="btn btn-success btn-sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            markAsPaid(order.transaction_id);
-          }}
-        >
-          {order.order_type === "Order" ? "💰 Mark as Paid" : "✅ Mark as Complete"}
-        </button>
-      </td>
-    </tr>
-  );
-
-  const renderArchivedCard = (order) => renderOrderCard(order, true);
-  const renderDeletedCard = (order) => renderOrderCard(order, false, true);
-
-  // Initial data fetch
-  useEffect(() => {
-    fetchOrders();
-    if (state.userRole === "Admin") {
-      const fetchWithRetry = async (fetchFn, name, retries = 3) => {
-        for (let i = 0; i < retries; i++) {
-          try {
-            await fetchFn();
-            console.log(`${name} fetched successfully`);
-            break;
-          } catch (err) {
-            console.error(`Attempt ${i + 1} failed for ${name}:`, err);
-            if (i === retries - 1) triggerToast(`Failed to fetch ${name} after ${retries} attempts`, "danger");
+        // For Paid orders, check each transaction_id individually
+        if (orderType === "Paid") {
+          const checkRes = await axios.get(`${BASE_URL}/api/orders/check-id/${finalTransactionID}`);
+          if (checkRes.data.exists) {
+            triggerToast(`❌ Transaction ID ${finalTransactionID} is already used. Please enter a different 4-digit ID.`, "danger");
+            setLoading(false);
+            return;
           }
         }
-      };
-      fetchWithRetry(fetchStaff, "staff");
-      fetchWithRetry(fetchReadyOrders, "ready orders");
-      fetchWithRetry(fetchArchivedOrders, "archived orders");
-    }
-    const interval = setInterval(() => {
-      fetchOrders();
-      if (state.userRole === "Admin") fetchReadyOrders();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [fetchOrders, fetchReadyOrders, fetchStaff, fetchArchivedOrders, state.userRole]);
 
-  // Order filtering
-  const waitingCount = state.orders.filter((o) => o.current_status === "Waiting").length;
-  const activeCount = state.orders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length;
-  const readyCount = state.readyOrders.length;
-  const filteredOrders = state.orders.filter(
-    (o) =>
-      (state.userRole === "Admin" ? !["Complete"].includes(o.current_status) : !["Ready", "Complete"].includes(o.current_status)) &&
-      (state.filterStatus === "All" || o.current_status === state.filterStatus) &&
-      (state.filterCategory === "All" || o.category === state.filterCategory) &&
-      (state.filterPoType === "All" || o.po_type === state.filterPoType)
-  );
+        const newOrder = {
+          transaction_id: finalTransactionID,
+          customer_name: clientName,
+          client_contact: clientContact,
+          paint_type: order.paintType,
+          colour_code: order.category === "New Mix" ? "Pending" : order.colorCode || "N/A",
+          category: order.category,
+          paint_quantity: order.paintQuantity,
+          current_status: "Waiting",
+          order_type: orderType,
+          po_type: orderType === "Paid" ? poOption : undefined, // New: Add PO option to order data
+          start_time: startTime,
+        };
+
+        ordersToCreate.push(newOrder);
+      }
+
+      // Submit all orders
+      for (const order of ordersToCreate) {
+        await axios.post(`${BASE_URL}/api/orders`, order);
+        localStorage.setItem(
+          `client_${clientContact}`,
+          JSON.stringify({ name: clientName })
+        );
+        setTimeout(() => printReceipt(order), 300);
+      }
+
+      triggerToast(`✅ ${count} order${count > 1 ? "s" : ""} placed successfully`);
+
+      setShowForm(false);
+      // Reset
+      setTransSuffix("");
+      setPoOption(""); // New: Reset PO option
+      setOrderCount(1);
+      setOrders([
+        { category: "New Mix", paintType: "", colorCode: "", paintQuantity: "" },
+      ]);
+      setClientName("");
+      setClientContact("");
+      setStartTime(new Date().toISOString());
+    } catch (error) {
+      console.error("Order error:", error);
+      triggerToast(
+        `❌ Could not place order(s): ${
+          error.response?.data?.message || "Check for duplicate"
+        }`,
+        "danger"
+      );
+    } finally {
+      setLoading(false);
+    }
+
+    setContactSuggestions([]);
+    setNameSuggestions([]);
+  };
+
+  const formatMinutesToHours = (minutes) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hrs > 0
+      ? `${hrs}hr${hrs > 1 ? "s" : ""} ${mins > 0 ? `${mins}min` : ""}`.trim()
+      : `${mins}min`;
+  };
+
+  const formFields = [
+    {
+      label: "Order Type",
+      type: "select",
+      value: orderType,
+      onChange: (val) => setOrderType(val),
+      options: ["Paid", "Order"],
+      required: true,
+    },
+    // New: PO Options (only for Paid)
+    ...(orderType === "Paid" ? [{
+      label: "PO Option (Required)",
+      type: "radio",
+      value: poOption,
+      onChange: (val) => setPoOption(val),
+      options: ["Nexa", "Carvello"],
+      required: true,
+    }] : []),
+    {
+      label: "Transaction ID",
+      type: "text",
+      value: transSuffix,
+      onChange: (val) => {
+        const digits = val.replace(/\D/g, "").slice(0, 4);
+        setTransSuffix(digits);
+      },
+      disabled: orderType === "Order",
+      required: orderType !== "Order",
+      placeholder: "Enter 4-digit ID",
+    },
+    {
+      label: "Number of Orders",
+      type: "number",
+      value: orderCount,
+      onChange: handleOrderCountChange,
+      required: true,
+      placeholder: "Enter number of orders (1-10)",
+    },
+    {
+      label: "Cell Number",
+      type: "text",
+      name: "clientContact",
+      value: clientContact,
+      onChange: handleContactChange,
+      required: true,
+    },
+    {
+      label: "Client Name",
+      type: "text",
+      name: "clientName",
+      value: clientName,
+      onChange: handleNameChange,
+      required: true,
+    },
+  ];
+
+  const orderFields = [
+    {
+      label: "Category",
+      type: "select",
+      name: "category",
+      options: ["New Mix", "Mix More", "Colour Code"],
+      required: true,
+    },
+    { label: "Car Details", type: "text", name: "paintType", required: true },
+    {
+      label: "Colour Code",
+      type: "text",
+      name: "colorCode",
+      disabled: (order) => order.category === "New Mix",
+    },
+    {
+      label: "Paint Quantity",
+      type: "select",
+      name: "paintQuantity",
+      options: [
+        "250ml",
+        "500ml",
+        "750ml",
+        "1L",
+        "1.25L",
+        "1.5L",
+        "2L",
+        "2.5L",
+        "3L",
+        "4L",
+        "5L",
+        "10L",
+      ],
+      required: true,
+    },
+  ];
+
+  // New: Render function for radio buttons (since formFields now includes a radio type)
+  const renderField = (field) => {
+    if (field.type === "radio") {
+      return (
+        <div className="form-check-group mt-2">
+          {field.options.map((opt) => (
+            <div key={opt} className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                id={`${field.label}-${opt}`}
+                value={opt}
+                checked={field.value === opt}
+                onChange={(e) => field.onChange(e.target.value)}
+                required={field.required}
+              />
+              <label className="form-check-label" htmlFor={`${field.label}-${opt}`}>
+                {opt}
+              </label>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    // ... (other types remain the same, but I'll include the full render in the JSX below)
+  };
 
   return (
     <div className="container mt-4">
-      <style>
-        {`
-          .selected-order {
-            background-color: #fff3cd !important;
-            border: 2px solid #ffca2c !important;
-          }
-          .card-category-ready {
-            background-color: #e9ecef;
-          }
-          .modal-category-ready {
-            border-left: 5px solid #6c757d;
-          }
-          .selected-order td {
-            background-color: #fff3cd !important;
-          }
-        `}
-      </style>
-
-      <div className="card mb-3 shadow-sm border-0">
-        <div className="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-          <h5 className="mb-0">🎨 Queue System View</h5>
-          <div>
-            <span className="me-2">Role: {state.userRole}</span>
-            <button className="btn btn-light btn-sm" onClick={() => setState((prev) => ({ ...prev, showLogin: true }))}>
-              Login as Admin
-            </button>
-          </div>
+      <div className="card shadow-sm border-0">
+        <div className="card-header bg-primary text-white">
+          <h5 className="mb-0">📝 Add New Order</h5>
         </div>
+
         <div className="card-body">
-          {state.showLogin && (
-            <LoginPopup
-              onLogin={(role) => setState((prev) => ({ ...prev, userRole: role, showLogin: false }))}
-              onClose={() => setState((prev) => ({ ...prev, showLogin: false }))}
-            />
+          {userRole === "Admin" && (
+            <button
+              className="btn btn-outline-dark mb-3"
+              onClick={() => (window.location.href = "/admin-orders")}
+            >
+              🧾 Go to Admin Orders
+            </button>
           )}
 
-          <div className="d-flex justify-content-between mb-3">
-            <button
-              className="btn btn-outline-secondary"
-              onClick={() => {
-                fetchOrders();
-                if (state.userRole === "Admin") fetchReadyOrders();
-              }}
-              disabled={state.loading}
-            >
-              {state.loading ? "Refreshing..." : "🔄 Refresh"}
-            </button>
-            <Link
-              to="/add-order"
-              className="btn btn-light fw-bold rounded-pill px-4 py-2"
-              style={{ fontSize: "1rem" }}
-            >
-              ← Back To Add Order
-            </Link>
-          </div>
+          <button
+            className="btn btn-primary mb-3"
+            onClick={() => setShowForm((prev) => !prev)}
+          >
+            {showForm ? "🔽 Hide Form" : "➕ Add New Order"}
+          </button>
 
-          {state.userRole === "Admin" && (
-            <div className="mb-3">
+          <div className="mb-4">
+            <label className="form-label">🔎 Search Existing Order</label>
+            <div className="input-group">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Transaction ID, Contact, or Client Name"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleSearchKeyDown} // New: Enter to search
+              />
               <button
-                className="btn btn-outline-info me-2"
-                onClick={() => {
-                  setState((prev) => ({ ...prev, showArchivedOrders: !prev.showArchivedOrders }));
-                  if (!state.showArchivedOrders) fetchArchivedOrders();
-                }}
+                className="btn btn-outline-secondary"
+                onClick={handleSearch}
               >
-                {state.showArchivedOrders ? "Hide Archived Orders" : "Show Archived Orders"}
-              </button>
-              <button
-                className="btn btn-outline-danger me-2"
-                onClick={() => {
-                  setState((prev) => ({ ...prev, showDeletedOrders: !prev.showDeletedOrders }));
-                  if (!state.showDeletedOrders) fetchDeletedOrders();
-                }}
-              >
-                {state.showDeletedOrders ? "Hide Deleted Orders" : "Show Deleted Orders"}
+                Search
               </button>
               <button
                 className="btn btn-outline-secondary"
-                onClick={() => setState((prev) => ({ ...prev, showOnlyReady: !prev.showOnlyReady }))}
+                type="button"
+                onClick={handleClearSearch} // New: Clear button
               >
-                {state.showOnlyReady ? "Show All Orders" : "Show Only Ready Orders"}
+                Clear
               </button>
             </div>
-          )}
 
-          {state.userRole === "Admin" && (
-            <>
-              <div className="d-flex justify-content-end mb-3">
-                <select
-                  className="form-select form-select-sm me-2"
-                  value={state.filterStatus}
-                  onChange={(e) => setState((prev) => ({ ...prev, filterStatus: e.target.value }))}
-                  style={{ display: "inline-block", width: "auto" }}
+            {eta && (
+              <div className="mt-2">
+                <div
+                  className="progress"
+                  style={{
+                    height: "6px",
+                    backgroundColor: "var(--bs-secondary-bg, #f1f3f5)",
+                  }}
                 >
-                  <option value="All">All Statuses</option>
-                  <option value="Waiting">Waiting</option>
-                  <option value="Mixing">Mixing</option>
-                  <option value="Spraying">Spraying</option>
-                  <option value="Re-Mixing">Re-Mixing</option>
-                  <option value="Ready">Ready</option>
-                </select>
-                <select
-                  className="form-select form-select-sm me-2"
-                  value={state.filterCategory}
-                  onChange={(e) => setState((prev) => ({ ...prev, filterCategory: e.target.value }))}
-                  style={{ display: "inline-block", width: "auto" }}
-                >
-                  <option value="All">All Categories</option>
-                  <option value="New Mix">New Mix</option>
-                  <option value="Mix More">Mix More</option>
-                  <option value="Colour Code">Colour Code</option>
-                </select>
-                <select
-                  className="form-select form-select-sm"
-                  value={state.filterPoType}
-                  onChange={(e) => setState((prev) => ({ ...prev, filterPoType: e.target.value }))}
-                  style={{ display: "inline-block", width: "auto" }}
-                >
-                  <option value="All">All PO Types</option>
-                  <option value="Nexa">Nexa</option>
-                  <option value="Carvello">Carvello</option>
-                </select>
+                  <div
+                    className="progress-bar"
+                    role="progressbar"
+                    style={{
+                      width: `${Math.min((parseInt(eta) / 320) * 100, 100)}%`,
+                      backgroundColor: "var(--bs-info, #0dcaf0)",
+                    }}
+                    aria-valuenow={parseInt(eta)}
+                    aria-valuemin={0}
+                    aria-valuemax={320}
+                  ></div>
+                </div>
+                <div className="text-muted small mt-1">
+                  Visual preview based on current queue position
+                </div>
               </div>
-
-              <h6 className="bg-secondary text-white p-2">
-                ✅ Ready Orders ({readyCount})
-                <button
-                  className="btn btn-sm btn-outline-light ms-2"
-                  onClick={() => setState((prev) => ({ ...prev, showReady: !prev.showReady }))}
-                >
-                  {state.showReady ? "Hide" : "Show"}
-                </button>
-              </h6>
-              <Collapse in={state.showReady}>
-                <div>
-                  {state.readyOrders.length > 0 ? (
-                    <div className="card shadow-sm border-0 mb-3">
-                      <div className="card-body p-0">
-                        <table className="table table-bordered mb-0">
-                          <thead className="table-light">
-                            <tr>
-                              <th>Transaction ID</th>
-                              <th>Customer</th>
-                              <th>Customer No.</th>
-                              <th>Quantity</th>
-                              <th>Paint Details</th>
-                              <th>PO Type</th>
-                              <th>Note</th>
-                              <th>Assigned To</th>
-                              <th>Time in Status</th>
-                              <th>Revert</th>
-                              <th>Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {state.readyOrders
-                              .filter(
-                                (o) =>
-                                  (state.filterCategory === "All" || o.category === state.filterCategory) &&
-                                  (state.filterPoType === "All" || o.po_type === state.filterPoType)
-                              )
-                              .map((order) => renderReadyOrderRow(order))}
-                          </tbody>
-                        </table>
+            )}
+            {searchResults.length > 0 && (
+              <div className="mt-3">
+                <small className="text-muted">
+                  {searchResults.length} result(s):
+                </small>
+                <ul className="list-group mt-2">
+                  {searchResults.map((order) => (
+                    <li // Fixed: Removed invalid 'along' attribute
+                      key={order.transaction_id}
+                      className="list-group-item"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setSelectedOrder(order)}
+                    >
+                      <div>
+                        <strong>🆔 {order.transaction_id}</strong>
+                        <br />
+                        {order.customer_name} — {order.current_status}
+                        <br />
+                        <small className="text-muted">
+                          🚗 {order.paint_type}
+                        </small>
+                        <br />
+                        <small className="text-muted">
+                          👨‍🔧 {order.assigned_employee || "Unassigned"}
+                        </small>
+                        <br />
+                        <small className="text-muted">
+                          🧪 {order.paint_quantity ?? "0.00ML"}
+                        </small>
+                        <br />
+                        <small className="text-muted">
+                          📂 {order.category}
+                        </small>
                       </div>
-                    </div>
-                  ) : (
-                    <p className="text-muted">No ready orders found.</p>
-                  )}
-                </div>
-              </Collapse>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
 
-              {!state.showOnlyReady && (
-                <>
-                  <h6 className="bg-primary text-white p-2 mt-3">
-                    📋 Waiting Orders ({waitingCount})
-                    <button
-                      className="btn btn-sm btn-outline-light ms-2"
-                      onClick={() => setState((prev) => ({ ...prev, showWaiting: !prev.showWaiting }))}
-                    >
-                      {state.showWaiting ? "Hide" : "Show"}
-                    </button>
-                  </h6>
-                  <Collapse in={state.showWaiting}>
-                    <div>
-                      {filteredOrders.filter((o) => o.current_status === "Waiting").length > 0 ? (
-                        filteredOrders
-                          .filter((o) => o.current_status === "Waiting")
-                          .map((order) => renderOrderCard(order))
-                      ) : (
-                        <p>No waiting orders match the selected filters.</p>
-                      )}
-                    </div>
-                  </Collapse>
-
-                  <h6 className="bg-success text-white p-2 mt-3">
-                    🚀 Active Orders ({activeCount})
-                    <button
-                      className="btn btn-sm btn-outline-light ms-2"
-                      onClick={() => setState((prev) => ({ ...prev, showActive: !prev.showActive }))}
-                    >
-                      {state.showActive ? "Hide" : "Show"}
-                    </button>
-                  </h6>
-                  <Collapse in={state.showActive}>
-                    <div>
-                      {filteredOrders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length > 0 ? (
-                        filteredOrders
-                          .filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status))
-                          .map((order) => renderOrderCard(order))
-                      ) : (
-                        <p>No active orders match the selected filters.</p>
-                      )}
-                    </div>
-                  </Collapse>
-                </>
-              )}
-
-              {state.showArchivedOrders && (
-                <div className="mt-4">
-                  <h6 className="bg-warning text-white p-2">📁 Archived Orders</h6>
-                  {state.archivedOrders.length > 0 ? (
-                    state.archivedOrders.map(renderArchivedCard)
-                  ) : (
-                    <p>No archived orders found.</p>
-                  )}
-                </div>
-              )}
-
-              {state.showDeletedOrders && (
-                <div className="mt-4">
-                  <h6 className="bg-danger text-white p-2">🗑 Deleted Orders</h6>
-                  {state.deletedOrders.length > 0 ? (
-                    state.deletedOrders.map(renderDeletedCard)
-                  ) : (
-                    <p>No deleted orders found.</p>
-                  )}
-                </div>
-              )}
-
-              <div className="card mt-4">
-                <div className="card-header bg-info text-white">
-                  👥 Staff Manager
-                  <button
-                    className="btn btn-light btn-sm ms-2"
-                    onClick={() => setState((prev) => ({ ...prev, showAddStaff: !prev.showAddStaff }))}
-                  >
-                    {state.showAddStaff ? "Cancel" : "Add Staff"}
-                  </button>
-                </div>
-                <div className="card-body">
-                  {state.showAddStaff && (
-                    <div className="mb-3">
-                      <input
-                        type="text"
-                        className="form-control mb-2"
-                        placeholder="Employee Name"
-                        value={state.newStaff.employee_name}
-                        onChange={(e) =>
-                          setState((prev) => ({
-                            ...prev,
-                            newStaff: { ...prev.newStaff, employee_name: e.target.value },
-                          }))
-                        }
-                      />
-                      <input
-                        type="text"
-                        className="form-control mb-2"
-                        placeholder="Employee Code"
-                        value={state.newStaff.code}
-                        onChange={(e) =>
-                          setState((prev) => ({
-                            ...prev,
-                            newStaff: { ...prev.newStaff, code: e.target.value },
-                          }))
-                        }
-                      />
+          {showForm && (
+            <form onSubmit={handleSubmit}>
+              <div className="row">
+                {formFields.map((field, idx) => (
+                  <div key={idx} className={`col-md-${field.col || 6} mb-3`}>
+                    <label className="form-label">{field.label}</label>
+                    {field.type === "select" ? (
                       <select
-                        className="form-control mb-2"
-                        value={state.newStaff.role}
-                        onChange={(e) =>
-                          setState((prev) => ({
-                            ...prev,
-                            newStaff: { ...prev.newStaff, role: e.target.value },
-                          }))
-                        }
+                        className="form-select"
+                        value={field.value}
+                        onChange={(e) => field.onChange?.(e.target.value)}
+                        required={field.required}
                       >
-                        <option value="">Select Role</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Staff">Staff</option>
-                      </select>
-                      <button className="btn btn-primary" onClick={addStaff}>
-                        Add Staff
-                      </button>
-                    </div>
-                  )}
-                  {state.showEditStaff && (
-                    <div className="mb-3">
-                      <input
-                        type="text"
-                        className="form-control mb-2"
-                        placeholder="Employee Name"
-                        value={state.showEditStaff.employee_name}
-                        onChange={(e) =>
-                          setState((prev) => ({
-                            ...prev,
-                            showEditStaff: { ...prev.showEditStaff, employee_name: e.target.value },
-                          }))
-                        }
-                      />
-                      <input
-                        type="text"
-                        className="form-control mb-2"
-                        placeholder="Employee Code"
-                        value={state.showEditStaff.code}
-                        disabled
-                      />
-                      <select
-                        className="form-control mb-2"
-                        value={state.showEditStaff.role}
-                        onChange={(e) =>
-                          setState((prev) => ({
-                            ...prev,
-                            showEditStaff: { ...prev.showEditStaff, role: e.target.value },
-                          }))
-                        }
-                      >
-                        <option value="">Select Role</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Staff">Staff</option>
-                      </select>
-                      <button
-                        className="btn btn-primary me-2"
-                        onClick={() => editStaff(state.showEditStaff.code)}
-                      >
-                        Save
-                      </button>
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => setState((prev) => ({ ...prev, showEditStaff: null }))}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                  {state.staffList.length > 0 ? (
-                    <table className="table table-sm">
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Code</th>
-                          <th>Role</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {state.staffList.map((emp) => (
-                          <tr key={emp.code}>
-                            <td>{emp.employee_name}</td>
-                            <td>{emp.code}</td>
-                            <td>{emp.role}</td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-warning me-2"
-                                onClick={() => setState((prev) => ({ ...prev, showEditStaff: emp }))}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => removeStaff(emp.code)}
-                              >
-                                🗑 Revoke
-                              </button>
-                            </td>
-                          </tr>
+                        <option value="">Select</option>
+                        {field.options.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
                         ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <p>No staff found.</p>
-                  )}
+                      </select>
+                    ) : field.type === "radio" ? (
+                      renderField(field) // New: Render radio buttons
+                    ) : (
+                      <>
+                        <input
+                          type={field.type}
+                          name={field.name}
+                          className="form-control"
+                          value={field.value}
+                          onChange={(e) => {
+                            if (typeof field.onChange === "function") {
+                              field.onChange(e.target?.value ?? "");
+                            }
+                          }}
+                          required={field.required}
+                          disabled={field.disabled}
+                          placeholder={field.placeholder}
+                          min={field.type === "number" ? 1 : undefined}
+                          max={field.type === "number" ? 10 : undefined}
+                        />
+                        {field.name === "clientContact" &&
+                          contactSuggestions.length > 0 && (
+                            <ul className="list-group mt-1">
+                              {contactSuggestions.map((num) => (
+                                <li
+                                  key={num}
+                                  className="list-group-item list-group-item-action"
+                                  style={{ cursor: "pointer" }}
+                                  onClick={() =>
+                                    handleContactSuggestionClick(num)
+                                  }
+                                >
+                                  {num}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        {field.name === "clientName" &&
+                          nameSuggestions.length > 0 && (
+                            <ul className="list-group mt-1">
+                              {nameSuggestions.map(({ number, name }) => (
+                                <li
+                                  key={number}
+                                  className="list-group-item list-group-item-action"
+                                  style={{ cursor: "pointer" }}
+                                  onClick={() =>
+                                    handleNameSuggestionClick(number, name)
+                                  }
+                                >
+                                  {name} ({number})
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {orders.map((order, index) => (
+                <div key={index} className="border p-3 mb-3 rounded">
+                  <h6>Order {index + 1}</h6>
+                  <div className="row">
+                    {orderFields.map((field, idx) => (
+                      <div key={idx} className="col-md-6 mb-3">
+                        <label className="form-label">{field.label}</label>
+                        {field.type === "select" ? (
+                          <select
+                            className="form-select"
+                            value={order[field.name]}
+                            onChange={(e) =>
+                              handleOrderChange(index, field.name, e.target.value)
+                            }
+                            required={field.required}
+                          >
+                            <option value="">Select</option>
+                            {field.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={field.type}
+                            className="form-control"
+                            value={order[field.name]}
+                            onChange={(e) =>
+                              handleOrderChange(index, field.name, e.target.value)
+                            }
+                            required={field.required}
+                            disabled={field.disabled && field.disabled(order)}
+                            placeholder={field.placeholder}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              ))}
 
-          {state.userRole !== "Admin" && (
-            <div className="row">
-              <div className="col-md-4">
-                <h6 className="bg-primary text-white p-2">
-                  ⏳ Waiting Orders: {waitingCount}
-                </h6>
-                {state.orders
-                  .filter((o) => o.current_status === "Waiting" && !o.archived)
-                  .map((order) => renderOrderCard(order))}
-              </div>
-              <div className="col-md-8">
-                <h6 className="bg-success text-white p-2">
-                  🚀 Active Orders: {activeCount}
-                </h6>
-                {state.orders
-                  .filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status))
-                  .map((order) => renderOrderCard(order))}
-              </div>
-            </div>
+              <button
+                type="submit"
+                className="btn btn-success w-100 mt-3"
+                disabled={loading}
+              >
+                {loading
+                  ? "Processing..."
+                  : `➕ Add ${orderCount > 1 ? `${orderCount} Orders` : "Order"}`}
+              </button>
+            </form>
           )}
-
         </div>
       </div>
 
-      {state.selectedOrder && (
-        <div className="modal d-block" tabIndex="-1" onClick={() => setState((prev) => ({ ...prev, selectedOrder: null }))}>
+      {selectedOrder && (
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          onClick={() => setSelectedOrder(null)}
+        >
           <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className={`modal-content ${getModalCategoryClass(state.selectedOrder.category)}`}>
+            <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">🧾 Order Details</h5>
                 <button
                   type="button"
                   className="btn-close"
-                  onClick={() => setState((prev) => ({ ...prev, selectedOrder: null }))}
+                  onClick={() => setSelectedOrder(null)}
                 ></button>
               </div>
               <div className="modal-body">
-                <p><strong>Transaction ID:</strong> {state.selectedOrder.transaction_id}</p>
-                <p><strong>Customer:</strong> {state.selectedOrder.customer_name}</p>
-                <p><strong>Contact:</strong> {state.selectedOrder.client_contact}</p>
-                <p><strong>Paint:</strong> {state.selectedOrder.paint_type}</p>
-                <p><strong>Category:</strong> {state.selectedOrder.category}</p>
-                <p><strong>Quantity:</strong> {state.selectedOrder.paint_quantity}</p>
-                <p><strong>Colour Code:</strong> {state.selectedOrder.colour_code || "N/A"}</p>
-                <p><strong>Status:</strong> {state.selectedOrder.current_status}</p>
-                <p><strong>Order Type:</strong> {state.selectedOrder.order_type}</p>
-                <p><strong>PO Type:</strong> {state.selectedOrder.po_type || "N/A"}</p>
-                <p><strong>Assigned To:</strong> {state.selectedOrder.assigned_employee || "Unassigned"}</p>
-                <p><strong>Note:</strong> {state.selectedOrder.note || "No note"}</p>
-                <div>
-                  <textarea
-                    className="form-control mb-2"
-                    value={state.orderNote}
-                    onChange={(e) => setState((prev) => ({ ...prev, orderNote: e.target.value }))}
-                    placeholder="Add or edit note"
-                  />
-                  <button
-                    className="btn btn-primary me-2"
-                    onClick={() => updateNote(state.selectedOrder)}
-                  >
-                    Save Note
-                  </button>
-                  {state.userRole === "Admin" && state.selectedOrder.current_status === "Ready" && (
-                    <button
-                      className="btn btn-success me-2"
-                      onClick={() => markAsPaid(state.selectedOrder.transaction_id)}
-                    >
-                      {state.selectedOrder.order_type === "Order" ? "💰 Mark as Paid" : "✅ Mark as Complete"}
-                    </button>
-                  )}
-                  {state.userRole === "Admin" && (
-                    <button
-                      className="btn btn-danger"
-                      onClick={() => setState((prev) => ({ ...prev, showCancelConfirm: state.selectedOrder.transaction_id }))}
-                    >
-                      Cancel Order
-                    </button>
-                  )}
-                </div>
+                <p>
+                  <strong>Transaction ID:</strong> {selectedOrder.transaction_id}
+                </p>
+                <p>
+                  <strong>Customer:</strong> {selectedOrder.customer_name}
+                </p>
+                <p>
+                  <strong>Contact:</strong> {selectedOrder.client_contact}
+                </p>
+                <p>
+                  <strong>Paint:</strong> {selectedOrder.paint_type}
+                </p>
+                <p>
+                  <strong>Category:</strong> {selectedOrder.category}
+                </p>
+                <p>
+                  <strong>Quantity:</strong> {selectedOrder.paint_quantity}
+                </p>
+                <p>
+                  <strong>Colour Code:</strong> {selectedOrder.colour_code}
+                </p>
+                <p>
+                  <strong>Status:</strong> {selectedOrder.current_status}
+                </p>
+                <p>
+                  <strong>Order Type:</strong> {selectedOrder.order_type}
+                </p>
+                <p>
+                  <strong>PO Type:</strong> {selectedOrder.po_type || "N/A"} {/* New: Display PO type */}
+                </p>
+                <p>
+                  <strong>Assigned To:</strong>{" "}
+                  {selectedOrder.assigned_employee || "Unassigned"}
+                </p>
+                <p>
+                  <strong>ETA:</strong> {selectedOrder.eta || "N/A"}
+                </p>
               </div>
             </div>
           </div>
         </div>
-      )}
-
-      {state.showCancelConfirm && (
-        <div className="modal d-block" tabIndex="-1" onClick={() => setState((prev) => ({ ...prev, showCancelConfirm: null }))}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Confirm Order Cancellation</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setState((prev) => ({ ...prev, showCancelConfirm: null }))}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>Are you sure you want to cancel order <strong>{state.showCancelConfirm}</strong>?</p>
-                <textarea
-                  className="form-control mb-2"
-                  value={state.cancelReason}
-                  onChange={(e) => setState((prev) => ({ ...prev, cancelReason: e.target.value }))}
-                  placeholder="Enter reason for cancellation"
-                />
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setState((prev) => ({ ...prev, showCancelConfirm: null }))}
-                >
-                  Close
-                </button>
-                <button
-                  className="btn btn-danger"
-                  onClick={() => cancelOrder(state.showCancelConfirm)}
-                  disabled={!state.cancelReason.trim()}
-                >
-                  Confirm Cancellation
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {state.pendingColourUpdate && (
-        <ColourCodeModal
-          onSubmit={async ({ colourCode, employeeCode }) => {
-            try {
-              const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
-              if (!res.data?.employee_name) {
-                triggerToast("Invalid employee code!", "danger");
-                return;
-              }
-              const employeeName = res.data.employee_name;
-              const fullOrder = state.orders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId) ||
-                               state.readyOrders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId);
-              updateStatus(fullOrder, state.pendingColourUpdate.newStatus, colourCode, employeeName);
-              setState((prev) => ({ ...prev, pendingColourUpdate: null }));
-            } catch {
-              triggerToast("Unable to verify employee!", "danger");
-            }
-          }}
-          onCancel={() => setState((prev) => ({ ...prev, pendingColourUpdate: null }))}
-        />
       )}
 
       <ToastContainer
@@ -1101,25 +863,26 @@ const CardViewBOC = () => {
         style={{ zIndex: 9999 }}
       >
         <Toast
-          bg={toast.type}
-          onClose={() => setToast((prev) => ({ ...prev, show: false }))}
-          show={toast.show}
-          delay={toast.type === "danger" ? null : 3500}
-          autohide={toast.type !== "danger"}
+          bg={toastType}
+          onClose={() => setShowToast(false)} // Fixed: Typo 'onClosering' → 'onClose'
+          show={showToast}
+          delay={toastType === "danger" ? null : 4000}
+          autohide={toastType !== "danger"}
         >
           <Toast.Header
             closeButton={true}
             className="text-white"
             style={{
-              backgroundColor: toast.type === "danger" ? "#dc3545" : "#198754",
+              backgroundColor:
+                toastType === "danger" ? "#dc3545" : "#198754",
             }}
           >
             <strong className="me-auto">
-              {toast.type === "danger" ? "⚠️ Error" : "✅ Success"}
+              {toastType === "danger" ? "⚠️ Error" : "✅ Success"}
             </strong>
           </Toast.Header>
           <Toast.Body className="text-white fs-6 fw-bold text-center">
-            {toast.message}
+            {toastMessage}
           </Toast.Body>
         </Toast>
       </ToastContainer>
@@ -1127,4 +890,4 @@ const CardViewBOC = () => {
   );
 };
 
-export default CardViewBOC;
+export default AddOrderC;
