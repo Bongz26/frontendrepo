@@ -609,7 +609,7 @@ const CardViewBOC = () => {
               {state.loading ? "Refreshing..." : "🔄 Refresh"}
             </button>
             <Link
-              to="/add-order"
+              to="/add-"
               className="btn btn-light fw-bold rounded-pill px-4 py-2"
               style={{ fontSize: "1rem" }}
             >
