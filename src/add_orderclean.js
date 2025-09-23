@@ -8,7 +8,7 @@ const BASE_URL = "https://queue-backendser.onrender.com";
 const AddOrderC = () => {
   const [showForm, setShowForm] = useState(false);
   const [orderType, setOrderType] = useState("Paid");
-  const [poOption, setPoOption] = useState(""); // New state for PO option
+  const [poOption, setPoOption] = useState("");
   const [transSuffix, setTransSuffix] = useState("");
   const [orderCount, setOrderCount] = useState(1);
   const [orders, setOrders] = useState([
@@ -23,12 +23,10 @@ const AddOrderC = () => {
   const [clientContact, setClientContact] = useState("");
   const [startTime, setStartTime] = useState("");
   const [eta, setEta] = useState("");
-
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [activeCount, setActiveCount] = useState(0);
   const [waitingCount, setWaitingCount] = useState(0);
-
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [showToast, setShowToast] = useState(false);
@@ -94,14 +92,12 @@ const AddOrderC = () => {
   const handleContactChange = (value) => {
     setClientContact(value);
     setNameSuggestions([]);
-
     const keys = Object.keys(localStorage);
     const matches = keys.filter((k) =>
       k.startsWith("client_") && k.includes(value)
     );
     const suggestions = matches.map((k) => k.replace("client_", ""));
     setContactSuggestions(suggestions);
-
     if (/^\d{10}$/.test(value)) {
       const stored = localStorage.getItem(`client_${value}`);
       if (stored) {
@@ -118,7 +114,6 @@ const AddOrderC = () => {
       const parsed = JSON.parse(stored);
       setClientName(parsed.name);
     }
-    
     setContactSuggestions([]);
     setNameSuggestions([]);
   };
@@ -126,7 +121,6 @@ const AddOrderC = () => {
   const handleNameChange = (value) => {
     setClientName(value);
     setContactSuggestions([]);
-
     const keys = Object.keys(localStorage);
     const matches = keys.filter((k) => {
       const stored = localStorage.getItem(k);
@@ -181,20 +175,16 @@ const AddOrderC = () => {
 
   const handleSearch = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/orders/search`);
-      const filtered = res.data.filter(
-        (order) =>
-          order.transaction_id.includes(searchTerm) ||
-          order.client_contact.includes(searchTerm) ||
-          order.customer_name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setSearchResults(filtered);
-    } catch {
+      const res = await axios.get(`${BASE_URL}/api/orders/search`, {
+        params: { q: searchTerm },
+      });
+      setSearchResults(res.data);
+    } catch (error) {
+      console.error("Search error:", error);
       triggerToast("❌ Could not search orders", "danger");
     }
   };
 
-  // New: Handle Enter key for search and Clear button
   const handleSearchKeyDown = (e) => {
     if (e.key === "Enter") {
       handleSearch();
@@ -212,7 +202,6 @@ const AddOrderC = () => {
       triggerToast("❌ Printing blocked", "danger");
       return;
     }
-
     const formatLine = (label, value) => `${label.padEnd(15)}: ${value}`;
     const receipt = `
 =============================================
@@ -226,17 +215,14 @@ ${formatLine("Colour Code", order.colour_code)} ${
       order.colour_code === "Pending" ? "(To be assigned)" : ""
     }
 ${formatLine("Category", order.category)}
-
+${formatLine("PO Type", order.po_type || "N/A")}
 Track ID       : TRK-${order.transaction_id}
-
 ----------------------------------------
   WhatsApp Support: 083 579 6982
 ----------------------------------------
-
      Thank you for your order!
 ========================================
 `;
-
     win.document.write(`
       <html><head><title>Receipt</title>
       <style>body{font-family:monospace;white-space:pre;font-size:12px;margin:0;padding:10px;}</style>
@@ -249,7 +235,6 @@ Track ID       : TRK-${order.transaction_id}
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     const today = formatDateDDMMYYYY();
     const startTime = new Date().toISOString();
     const count = orderCount;
@@ -272,7 +257,6 @@ Track ID       : TRK-${order.transaction_id}
         setLoading(false);
         return;
       }
-      // New: Validate PO option for Paid orders
       if (!poOption) {
         triggerToast("❌ Please select a PO option (Nexa or Carvello) for Paid orders", "danger");
         setLoading(false);
@@ -282,7 +266,6 @@ Track ID       : TRK-${order.transaction_id}
       baseTransactionID = `${today}-PO-${suffix}`;
     }
 
-    // ✅ Basic Validation
     if (!validateContact(clientContact)) {
       triggerToast("⚠️ Enter *10-digit* phone number, not name", "danger");
       setLoading(false);
@@ -317,12 +300,10 @@ Track ID       : TRK-${order.transaction_id}
       const existingOrders = await axios.get(`${BASE_URL}/api/orders`);
       const ordersToCreate = [];
 
-      // Process multiple orders
       for (let i = 0; i < count; i++) {
         const order = orders[i];
         let finalTransactionID = count > 1 ? `${baseTransactionID}-${i + 1}` : baseTransactionID;
 
-        // Check for duplicates in existing orders
         let isDuplicate = existingOrders.data.some(
           (o) => o.transaction_id === finalTransactionID
         );
@@ -351,7 +332,6 @@ Track ID       : TRK-${order.transaction_id}
           return;
         }
 
-        // For Paid orders, check each transaction_id individually
         if (orderType === "Paid") {
           const checkRes = await axios.get(`${BASE_URL}/api/orders/check-id/${finalTransactionID}`);
           if (checkRes.data.exists) {
@@ -371,14 +351,13 @@ Track ID       : TRK-${order.transaction_id}
           paint_quantity: order.paintQuantity,
           current_status: "Waiting",
           order_type: orderType,
-          po_type: orderType === "Paid" ? poOption : undefined, // New: Add PO option to order data
+          po_type: orderType === "Paid" ? poOption : null,
           start_time: startTime,
         };
 
         ordersToCreate.push(newOrder);
       }
 
-      // Submit all orders
       for (const order of ordersToCreate) {
         await axios.post(`${BASE_URL}/api/orders`, order);
         localStorage.setItem(
@@ -389,11 +368,9 @@ Track ID       : TRK-${order.transaction_id}
       }
 
       triggerToast(`✅ ${count} order${count > 1 ? "s" : ""} placed successfully`);
-
       setShowForm(false);
-      // Reset
       setTransSuffix("");
-      setPoOption(""); // New: Reset PO option
+      setPoOption("");
       setOrderCount(1);
       setOrders([
         { category: "New Mix", paintType: "", colorCode: "", paintQuantity: "" },
@@ -434,15 +411,18 @@ Track ID       : TRK-${order.transaction_id}
       options: ["Paid", "Order"],
       required: true,
     },
-    // New: PO Options (only for Paid)
-    ...(orderType === "Paid" ? [{
-      label: "PO Option (Required)",
-      type: "radio",
-      value: poOption,
-      onChange: (val) => setPoOption(val),
-      options: ["Nexa", "Carvello"],
-      required: true,
-    }] : []),
+    ...(orderType === "Paid"
+      ? [
+          {
+            label: "PO Option (Required)",
+            type: "radio",
+            value: poOption,
+            onChange: (val) => setPoOption(val),
+            options: ["Nexa", "Carvello"],
+            required: true,
+          },
+        ]
+      : []),
     {
       label: "Transaction ID",
       type: "text",
@@ -518,7 +498,6 @@ Track ID       : TRK-${order.transaction_id}
     },
   ];
 
-  // New: Render function for radio buttons (since formFields now includes a radio type)
   const renderField = (field) => {
     if (field.type === "radio") {
       return (
@@ -542,7 +521,67 @@ Track ID       : TRK-${order.transaction_id}
         </div>
       );
     }
-    // ... (other types remain the same, but I'll include the full render in the JSX below)
+    if (field.type === "select") {
+      return (
+        <select
+          className="form-select"
+          value={field.value}
+          onChange={(e) => field.onChange?.(e.target.value)}
+          required={field.required}
+        >
+          <option value="">Select</option>
+          {field.options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    return (
+      <>
+        <input
+          type={field.type}
+          name={field.name}
+          className="form-control"
+          value={field.value}
+          onChange={(e) => field.onChange?.(e.target.value ?? "")}
+          required={field.required}
+          disabled={field.disabled}
+          placeholder={field.placeholder}
+          min={field.type === "number" ? 1 : undefined}
+          max={field.type === "number" ? 10 : undefined}
+        />
+        {field.name === "clientContact" && contactSuggestions.length > 0 && (
+          <ul className="list-group mt-1">
+            {contactSuggestions.map((num) => (
+              <li
+                key={num}
+                className="list-group-item list-group-item-action"
+                style={{ cursor: "pointer" }}
+                onClick={() => handleContactSuggestionClick(num)}
+              >
+                {num}
+              </li>
+            ))}
+          </ul>
+        )}
+        {field.name === "clientName" && nameSuggestions.length > 0 && (
+          <ul className="list-group mt-1">
+            {nameSuggestions.map(({ number, name }) => (
+              <li
+                key={number}
+                className="list-group-item list-group-item-action"
+                style={{ cursor: "pointer" }}
+                onClick={() => handleNameSuggestionClick(number, name)}
+              >
+                {name} ({number})
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    );
   };
 
   return (
@@ -551,7 +590,6 @@ Track ID       : TRK-${order.transaction_id}
         <div className="card-header bg-primary text-white">
           <h5 className="mb-0">📝 Add New Order</h5>
         </div>
-
         <div className="card-body">
           {userRole === "Admin" && (
             <button
@@ -561,14 +599,12 @@ Track ID       : TRK-${order.transaction_id}
               🧾 Go to Admin Orders
             </button>
           )}
-
           <button
             className="btn btn-primary mb-3"
             onClick={() => setShowForm((prev) => !prev)}
           >
             {showForm ? "🔽 Hide Form" : "➕ Add New Order"}
           </button>
-
           <div className="mb-4">
             <label className="form-label">🔎 Search Existing Order</label>
             <div className="input-group">
@@ -578,7 +614,7 @@ Track ID       : TRK-${order.transaction_id}
                 placeholder="Transaction ID, Contact, or Client Name"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={handleSearchKeyDown} // New: Enter to search
+                onKeyDown={handleSearchKeyDown}
               />
               <button
                 className="btn btn-outline-secondary"
@@ -589,12 +625,11 @@ Track ID       : TRK-${order.transaction_id}
               <button
                 className="btn btn-outline-secondary"
                 type="button"
-                onClick={handleClearSearch} // New: Clear button
+                onClick={handleClearSearch}
               >
                 Clear
               </button>
             </div>
-
             {eta && (
               <div className="mt-2">
                 <div
@@ -628,7 +663,7 @@ Track ID       : TRK-${order.transaction_id}
                 </small>
                 <ul className="list-group mt-2">
                   {searchResults.map((order) => (
-                    <li // Fixed: Removed invalid 'along' attribute
+                    <li
                       key={order.transaction_id}
                       className="list-group-item"
                       style={{ cursor: "pointer" }}
@@ -654,6 +689,10 @@ Track ID       : TRK-${order.transaction_id}
                         <small className="text-muted">
                           📂 {order.category}
                         </small>
+                        <br />
+                        <small className="text-muted">
+                          📋 PO Type: {order.po_type || "N/A"}
+                        </small>
                       </div>
                     </li>
                   ))}
@@ -661,87 +700,16 @@ Track ID       : TRK-${order.transaction_id}
               </div>
             )}
           </div>
-
           {showForm && (
             <form onSubmit={handleSubmit}>
               <div className="row">
                 {formFields.map((field, idx) => (
                   <div key={idx} className={`col-md-${field.col || 6} mb-3`}>
                     <label className="form-label">{field.label}</label>
-                    {field.type === "select" ? (
-                      <select
-                        className="form-select"
-                        value={field.value}
-                        onChange={(e) => field.onChange?.(e.target.value)}
-                        required={field.required}
-                      >
-                        <option value="">Select</option>
-                        {field.options.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    ) : field.type === "radio" ? (
-                      renderField(field) // New: Render radio buttons
-                    ) : (
-                      <>
-                        <input
-                          type={field.type}
-                          name={field.name}
-                          className="form-control"
-                          value={field.value}
-                          onChange={(e) => {
-                            if (typeof field.onChange === "function") {
-                              field.onChange(e.target?.value ?? "");
-                            }
-                          }}
-                          required={field.required}
-                          disabled={field.disabled}
-                          placeholder={field.placeholder}
-                          min={field.type === "number" ? 1 : undefined}
-                          max={field.type === "number" ? 10 : undefined}
-                        />
-                        {field.name === "clientContact" &&
-                          contactSuggestions.length > 0 && (
-                            <ul className="list-group mt-1">
-                              {contactSuggestions.map((num) => (
-                                <li
-                                  key={num}
-                                  className="list-group-item list-group-item-action"
-                                  style={{ cursor: "pointer" }}
-                                  onClick={() =>
-                                    handleContactSuggestionClick(num)
-                                  }
-                                >
-                                  {num}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        {field.name === "clientName" &&
-                          nameSuggestions.length > 0 && (
-                            <ul className="list-group mt-1">
-                              {nameSuggestions.map(({ number, name }) => (
-                                <li
-                                  key={number}
-                                  className="list-group-item list-group-item-action"
-                                  style={{ cursor: "pointer" }}
-                                  onClick={() =>
-                                    handleNameSuggestionClick(number, name)
-                                  }
-                                >
-                                  {name} ({number})
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                      </>
-                    )}
+                    {renderField(field)}
                   </div>
                 ))}
               </div>
-
               {orders.map((order, index) => (
                 <div key={index} className="border p-3 mb-3 rounded">
                   <h6>Order {index + 1}</h6>
@@ -783,7 +751,6 @@ Track ID       : TRK-${order.transaction_id}
                   </div>
                 </div>
               ))}
-
               <button
                 type="submit"
                 className="btn btn-success w-100 mt-3"
@@ -797,7 +764,6 @@ Track ID       : TRK-${order.transaction_id}
           )}
         </div>
       </div>
-
       {selectedOrder && (
         <div
           className="modal d-block"
@@ -843,7 +809,7 @@ Track ID       : TRK-${order.transaction_id}
                   <strong>Order Type:</strong> {selectedOrder.order_type}
                 </p>
                 <p>
-                  <strong>PO Type:</strong> {selectedOrder.po_type || "N/A"} {/* New: Display PO type */}
+                  <strong>PO Type:</strong> {selectedOrder.po_type || "N/A"}
                 </p>
                 <p>
                   <strong>Assigned To:</strong>{" "}
@@ -857,14 +823,13 @@ Track ID       : TRK-${order.transaction_id}
           </div>
         </div>
       )}
-
       <ToastContainer
         className="position-fixed top-0 start-50 translate-middle-x p-3"
         style={{ zIndex: 9999 }}
       >
         <Toast
           bg={toastType}
-          onClose={() => setShowToast(false)} // Fixed: Typo 'onClosering' → 'onClose'
+          onClose={() => setShowToast(false)}
           show={showToast}
           delay={toastType === "danger" ? null : 4000}
           autohide={toastType !== "danger"}
