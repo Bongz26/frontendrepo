@@ -26,3 +26,15 @@ body {
   align-items: center;
   gap: 0.4em;
 }
+
+.btn-purple {
+  background-color: #6b46c1;
+  color: white;
+}
+
+.btn-purple:hover {
+  background-color: #553c9a;
+}
+.bg-purple {
+  background-color: #6b46c1;
+}
