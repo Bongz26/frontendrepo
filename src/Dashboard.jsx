@@ -43,7 +43,15 @@ function ElapsedTime({ statusStartedAt, fallbackTime }) {
   return <span>⏱ {displayTime}</span>;
 }
 
-const ReportModal = ({ onClose, reportData }) => {
+const ReportModal = ({ onClose, reportData, fetchReportData }) => {
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("All");
+
+  const handleFilterSubmit = () => {
+    fetchReportData(startDate, endDate, selectedStatus);
+  };
+
   return (
     <div className="modal d-block" tabIndex="-1" onClick={onClose}>
       <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()}>
@@ -53,6 +61,39 @@ const ReportModal = ({ onClose, reportData }) => {
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
           <div className="modal-body">
+            <div className="mb-3">
+              <label>Start Date:</label>
+              <input
+                type="date"
+                className="form-control"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <label className="mt-2">End Date:</label>
+              <input
+                type="date"
+                className="form-control"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+              <label className="mt-2">Status:</label>
+              <select
+                className="form-control"
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+              >
+                <option value="All">All</option>
+                <option value="Waiting">Waiting</option>
+                <option value="Mixing">Mixing</option>
+                <option value="Spraying">Spraying</option>
+                <option value="Re-Mixing">Re-Mixing</option>
+                <option value="Ready">Ready</option>
+                <option value="Complete">Complete</option>
+              </select>
+              <button className="btn btn-primary mt-3" onClick={handleFilterSubmit}>
+                Apply Filters
+              </button>
+            </div>
             {reportData ? (
               <>
                 <h6>Order Status Summary</h6>
@@ -89,6 +130,23 @@ const ReportModal = ({ onClose, reportData }) => {
                     ))}
                   </tbody>
                 </table>
+                <h6 className="mt-3">Order History Summary</h6>
+                <table className="table table-sm table-bordered">
+                  <thead>
+                    <tr>
+                      <th>Action</th>
+                      <th>Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(reportData.historySummary).map(([action, count]) => (
+                      <tr key={action}>
+                        <td>{action}</td>
+                        <td>{count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </>
             ) : (
               <p>No report data available.</p>
@@ -105,7 +163,7 @@ const ReportModal = ({ onClose, reportData }) => {
   );
 };
 
-const DashboardR = () => {
+const CardViewBO = () => {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -183,10 +241,12 @@ const DashboardR = () => {
     }
   }, []);
 
-  const fetchReportData = useCallback(async () => {
+  const fetchReportData = useCallback(async (startDate = "", endDate = "", status = "All") => {
     try {
       console.log("Fetching report data from /api/orders/report");
-      const response = await axios.get(`${BASE_URL}/api/orders/report`);
+      const response = await axios.get(`${BASE_URL}/api/orders/report`, {
+        params: { start_date: startDate, end_date: endDate, status: status === "All" ? "" : status },
+      });
       setReportData(response.data);
       setShowReportModal(true);
     } catch (err) {
@@ -715,7 +775,7 @@ const DashboardR = () => {
             {userRole === "Admin" && (
               <button
                 className="btn btn-purple btn-sm"
-                onClick={fetchReportData}
+                onClick={() => fetchReportData()}
               >
                 📊 View Report
               </button>
@@ -735,6 +795,7 @@ const DashboardR = () => {
             <ReportModal
               onClose={() => setShowReportModal(false)}
               reportData={reportData}
+              fetchReportData={fetchReportData}
             />
           )}
           {error && <div className="alert alert-danger">{error}</div>}
@@ -1141,4 +1202,4 @@ const DashboardR = () => {
   );
 };
 
-export default DashboardR;
+export default CardViewBO;
