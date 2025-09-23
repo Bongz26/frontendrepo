@@ -163,7 +163,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   );
 };
 
-const CardViewBO = () => {
+const DashboardR = () => {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1202,4 +1202,4 @@ const CardViewBO = () => {
   );
 };
 
-export default CardViewBO;
+export default DashboardR;
