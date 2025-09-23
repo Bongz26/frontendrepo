@@ -3,7 +3,6 @@ import axios from "axios";
 import "./styles/queueStyles.css";
 import "./styles/queueSortStyles.css";
 import LoginPopup from "./LoginPopup";
-import ColourCodeModal from "./ColourCodeModal";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
 
@@ -130,6 +129,9 @@ const DashboardR = () => {
   const [cancelReason, setCancelReason] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportData, setReportData] = useState(null);
+  const [colourCodeInput, setColourCodeInput] = useState("");
+  const [employeeCodeInput, setEmployeeCodeInput] = useState("");
+  const [colourCodeError, setColourCodeError] = useState("");
 
   const handleLogin = () => setShowLogin(true);
 
@@ -280,7 +282,7 @@ const DashboardR = () => {
     const fromStatus = order.current_status;
     const toStatus = newStatus;
     let updatedColourCode = colourCode;
-    let employeeName = "Unassigned";
+    let employeeName = currentEmp || "Unassigned";
 
     const isFromWaitingToMixing =
       fromStatus === "Waiting" &&
@@ -308,7 +310,6 @@ const DashboardR = () => {
       setPendingColourUpdate({
         orderId: order.transaction_id,
         newStatus: toStatus,
-        employeeName: currentEmp,
       });
       return;
     }
@@ -323,15 +324,13 @@ const DashboardR = () => {
       } catch {
         return alert("❌ Unable to verify employee!");
       }
-    } else {
-      employeeName = order.assigned_employee || "Unassigned";
     }
 
     try {
       await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
         current_status: toStatus,
         assigned_employee: employeeName,
-        colour_code: updatedColourCode,
+        colour_code: updatedColourCode || "Pending",
         note: orderNote || order.note,
         userRole,
         old_status: fromStatus,
@@ -343,6 +342,40 @@ const DashboardR = () => {
     } catch (err) {
       console.error("Error updating status:", err);
       alert("❌ Error updating status!");
+    }
+  };
+
+  const handleColourCodeSubmit = async () => {
+    if (!colourCodeInput || colourCodeInput.trim() === "") {
+      setColourCodeError("Colour Code is required!");
+      return;
+    }
+    if (!employeeCodeInput || employeeCodeInput.trim() === "") {
+      setColourCodeError("Employee Code is required!");
+      return;
+    }
+
+    try {
+      const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCodeInput}`);
+      if (!res.data?.employee_name) {
+        setColourCodeError("Invalid Employee Code!");
+        return;
+      }
+      const employeeName = res.data.employee_name;
+      const fullOrder = orders.find(o => o.transaction_id === pendingColourUpdate.orderId);
+      await updateStatus(
+        fullOrder,
+        pendingColourUpdate.newStatus,
+        colourCodeInput,
+        employeeName
+      );
+      setColourCodeInput("");
+      setEmployeeCodeInput("");
+      setColourCodeError("");
+      setPendingColourUpdate(null);
+    } catch (err) {
+      console.error("Error validating employee code:", err);
+      setColourCodeError("Unable to verify employee code!");
     }
   };
 
@@ -1040,21 +1073,69 @@ const DashboardR = () => {
       )}
 
       {pendingColourUpdate && (
-        <ColourCodeModal
-          onSubmit={({ colourCode, employeeCode }) => {
-            const fullOrder = orders.find(
-              o => o.transaction_id === pendingColourUpdate.orderId
-            );
-            updateStatus(
-              fullOrder,
-              pendingColourUpdate.newStatus,
-              colourCode,
-              employeeCode
-            );
-            setPendingColourUpdate(null);
-          }}
-          onCancel={() => setPendingColourUpdate(null)}
-        />
+        <div className="modal d-block" tabIndex="-1" onClick={() => setPendingColourUpdate(null)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Enter Colour Code and Employee</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setColourCodeInput("");
+                    setEmployeeCodeInput("");
+                    setColourCodeError("");
+                    setPendingColourUpdate(null);
+                  }}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <input
+                  type="text"
+                  className="form-control mb-2"
+                  placeholder="Colour Code"
+                  value={colourCodeInput}
+                  onChange={(e) => {
+                    setColourCodeInput(e.target.value);
+                    setColourCodeError("");
+                  }}
+                />
+                <input
+                  type="text"
+                  className="form-control mb-2"
+                  placeholder="Employee Code"
+                  value={employeeCodeInput}
+                  onChange={(e) => {
+                    setEmployeeCodeInput(e.target.value);
+                    setColourCodeError("");
+                  }}
+                />
+                {colourCodeError && (
+                  <div className="alert alert-danger">{colourCodeError}</div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setColourCodeInput("");
+                    setEmployeeCodeInput("");
+                    setColourCodeError("");
+                    setPendingColourUpdate(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleColourCodeSubmit}
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
