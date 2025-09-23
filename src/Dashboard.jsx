@@ -1,15 +1,31 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { Toast, ToastContainer, Collapse } from "react-bootstrap";
+import { Link } from "react-router-dom";
+import "bootstrap/dist/css/bootstrap.min.css";
 import "./styles/queueStyles.css";
 import "./styles/queueSortStyles.css";
 import LoginPopup from "./LoginPopup";
+import ColourCodeModal from "./ColourCodeModal";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
 
-function ElapsedTime({ statusStartedAt, fallbackTime }) {
-  const [displayTime, setDisplayTime] = React.useState("");
+// Custom hook for toast notifications
+const useToast = () => {
+  const [toast, setToast] = useState({ message: "", type: "success", show: false });
 
-  React.useEffect(() => {
+  const triggerToast = (message, type = "success") => {
+    setToast({ message, type, show: true });
+  };
+
+  return { toast, triggerToast, setToast };
+};
+
+// ElapsedTime component
+const ElapsedTime = ({ statusStartedAt, fallbackTime }) => {
+  const [displayTime, setDisplayTime] = useState("");
+
+  useEffect(() => {
     const validTime = statusStartedAt || fallbackTime;
     if (!validTime) return;
 
@@ -41,8 +57,9 @@ function ElapsedTime({ statusStartedAt, fallbackTime }) {
   }, [statusStartedAt, fallbackTime]);
 
   return <span>⏱ {displayTime}</span>;
-}
+};
 
+// ReportModal component
 const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -112,7 +129,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
     URL.revokeObjectURL(link.href);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!reportData || !window.Chart) return;
 
     const statusChart = new window.Chart(document.getElementById("statusChart"), {
@@ -417,83 +434,97 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
 };
 
 const DashboardR = () => {
-  const [orders, setOrders] = useState([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [userRole, setUserRole] = useState("User");
-  const [showLogin, setShowLogin] = useState(false);
-  const [pendingColourUpdate, setPendingColourUpdate] = useState(null);
-  const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [staffList, setStaffList] = useState([]);
-  const [showAddStaff, setShowAddStaff] = useState(false);
-  const [showEditStaff, setShowEditStaff] = useState(null);
-  const [showArchivedOrders, setShowArchivedOrders] = useState(false);
-  const [showDeletedOrders, setShowDeletedOrders] = useState(false);
-  const [archivedOrders, setArchivedOrders] = useState([]);
-  const [deletedOrders, setDeletedOrders] = useState([]);
-  const [newStaff, setNewStaff] = useState({ employee_name: "", code: "", role: "" });
-  const [orderNote, setOrderNote] = useState("");
-  const [filterStatus, setFilterStatus] = useState("All");
-  const [filterCategory, setFilterCategory] = useState("All");
-  const [showCancelConfirm, setShowCancelConfirm] = useState(null);
-  const [cancelReason, setCancelReason] = useState("");
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportData, setReportData] = useState(null);
-  const [colourCodeInput, setColourCodeInput] = useState("");
-  const [employeeCodeInput, setEmployeeCodeInput] = useState("");
-  const [colourCodeError, setColourCodeError] = useState("");
+  const [state, setState] = useState({
+    orders: [],
+    readyOrders: [],
+    archivedOrders: [],
+    deletedOrders: [],
+    userRole: "User",
+    showLogin: false,
+    pendingColourUpdate: null,
+    recentlyUpdatedId: null,
+    selectedOrder: null,
+    staffList: [],
+    showAddStaff: false,
+    showEditStaff: null,
+    showArchivedOrders: false,
+    showDeletedOrders: false,
+    newStaff: { employee_name: "", code: "", role: "" },
+    orderNote: "",
+    filterStatus: "All",
+    filterCategory: "All",
+    filterPoType: "All",
+    showCancelConfirm: null,
+    cancelReason: "",
+    loading: false,
+    showOnlyReady: false,
+    showReady: true,
+    showWaiting: true,
+    showActive: true,
+    showReportModal: false,
+    reportData: null,
+  });
 
-  const handleLogin = (role) => {
-    setUserRole(role);
-    setShowLogin(false);
-  };
+  const { toast, triggerToast, setToast } = useToast();
 
+  // Set default filter to "Ready" for Admins
+  useEffect(() => {
+    if (state.userRole === "Admin") {
+      setState((prev) => ({ ...prev, filterStatus: "Ready" }));
+    }
+  }, [state.userRole]);
+
+  // Fetch functions
   const fetchOrders = useCallback(async () => {
-    setLoading(true);
-    setError("");
+    setState((prev) => ({ ...prev, loading: true }));
     try {
-      console.log("Fetching orders from /api/orders");
       const response = await axios.get(`${BASE_URL}/api/orders`);
-      setOrders(response.data);
+      setState((prev) => ({ ...prev, orders: response.data }));
     } catch (err) {
       console.error("Error fetching orders:", err);
-      setError("Error fetching orders.");
+      triggerToast("Error fetching orders.", "danger");
     } finally {
-      setLoading(false);
+      setState((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  const fetchReadyOrders = useCallback(async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/orders/admin`);
+      setState((prev) => ({ ...prev, readyOrders: response.data }));
+    } catch (err) {
+      console.error("Error fetching ready orders:", err);
+      triggerToast("❌ Error fetching ready orders.", "danger");
     }
   }, []);
 
   const fetchStaff = useCallback(async () => {
     try {
-      console.log("Fetching staff from /api/staff");
       const response = await axios.get(`${BASE_URL}/api/staff`);
-      setStaffList(response.data);
+      setState((prev) => ({ ...prev, staffList: response.data }));
     } catch (err) {
       console.error("Error fetching staff:", err);
-      setError("Error fetching staff list.");
+      triggerToast("Error fetching staff list.", "danger");
     }
   }, []);
 
   const fetchArchivedOrders = useCallback(async () => {
     try {
-      console.log("Fetching archived orders from /api/orders/archived");
       const response = await axios.get(`${BASE_URL}/api/orders/archived`);
-      setArchivedOrders(response.data);
+      setState((prev) => ({ ...prev, archivedOrders: response.data }));
     } catch (err) {
       console.error("Error fetching archived orders:", err);
-      setError("Error fetching archived orders.");
+      triggerToast("Error fetching archived orders.", "danger");
     }
   }, []);
 
   const fetchDeletedOrders = useCallback(async () => {
     try {
-      console.log("Fetching deleted orders from /api/orders/deleted");
       const response = await axios.get(`${BASE_URL}/api/orders/deleted`);
-      setDeletedOrders(response.data);
+      setState((prev) => ({ ...prev, deletedOrders: response.data }));
     } catch (err) {
       console.error("Error fetching deleted orders:", err);
-      setError("Error fetching deleted orders.");
+      triggerToast("Error fetching deleted orders.", "danger");
     }
   }, []);
 
@@ -509,602 +540,1005 @@ const DashboardR = () => {
           include_deleted: includeDeleted,
         },
       });
-      setReportData(response.data);
-      setShowReportModal(true);
-      setError("");
+      setState((prev) => ({ ...prev, reportData: response.data, showReportModal: true }));
     } catch (err) {
       console.error("Error fetching report data:", err);
-      setError(err.response?.data?.error || "Failed to fetch report data.");
+      triggerToast(err.response?.data?.error || "Failed to fetch report data.", "danger");
       throw err;
     }
   }, []);
 
-  const updateStatus = async (orderId, status, colourCode, employeeCode, remarks) => {
-    if (userRole !== "Admin" && userRole !== "Staff") {
-      setError("Only Admin or Staff can update status.");
-      return;
-    }
+  // Handlers
+  const addStaff = async () => {
     try {
-      const employee = staffList.find((emp) => emp.employee_code === employeeCode);
-      const employeeName = employee ? employee.employee_name : "";
-      console.log("Updating status for order:", { orderId, status, colourCode, employeeCode, employeeName, remarks });
-
-      const response = await axios.put(`${BASE_URL}/api/orders/${orderId}/status`, {
-        status,
-        employeeCode,
-        colourCode,
-        employeeName,
-        userRole,
-        remarks,
-      });
-      setOrders(orders.map((order) => (order.id === orderId ? response.data : order)));
-      setRecentlyUpdatedId(orderId);
-      setTimeout(() => setRecentlyUpdatedId(null), 3000);
-      setError("");
-    } catch (err) {
-      console.error("Error updating status:", err);
-      setError("Failed to update order status.");
-    }
-  };
-
-  const updateNote = async (orderId, note) => {
-    if (userRole !== "Admin" && userRole !== "Staff") {
-      setError("Only Admin or Staff can update notes.");
-      return;
-    }
-    try {
-      const response = await axios.put(`${BASE_URL}/api/orders/${orderId}/note`, {
-        note,
-        employeeName: staffList.find((emp) => emp.employee_code === employeeCodeInput)?.employee_name || "",
-        userRole,
-      });
-      setOrders(orders.map((order) => (order.id === orderId ? response.data : order)));
-      setError("");
-    } catch (err) {
-      console.error("Error updating note:", err);
-      setError("Failed to update order note.");
-    }
-  };
-
-  const cancelOrder = async (orderId, reason) => {
-    if (userRole !== "Admin") {
-      setError("Only Admin can cancel orders.");
-      return;
-    }
-    try {
-      const response = await axios.put(`${BASE_URL}/api/orders/${orderId}/cancel`, {
-        reason,
-        employeeName: staffList.find((emp) => emp.employee_code === employeeCodeInput)?.employee_name || "",
-        userRole,
-      });
-      setOrders(orders.filter((order) => order.id !== orderId));
-      setError("");
-    } catch (err) {
-      console.error("Error cancelling order:", err);
-      setError("Failed to cancel order.");
-    }
-  };
-
-  const addStaff = async (employee_name, code, role) => {
-    if (userRole !== "Admin") {
-      setError("Only Admin can add staff.");
-      return;
-    }
-    try {
-      const response = await axios.post(`${BASE_URL}/api/staff`, { employee_name, code, role });
-      setStaffList([...staffList, response.data]);
-      setError("");
+      await axios.post(`${BASE_URL}/api/staff`, state.newStaff);
+      setState((prev) => ({
+        ...prev,
+        newStaff: { employee_name: "", code: "", role: "" },
+        showAddStaff: false,
+      }));
+      fetchStaff();
+      triggerToast("Staff added successfully!", "success");
     } catch (err) {
       console.error("Error adding staff:", err);
-      setError("Failed to add staff.");
+      triggerToast("Error adding staff.", "danger");
     }
   };
 
-  const updateStaff = async (id, employee_name, code, role) => {
-    if (userRole !== "Admin") {
-      setError("Only Admin can update staff.");
+  const editStaff = async (code) => {
+    try {
+      await axios.put(`${BASE_URL}/api/staff/${code}`, state.showEditStaff);
+      setState((prev) => ({ ...prev, showEditStaff: null }));
+      fetchStaff();
+      triggerToast("Staff updated successfully!", "success");
+    } catch (err) {
+      console.error("Error editing staff:", err);
+      triggerToast("Error editing staff.", "danger");
+    }
+  };
+
+  const removeStaff = async (code) => {
+    try {
+      await axios.delete(`${BASE_URL}/api/staff/${code}`);
+      setState((prev) => ({
+        ...prev,
+        staffList: prev.staffList.filter((emp) => emp.code !== code),
+      }));
+      triggerToast("Staff removed successfully!", "success");
+    } catch (err) {
+      console.error("Error removing staff:", err);
+      triggerToast("Error removing staff.", "danger");
+    }
+  };
+
+  const cancelOrder = async (orderId) => {
+    if (state.userRole !== "Admin") {
+      triggerToast("Only Admins can cancel orders!", "danger");
       return;
     }
-    try {
-      const response = await axios.put(`${BASE_URL}/api/staff/${id}`, { employee_name, code, role });
-      setStaffList(staffList.map((staff) => (staff.employee_id === id ? response.data : staff)));
-      setError("");
-    } catch (err) {
-      console.error("Error updating staff:", err);
-      setError("Failed to update staff.");
-    }
-  };
 
-  const deleteStaff = async (id) => {
-    if (userRole !== "Admin") {
-      setError("Only Admin can delete staff.");
+    if (!state.cancelReason || state.cancelReason.trim() === "") {
+      triggerToast("A reason is required to cancel an order!", "danger");
       return;
     }
+
     try {
-      await axios.delete(`${BASE_URL}/api/staff/${id}`);
-      setStaffList(staffList.filter((staff) => staff.employee_id !== id));
-      setError("");
+      await axios.delete(`${BASE_URL}/api/orders/${orderId}`, {
+        data: { userRole: state.userRole, note: state.cancelReason },
+      });
+      fetchOrders();
+      fetchReadyOrders();
+      fetchDeletedOrders();
+      setState((prev) => ({
+        ...prev,
+        selectedOrder: null,
+        showCancelConfirm: null,
+        cancelReason: "",
+      }));
+      triggerToast("Order cancelled successfully!", "success");
     } catch (err) {
-      console.error("Error deleting staff:", err);
-      setError("Failed to delete staff.");
+      console.error("Error cancelling order:", err);
+      triggerToast(err.response?.data?.error || "Error cancelling order.", "danger");
     }
   };
 
+  const updateNote = async (order) => {
+    try {
+      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
+        current_status: order.current_status,
+        assigned_employee: order.assigned_employee || null,
+        colour_code: order.colour_code || "Pending",
+        note: state.orderNote || null,
+        userRole: state.userRole,
+        old_status: order.current_status,
+      });
+      setState((prev) => ({ ...prev, orderNote: "", selectedOrder: null }));
+      fetchOrders();
+      fetchReadyOrders();
+      triggerToast("Note updated successfully!", "success");
+    } catch (err) {
+      console.error("Error updating note:", err);
+      triggerToast(err.response?.data?.error || "Error updating note.", "danger");
+    }
+  };
+
+  const markAsPaid = async (orderId) => {
+    if (state.userRole !== "Admin") {
+      triggerToast("❌ Only Admins can mark orders as Paid!", "danger");
+      return;
+    }
+
+    try {
+      await axios.put(`${BASE_URL}/api/orders/mark-paid/${orderId}`, { userRole: state.userRole });
+      triggerToast("✅ Order has been Completed!");
+      fetchOrders();
+      fetchReadyOrders();
+    } catch (err) {
+      console.error("Error marking order as Complete:", err);
+      triggerToast("❌ Error marking order as Complete.", "danger");
+    }
+  };
+
+  const updateStatus = async (order, newStatus, colourCode, currentEmp) => {
+    const { category, current_status: fromStatus } = order;
+    const toStatus = newStatus;
+    let updatedColourCode = colourCode;
+    let employeeName = currentEmp || "Unassigned";
+
+    const isFromWaitingToMixing =
+      fromStatus === "Waiting" && toStatus === "Mixing" && ["New Mix", "Mix More", "Colour Code"].includes(category);
+    const isMixingToSpraying = fromStatus === "Mixing" && toStatus === "Spraying";
+    const isSprayingToRemix = fromStatus === "Spraying" && toStatus === "Re-Mixing";
+    const isRemixToSpraying = fromStatus === "Re-Mixing" && toStatus === "Spraying";
+    const isSprayingToReadyNewMix = fromStatus === "Spraying" && toStatus === "Ready" && category === "New Mix";
+    const isSprayingToReadyOthers = fromStatus === "Spraying" && toStatus === "Ready" && ["Mix More", "Colour Code"].includes(category);
+    let shouldPromptEmp =
+      isFromWaitingToMixing || isMixingToSpraying || isSprayingToRemix || isRemixToSpraying || isSprayingToReadyOthers;
+
+    // For reverts from Ready, prompt for employee
+    if (fromStatus === "Ready") {
+      shouldPromptEmp = true;
+    }
+
+    if (isSprayingToReadyNewMix && (!colourCode || colourCode === "Pending")) {
+      setState((prev) => ({
+        ...prev,
+        pendingColourUpdate: {
+          orderId: order.transaction_id,
+          newStatus: toStatus,
+          employeeName: currentEmp,
+        },
+      }));
+      return;
+    }
+
+    if (shouldPromptEmp) {
+      const empCodeFromPrompt = prompt("🔍 Enter Employee Code:");
+      if (!empCodeFromPrompt) {
+        triggerToast("Employee Code required!", "danger");
+        return;
+      }
+      try {
+        const res = await axios.get(`${BASE_URL}/api/employees?code=${empCodeFromPrompt}`);
+        if (!res.data?.employee_name) {
+          triggerToast("Invalid employee code!", "danger");
+          return;
+        }
+        employeeName = res.data.employee_name;
+      } catch {
+        triggerToast("Unable to verify employee!", "danger");
+        return;
+      }
+    }
+
+    try {
+      await axios.put(`${BASE_URL}/api/orders/${order.transaction_id}`, {
+        current_status: toStatus,
+        assigned_employee: employeeName,
+        colour_code: updatedColourCode,
+        note: state.orderNote || order.note,
+        userRole: state.userRole,
+        old_status: fromStatus,
+      });
+      setState((prev) => ({ ...prev, recentlyUpdatedId: order.transaction_id }));
+      setTimeout(() => setState((prev) => ({ ...prev, recentlyUpdatedId: null })), 2000);
+      setTimeout(() => {
+        fetchOrders();
+        fetchReadyOrders();
+      }, 500);
+      setState((prev) => ({ ...prev, orderNote: "" }));
+      triggerToast("Status updated successfully!", "success");
+    } catch (err) {
+      console.error("Error updating status:", err);
+      triggerToast("Error updating status!", "danger");
+    }
+  };
+
+  // Handle revert from Ready
+  const handleRevert = async (order, newStatus) => {
+    if (!newStatus) return;
+
+    const reason = prompt(`Reason for reverting to ${newStatus}:`);
+    if (!reason?.trim()) {
+      triggerToast("Reason required!", "danger");
+      return;
+    }
+
+    setState((prev) => ({ ...prev, selectedOrder: order }));
+
+    const newNote = `${order.note ? order.note + "\n" : ""}Revert from Ready to ${newStatus}: ${reason}`;
+    setState((prev) => ({ ...prev, orderNote: newNote }));
+
+    await updateStatus(order, newStatus, order.colour_code, order.assigned_employee);
+
+    setState((prev) => ({ ...prev, orderNote: "", selectedOrder: null }));
+  };
+
+  // Styling for categories and selected order
+  const getCategoryClass = (cat) => {
+    switch (cat?.toLowerCase()) {
+      case "mixing":
+        return "card-category-mixing";
+      case "spraying":
+        return "card-category-spraying";
+      case "re-mixing":
+        return "card-category-remix";
+      case "detailing":
+        return "card-category-detailing";
+      case "ready":
+        return "card-category-ready";
+      default:
+        return "card-category-default";
+    }
+  };
+
+  const getModalCategoryClass = (cat) => {
+    switch (cat?.toLowerCase()) {
+      case "mixing":
+        return "modal-category-mixing";
+      case "spraying":
+        return "modal-category-spraying";
+      case "re-mixing":
+        return "modal-category-remix";
+      case "detailing":
+        return "modal-category-detailing";
+      case "ready":
+        return "modal-category-ready";
+      default:
+        return "modal-category-default";
+    }
+  };
+
+  // Card rendering function
+  const renderOrderCard = (order, isArchived = false, isDeleted = false) => (
+    <div
+      key={order.transaction_id}
+      className={`card mb-2 px-3 py-2 shadow-sm border-0 ${
+        state.recentlyUpdatedId === order.transaction_id ? "flash-row" : ""
+      } ${getCategoryClass(order.current_status)} ${
+        state.selectedOrder?.transaction_id === order.transaction_id ? "selected-order" : ""
+      }`}
+      style={{ fontSize: "0.85rem", lineHeight: "1.4", cursor: "pointer" }}
+      onClick={() => setState((prev) => ({ ...prev, selectedOrder: order }))}
+    >
+      <div className="d-flex justify-content-between">
+        <div>
+          <strong>🆔 {order.transaction_id}</strong> • <span className="text-muted">{order.category}</span>
+          <br />
+          <span>{order.customer_name}</span> <small className="text-muted">({order.client_contact})</small>
+          <br />
+          <small className="text-muted">🎨 {order.paint_type} — {order.paint_quantity}</small>
+          <br />
+          <small className="text-muted">Col Code: {order.colour_code || "N/A"}</small>
+          <br />
+          <small className="text-muted">PO Type: {order.po_type || "N/A"}</small>
+          <br />
+          <small className="text-muted">Note: {order.note || "No note"}</small>
+        </div>
+        <div className="text-end">
+          <small className="text-muted">
+            <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time} /> in {order.current_status}
+          </small>
+          <br />
+          <span
+            className={`badge ${
+              order.current_status === "Waiting" ? "bg-primary" :
+              order.current_status === "Mixing" ? "bg-info" :
+              order.current_status === "Spraying" ? "bg-success" :
+              order.current_status === "Re-Mixing" ? "bg-warning" :
+              order.current_status === "Ready" ? "bg-secondary" :
+              "bg-dark"
+            } mb-1`}
+          >
+            {order.current_status}
+          </span>
+          <br />
+          <small>👨‍🔧 {order.assigned_employee || "Unassigned"}</small>
+          {!isArchived && !isDeleted && (
+            <>
+              <br />
+              <select
+                className="form-select form-select-sm mt-1"
+                style={{ minWidth: "130px" }}
+                onClick={(e) => e.stopPropagation()}
+                value={order.current_status}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  updateStatus(order, e.target.value, order.colour_code, order.assigned_employee);
+                }}
+              >
+                <option value={order.current_status}>{order.current_status}</option>
+                {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
+                {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
+                {order.current_status === "Spraying" && (
+                  <>
+                    <option value="Re-Mixing">Back to Mixing</option>
+                    <option value="Ready">Ready</option>
+                  </>
+                )}
+                {order.current_status === "Re-Mixing" && <option value="Spraying">Spraying</option>}
+                {order.current_status === "Ready" && state.userRole === "Admin" && (
+                  <option value="Complete">Complete</option>
+                )}
+              </select>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderReadyOrderRow = (order) => (
+    <tr
+      key={order.transaction_id}
+      className={state.selectedOrder?.transaction_id === order.transaction_id ? "selected-order" : ""}
+      style={{ cursor: "pointer" }}
+      onClick={() => setState((prev) => ({ ...prev, selectedOrder: order }))}
+    >
+      <td>{order.transaction_id}</td>
+      <td>{order.customer_name}</td>
+      <td>{order.client_contact}</td>
+      <td>{order.paint_quantity || "0.00"}</td>
+      <td>{order.paint_type}</td>
+      <td>{order.po_type || "N/A"}</td>
+      <td>{order.note || "No note"}</td>
+      <td>{order.assigned_employee || "Unassigned"}</td>
+      <td>
+        <ElapsedTime statusStartedAt={order.status_started_at} fallbackTime={order.start_time} />
+      </td>
+      <td>
+        <select
+          className="form-select form-select-sm me-2"
+          style={{ display: "inline-block", width: "auto" }}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            e.stopPropagation();
+            handleRevert(order, e.target.value);
+          }}
+        >
+          <option value="">Revert to...</option>
+          <option value="Spraying">Spraying</option>
+          <option value="Re-Mixing">Re-Mixing</option>
+        </select>
+        <button
+          className="btn btn-success btn-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            markAsPaid(order.transaction_id);
+          }}
+        >
+          {order.order_type === "Order" ? "💰 Mark as Paid" : "✅ Mark as Complete"}
+        </button>
+      </td>
+    </tr>
+  );
+
+  const renderArchivedCard = (order) => renderOrderCard(order, true);
+  const renderDeletedCard = (order) => renderOrderCard(order, false, true);
+
+  // Initial data fetch
   useEffect(() => {
     fetchOrders();
-    fetchStaff();
-    fetchArchivedOrders();
-    fetchDeletedOrders();
-  }, [fetchOrders, fetchStaff, fetchArchivedOrders, fetchDeletedOrders]);
+    if (state.userRole === "Admin") {
+      const fetchWithRetry = async (fetchFn, name, retries = 3) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            await fetchFn();
+            console.log(`${name} fetched successfully`);
+            break;
+          } catch (err) {
+            console.error(`Attempt ${i + 1} failed for ${name}:`, err);
+            if (i === retries - 1) triggerToast(`Failed to fetch ${name} after ${retries} attempts`, "danger");
+          }
+        }
+      };
+      fetchWithRetry(fetchStaff, "staff");
+      fetchWithRetry(fetchReadyOrders, "ready orders");
+      fetchWithRetry(fetchArchivedOrders, "archived orders");
+      fetchWithRetry(fetchDeletedOrders, "deleted orders");
+    }
+    const interval = setInterval(() => {
+      fetchOrders();
+      if (state.userRole === "Admin") fetchReadyOrders();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchOrders, fetchReadyOrders, fetchStaff, fetchArchivedOrders, fetchDeletedOrders, state.userRole]);
 
-  const filteredOrders = orders.filter((order) => {
-    const statusMatch = filterStatus === "All" || order.current_status === filterStatus;
-    const categoryMatch = filterCategory === "All" || order.category === filterCategory;
-    return statusMatch && categoryMatch;
-  });
+  // Order filtering
+  const waitingCount = state.orders.filter((o) => o.current_status === "Waiting").length;
+  const activeCount = state.orders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length;
+  const readyCount = state.readyOrders.length;
+  const filteredOrders = state.orders.filter(
+    (o) =>
+      (state.userRole === "Admin" ? !["Complete"].includes(o.current_status) : !["Ready", "Complete"].includes(o.current_status)) &&
+      (state.filterStatus === "All" || o.current_status === state.filterStatus) &&
+      (state.filterCategory === "All" || o.category === state.filterCategory) &&
+      (state.filterPoType === "All" || o.po_type === state.filterPoType)
+  );
 
   return (
     <div className="container mt-4">
-      {showLogin && <LoginPopup onLogin={handleLogin} />}
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2>Order Management (Role: {userRole})</h2>
-        <button className="btn btn-primary" onClick={() => setShowLogin(true)}>
-          Login
-        </button>
-      </div>
-      {error && <div className="alert alert-danger">{error}</div>}
-      {loading && <div className="alert alert-info">Loading...</div>}
-      <div className="mb-3">
-        <label className="form-label">Filter by Status:</label>
-        <select
-          className="form-control"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="All">All</option>
-          <option value="Waiting">Waiting</option>
-          <option value="Mixing">Mixing</option>
-          <option value="Spraying">Spraying</option>
-          <option value="Re-Mixing">Re-Mixing</option>
-          <option value="Ready">Ready</option>
-          <option value="Complete">Complete</option>
-        </select>
-        <label className="form-label mt-2">Filter by Category:</label>
-        <select
-          className="form-control"
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-        >
-          <option value="All">All</option>
-          <option value="New Mix">New Mix</option>
-          <option value="Colour Code">Colour Code</option>
-          <option value="Detailing">Detailing</option>
-          <option value="Re-Mix">Re-Mix</option>
-        </select>
-      </div>
-      <div className="mb-3">
-        <button
-          className="btn btn-info me-2"
-          onClick={() => {
-            setShowArchivedOrders(true);
-            setShowDeletedOrders(false);
-          }}
-        >
-          View Archived Orders
-        </button>
-        <button
-          className="btn btn-warning me-2"
-          onClick={() => {
-            setShowDeletedOrders(true);
-            setShowArchivedOrders(false);
-          }}
-        >
-          View Deleted Orders
-        </button>
-        <button className="btn btn-primary" onClick={() => setShowReportModal(true)}>
-          View Report
-        </button>
-      </div>
-      {showAddStaff && (
-        <div className="card mb-3">
-          <div className="card-body">
-            <h5 className="card-title">Add Staff</h5>
-            <div className="mb-3">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Employee Name"
-                value={newStaff.employee_name}
-                onChange={(e) => setNewStaff({ ...newStaff, employee_name: e.target.value })}
-              />
-              <input
-                type="text"
-                className="form-control mt-2"
-                placeholder="Employee Code"
-                value={newStaff.code}
-                onChange={(e) => setNewStaff({ ...newStaff, code: e.target.value })}
-              />
-              <input
-                type="text"
-                className="form-control mt-2"
-                placeholder="Role"
-                value={newStaff.role}
-                onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}
-              />
-              <button
-                className="btn btn-primary mt-2"
-                onClick={() => {
-                  addStaff(newStaff.employee_name, newStaff.code, newStaff.role);
-                  setNewStaff({ employee_name: "", code: "", role: "" });
-                  setShowAddStaff(false);
-                }}
-              >
-                Add
-              </button>
-              <button className="btn btn-secondary mt-2 ms-2" onClick={() => setShowAddStaff(false)}>
-                Cancel
-              </button>
-            </div>
+      <style>
+        {`
+          .selected-order {
+            background-color: #fff3cd !important;
+            border: 2px solid #ffca2c !important;
+          }
+          .card-category-ready {
+            background-color: #e9ecef;
+          }
+          .modal-category-ready {
+            border-left: 5px solid #6c757d;
+          }
+          .selected-order td {
+            background-color: #fff3cd !important;
+          }
+          .bg-purple {
+            background-color: #6f42c1;
+          }
+        `}
+      </style>
+
+      <div className="card mb-3 shadow-sm border-0">
+        <div className="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <h5 className="mb-0">🎨 Queue System Dashboard</h5>
+          <div>
+            <span className="me-2">Role: {state.userRole}</span>
+            <button className="btn btn-light btn-sm" onClick={() => setState((prev) => ({ ...prev, showLogin: true }))}>
+              Login as Admin
+            </button>
           </div>
         </div>
-      )}
-      {showEditStaff && (
-        <div className="card mb-3">
-          <div className="card-body">
-            <h5 className="card-title">Edit Staff</h5>
-            <div className="mb-3">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Employee Name"
-                value={showEditStaff.employee_name}
-                onChange={(e) => setShowEditStaff({ ...showEditStaff, employee_name: e.target.value })}
-              />
-              <input
-                type="text"
-                className="form-control mt-2"
-                placeholder="Employee Code"
-                value={showEditStaff.employee_code}
-                onChange={(e) => setShowEditStaff({ ...showEditStaff, employee_code: e.target.value })}
-              />
-              <input
-                type="text"
-                className="form-control mt-2"
-                placeholder="Role"
-                value={showEditStaff.role}
-                onChange={(e) => setShowEditStaff({ ...showEditStaff, role: e.target.value })}
-              />
-              <button
-                className="btn btn-primary mt-2"
-                onClick={() => {
-                  updateStaff(showEditStaff.employee_id, showEditStaff.employee_name, showEditStaff.employee_code, showEditStaff.role);
-                  setShowEditStaff(null);
-                }}
-              >
-                Update
-              </button>
-              <button className="btn btn-secondary mt-2 ms-2" onClick={() => setShowEditStaff(null)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {showCancelConfirm && (
-        <div className="modal d-block" tabIndex="-1">
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Confirm Cancellation</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowCancelConfirm(null)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <p>Are you sure you want to cancel order {showCancelConfirm.transaction_id}?</p>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Reason for cancellation"
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                />
-                <input
-                  type="text"
-                  className="form-control mt-2"
-                  placeholder="Employee Code"
-                  value={employeeCodeInput}
-                  onChange={(e) => setEmployeeCodeInput(e.target.value)}
-                />
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-danger"
-                  onClick={() => {
-                    cancelOrder(showCancelConfirm.id, cancelReason);
-                    setShowCancelConfirm(null);
-                    setCancelReason("");
-                    setEmployeeCodeInput("");
-                  }}
-                >
-                  Confirm
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowCancelConfirm(null)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {showReportModal && (
-        <ReportModal onClose={() => setShowReportModal(false)} reportData={reportData} fetchReportData={fetchReportData} />
-      )}
-      {showArchivedOrders && (
-        <div className="modal d-block" tabIndex="-1" onClick={() => setShowArchivedOrders(false)}>
-          <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Archived Orders</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowArchivedOrders(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                {archivedOrders.length > 0 ? (
-                  archivedOrders.map((order) => (
-                    <div key={order.id} className={`card mb-2 card-category-${order.category?.toLowerCase().replace(" ", "-") || "default"}`}>
-                      <div className="card-body">
-                        <h5 className="card-title">{order.customer_name}</h5>
-                        <p><strong>Transaction ID:</strong> {order.transaction_id}</p>
-                        <p><strong>Status:</strong> {order.current_status}</p>
-                        <p><strong>Category:</strong> {order.category}</p>
-                        <p><strong>Start Time:</strong> {new Date(order.start_time).toLocaleString()}</p>
-                        <p><strong>Note:</strong> {order.note || "N/A"}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p>No archived orders found.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {showDeletedOrders && (
-        <div className="modal d-block" tabIndex="-1" onClick={() => setShowDeletedOrders(false)}>
-          <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Deleted Orders</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowDeletedOrders(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                {deletedOrders.length > 0 ? (
-                  deletedOrders.map((order) => (
-                    <div key={order.transaction_id} className={`card mb-2 card-category-${order.category?.toLowerCase().replace(" ", "-") || "default"}`}>
-                      <div className="card-body">
-                        <h5 className="card-title">{order.customer_name}</h5>
-                        <p><strong>Transaction ID:</strong> {order.transaction_id}</p>
-                        <p><strong>Status:</strong> {order.current_status}</p>
-                        <p><strong>Category:</strong> {order.category}</p>
-                        <p><strong>Start Time:</strong> {new Date(order.start_time).toLocaleString()}</p>
-                        <p><strong>Note:</strong> {order.note || "N/A"}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p>No deleted orders found.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      <div className="row">
-        {userRole === "Admin" && (
-          <div className="col-md-4">
-            <div className="card mb-3">
-              <div className="card-body">
-                <h5 className="card-title">Staff Management</h5>
-                <button className="btn btn-primary mb-3" onClick={() => setShowAddStaff(true)}>
-                  Add Staff
-                </button>
-                {staffList.map((staff) => (
-                  <div key={staff.employee_id} className="card mb-2">
-                    <div className="card-body">
-                      <p><strong>Name:</strong> {staff.employee_name}</p>
-                      <p><strong>Code:</strong> {staff.employee_code}</p>
-                      <p><strong>Role:</strong> {staff.role}</p>
-                      <button
-                        className="btn btn-sm btn-warning me-2"
-                        onClick={() => setShowEditStaff(staff)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={() => deleteStaff(staff.employee_id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        <div className={userRole === "Admin" ? "col-md-8" : "col-12"}>
-          <h3>Orders</h3>
-          {filteredOrders.map((order) => (
-            <div
-              key={order.id}
-              className={`card mb-3 ${recentlyUpdatedId === order.id ? "border-success" : ""} card-category-${order.category?.toLowerCase().replace(" ", "-") || "default"}`}
+        <div className="card-body">
+          {state.showLogin && (
+            <LoginPopup
+              onLogin={(role) => setState((prev) => ({ ...prev, userRole: role, showLogin: false }))}
+              onClose={() => setState((prev) => ({ ...prev, showLogin: false }))}
+            />
+          )}
+
+          <div className="d-flex justify-content-between mb-3">
+            <button
+              className="btn btn-outline-secondary"
+              onClick={() => {
+                fetchOrders();
+                if (state.userRole === "Admin") fetchReadyOrders();
+              }}
+              disabled={state.loading}
             >
-              <div className="card-body">
-                <h5 className="card-title">{order.customer_name}</h5>
-                <p><strong>Transaction ID:</strong> {order.transaction_id}</p>
-                <p><strong>Status:</strong> {order.current_status}</p>
-                <p><strong>Category:</strong> {order.category}</p>
-                <p><strong>Paint Type:</strong> {order.paint_type}</p>
-                <p><strong>Colour Code:</strong> {order.colour_code}</p>
-                <p><strong>Client Contact:</strong> {order.client_contact}</p>
-                <p><strong>Start Time:</strong> <ElapsedTime statusStartedAt={order.start_time} /></p>
-                <p><strong>Estimated Completion:</strong> {order.estimated_completion ? new Date(order.estimated_completion).toLocaleString() : "N/A"}</p>
-                <p><strong>Assigned Employee:</strong> {order.assigned_employee || "N/A"}</p>
-                <p><strong>Note:</strong> {order.note || "N/A"}</p>
-                {(userRole === "Admin" || userRole === "Staff") && (
-                  <>
-                    <button
-                      className="btn btn-sm btn-primary me-2"
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      Update Status
-                    </button>
-                    <button
-                      className="btn btn-sm btn-secondary me-2"
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setOrderNote(order.note || "");
-                      }}
-                    >
-                      Update Note
-                    </button>
-                    {userRole === "Admin" && (
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={() => setShowCancelConfirm(order)}
-                      >
-                        Cancel Order
-                      </button>
-                    )}
-                  </>
-                )}
+              {state.loading ? "Refreshing..." : "🔄 Refresh"}
+            </button>
+            <div>
+              {state.userRole === "Admin" && (
+                <button
+                  className="btn btn-primary me-2"
+                  onClick={() => setState((prev) => ({ ...prev, showReportModal: true }))}
+                >
+                  📊 View Report
+                </button>
+              )}
+              <Link
+                to="/add-"
+                className="btn btn-light fw-bold rounded-pill px-4 py-2"
+                style={{ fontSize: "1rem" }}
+              >
+                ← Back To Add Order
+              </Link>
+            </div>
+          </div>
+
+          {state.userRole === "Admin" && (
+            <div className="mb-3">
+              <button
+                className="btn btn-outline-info me-2"
+                onClick={() => {
+                  setState((prev) => ({ ...prev, showArchivedOrders: !prev.showArchivedOrders }));
+                  if (!state.showArchivedOrders) fetchArchivedOrders();
+                }}
+              >
+                {state.showArchivedOrders ? "Hide Archived Orders" : "Show Archived Orders"}
+              </button>
+              <button
+                className="btn btn-outline-danger me-2"
+                onClick={() => {
+                  setState((prev) => ({ ...prev, showDeletedOrders: !prev.showDeletedOrders }));
+                  if (!state.showDeletedOrders) fetchDeletedOrders();
+                }}
+              >
+                {state.showDeletedOrders ? "Hide Deleted Orders" : "Show Deleted Orders"}
+              </button>
+              <button
+                className="btn btn-outline-secondary"
+                onClick={() => setState((prev) => ({ ...prev, showOnlyReady: !prev.showOnlyReady }))}
+              >
+                {state.showOnlyReady ? "Show All Orders" : "Show Only Ready Orders"}
+              </button>
+            </div>
+          )}
+
+          {state.userRole === "Admin" && (
+            <>
+              <div className="d-flex justify-content-end mb-3">
+                <select
+                  className="form-select form-select-sm me-2"
+                  value={state.filterStatus}
+                  onChange={(e) => setState((prev) => ({ ...prev, filterStatus: e.target.value }))}
+                  style={{ display: "inline-block", width: "auto" }}
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Waiting">Waiting</option>
+                  <option value="Mixing">Mixing</option>
+                  <option value="Spraying">Spraying</option>
+                  <option value="Re-Mixing">Re-Mixing</option>
+                  <option value="Ready">Ready</option>
+                </select>
+                <select
+                  className="form-select form-select-sm me-2"
+                  value={state.filterCategory}
+                  onChange={(e) => setState((prev) => ({ ...prev, filterCategory: e.target.value }))}
+                  style={{ display: "inline-block", width: "auto" }}
+                >
+                  <option value="All">All Categories</option>
+                  <option value="New Mix">New Mix</option>
+                  <option value="Mix More">Mix More</option>
+                  <option value="Colour Code">Colour Code</option>
+                  <option value="Detailing">Detailing</option>
+                </select>
+                <select
+                  className="form-select form-select-sm"
+                  value={state.filterPoType}
+                  onChange={(e) => setState((prev) => ({ ...prev, filterPoType: e.target.value }))}
+                  style={{ display: "inline-block", width: "auto" }}
+                >
+                  <option value="All">All PO Types</option>
+                  <option value="Nexa">Nexa</option>
+                  <option value="Carvello">Carvello</option>
+                </select>
               </div>
-              {selectedOrder && selectedOrder.id === order.id && (
-                <div className="card-footer">
-                  <h6>Update Order</h6>
-                  <select
-                    className="form-control mb-2"
-                    value={pendingColourUpdate?.status || order.current_status}
-                    onChange={(e) =>
-                      setPendingColourUpdate({
-                        ...pendingColourUpdate,
-                        status: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="Waiting">Waiting</option>
-                    <option value="Mixing">Mixing</option>
-                    <option value="Spraying">Spraying</option>
-                    <option value="Re-Mixing">Re-Mixing</option>
-                    <option value="Ready">Ready</option>
-                    <option value="Complete">Complete</option>
-                  </select>
-                  <input
-                    type="text"
-                    className={`form-control mb-2 ${colourCodeError ? "is-invalid" : ""}`}
-                    placeholder="Colour Code"
-                    value={colourCodeInput}
-                    onChange={(e) => {
-                      setColourCodeInput(e.target.value);
-                      setColourCodeError("");
-                    }}
-                  />
-                  {colourCodeError && <div className="invalid-feedback">{colourCodeError}</div>}
-                  <select
-                    className="form-control mb-2"
-                    value={employeeCodeInput}
-                    onChange={(e) => setEmployeeCodeInput(e.target.value)}
-                  >
-                    <option value="">Select Employee</option>
-                    {staffList.map((staff) => (
-                      <option key={staff.employee_id} value={staff.employee_code}>
-                        {staff.employee_name} ({staff.employee_code})
-                      </option>
-                    ))}
-                  </select>
-                  <textarea
-                    className="form-control mb-2"
-                    placeholder="Remarks"
-                    value={pendingColourUpdate?.remarks || ""}
-                    onChange={(e) =>
-                      setPendingColourUpdate({
-                        ...pendingColourUpdate,
-                        remarks: e.target.value,
-                      })
-                    }
-                  ></textarea>
-                  <button
-                    className="btn btn-primary me-2"
-                    onClick={() => {
-                      if (!employeeCodeInput) {
-                        setColourCodeError("Employee code is required.");
-                        return;
-                      }
-                      updateStatus(
-                        order.id,
-                        pendingColourUpdate?.status || order.current_status,
-                        colourCodeInput,
-                        employeeCodeInput,
-                        pendingColourUpdate?.remarks || ""
-                      );
-                      setSelectedOrder(null);
-                      setColourCodeInput("");
-                      setEmployeeCodeInput("");
-                      setPendingColourUpdate(null);
-                    }}
-                  >
-                    Update
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setSelectedOrder(null);
-                      setColourCodeInput("");
-                      setEmployeeCodeInput("");
-                      setPendingColourUpdate(null);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  {orderNote !== null && (
-                    <div className="mt-2">
-                      <textarea
-                        className="form-control mb-2"
-                        placeholder="Update Note"
-                        value={orderNote}
-                        onChange={(e) => setOrderNote(e.target.value)}
-                      ></textarea>
-                      <button
-                        className="btn btn-primary me-2"
-                        onClick={() => {
-                          updateNote(order.id, orderNote);
-                          setSelectedOrder(null);
-                          setOrderNote("");
-                        }}
-                      >
-                        Update Note
-                      </button>
+
+              <h6 className="bg-secondary text-white p-2">
+                ✅ Ready Orders ({readyCount})
+                <button
+                  className="btn btn-sm btn-outline-light ms-2"
+                  onClick={() => setState((prev) => ({ ...prev, showReady: !prev.showReady }))}
+                >
+                  {state.showReady ? "Hide" : "Show"}
+                </button>
+              </h6>
+              <Collapse in={state.showReady}>
+                <div>
+                  {state.readyOrders.length > 0 ? (
+                    <div className="card shadow-sm border-0 mb-3">
+                      <div className="card-body p-0">
+                        <table className="table table-bordered mb-0">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Transaction ID</th>
+                              <th>Customer</th>
+                              <th>Customer No.</th>
+                              <th>Quantity</th>
+                              <th>Paint Details</th>
+                              <th>PO Type</th>
+                              <th>Note</th>
+                              <th>Assigned To</th>
+                              <th>Time in Status</th>
+                              <th>Revert</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {state.readyOrders
+                              .filter(
+                                (o) =>
+                                  (state.filterCategory === "All" || o.category === state.filterCategory) &&
+                                  (state.filterPoType === "All" || o.po_type === state.filterPoType)
+                              )
+                              .map((order) => renderReadyOrderRow(order))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
+                  ) : (
+                    <p className="text-muted">No ready orders found.</p>
+                  )}
+                </div>
+              </Collapse>
+
+              {!state.showOnlyReady && (
+                <>
+                  <h6 className="bg-primary text-white p-2 mt-3">
+                    📋 Waiting Orders ({waitingCount})
+                    <button
+                      className="btn btn-sm btn-outline-light ms-2"
+                      onClick={() => setState((prev) => ({ ...prev, showWaiting: !prev.showWaiting }))}
+                    >
+                      {state.showWaiting ? "Hide" : "Show"}
+                    </button>
+                  </h6>
+                  <Collapse in={state.showWaiting}>
+                    <div>
+                      {filteredOrders.filter((o) => o.current_status === "Waiting").length > 0 ? (
+                        filteredOrders
+                          .filter((o) => o.current_status === "Waiting")
+                          .map((order) => renderOrderCard(order))
+                      ) : (
+                        <p>No waiting orders match the selected filters.</p>
+                      )}
+                    </div>
+                  </Collapse>
+
+                  <h6 className="bg-success text-white p-2 mt-3">
+                    🚀 Active Orders ({activeCount})
+                    <button
+                      className="btn btn-sm btn-outline-light ms-2"
+                      onClick={() => setState((prev) => ({ ...prev, showActive: !prev.showActive }))}
+                    >
+                      {state.showActive ? "Hide" : "Show"}
+                    </button>
+                  </h6>
+                  <Collapse in={state.showActive}>
+                    <div>
+                      {filteredOrders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length > 0 ? (
+                        filteredOrders
+                          .filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status))
+                          .map((order) => renderOrderCard(order))
+                      ) : (
+                        <p>No active orders match the selected filters.</p>
+                      )}
+                    </div>
+                  </Collapse>
+                </>
+              )}
+
+              {state.showArchivedOrders && (
+                <div className="mt-4">
+                  <h6 className="bg-warning text-white p-2">📁 Archived Orders</h6>
+                  {state.archivedOrders.length > 0 ? (
+                    state.archivedOrders.map(renderArchivedCard)
+                  ) : (
+                    <p>No archived orders found.</p>
                   )}
                 </div>
               )}
+
+              {state.showDeletedOrders && (
+                <div className="mt-4">
+                  <h6 className="bg-danger text-white p-2">🗑 Deleted Orders</h6>
+                  {state.deletedOrders.length > 0 ? (
+                    state.deletedOrders.map(renderDeletedCard)
+                  ) : (
+                    <p>No deleted orders found.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="card mt-4">
+                <div className="card-header bg-info text-white">
+                  👥 Staff Manager
+                  <button
+                    className="btn btn-light btn-sm ms-2"
+                    onClick={() => setState((prev) => ({ ...prev, showAddStaff: !prev.showAddStaff }))}
+                  >
+                    {state.showAddStaff ? "Cancel" : "Add Staff"}
+                  </button>
+                </div>
+                <div className="card-body">
+                  {state.showAddStaff && (
+                    <div className="mb-3">
+                      <input
+                        type="text"
+                        className="form-control mb-2"
+                        placeholder="Employee Name"
+                        value={state.newStaff.employee_name}
+                        onChange={(e) =>
+                          setState((prev) => ({
+                            ...prev,
+                            newStaff: { ...prev.newStaff, employee_name: e.target.value },
+                          }))
+                        }
+                      />
+                      <input
+                        type="text"
+                        className="form-control mb-2"
+                        placeholder="Employee Code"
+                        value={state.newStaff.code}
+                        onChange={(e) =>
+                          setState((prev) => ({
+                            ...prev,
+                            newStaff: { ...prev.newStaff, code: e.target.value },
+                          }))
+                        }
+                      />
+                      <select
+                        className="form-control mb-2"
+                        value={state.newStaff.role}
+                        onChange={(e) =>
+                          setState((prev) => ({
+                            ...prev,
+                            newStaff: { ...prev.newStaff, role: e.target.value },
+                          }))
+                        }
+                      >
+                        <option value="">Select Role</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Staff">Staff</option>
+                      </select>
+                      <button className="btn btn-primary" onClick={addStaff}>
+                        Add Staff
+                      </button>
+                    </div>
+                  )}
+                  {state.showEditStaff && (
+                    <div className="mb-3">
+                      <input
+                        type="text"
+                        className="form-control mb-2"
+                        placeholder="Employee Name"
+                        value={state.showEditStaff.employee_name}
+                        onChange={(e) =>
+                          setState((prev) => ({
+                            ...prev,
+                            showEditStaff: { ...prev.showEditStaff, employee_name: e.target.value },
+                          }))
+                        }
+                      />
+                      <input
+                        type="text"
+                        className="form-control mb-2"
+                        placeholder="Employee Code"
+                        value={state.showEditStaff.code}
+                        disabled
+                      />
+                      <select
+                        className="form-control mb-2"
+                        value={state.showEditStaff.role}
+                        onChange={(e) =>
+                          setState((prev) => ({
+                            ...prev,
+                            showEditStaff: { ...prev.showEditStaff, role: e.target.value },
+                          }))
+                        }
+                      >
+                        <option value="">Select Role</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Staff">Staff</option>
+                      </select>
+                      <button
+                        className="btn btn-primary me-2"
+                        onClick={() => editStaff(state.showEditStaff.code)}
+                      >
+                        Save
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => setState((prev) => ({ ...prev, showEditStaff: null }))}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  {state.staffList.length > 0 ? (
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Code</th>
+                          <th>Role</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {state.staffList.map((emp) => (
+                          <tr key={emp.code}>
+                            <td>{emp.employee_name}</td>
+                            <td>{emp.code}</td>
+                            <td>{emp.role}</td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-warning me-2"
+                                onClick={() => setState((prev) => ({ ...prev, showEditStaff: emp }))}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => removeStaff(emp.code)}
+                              >
+                                🗑 Revoke
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p>No staff found.</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {state.userRole !== "Admin" && (
+            <div className="row">
+              <div className="col-md-4">
+                <h6 className="bg-primary text-white p-2">
+                  ⏳ Waiting Orders: {waitingCount}
+                </h6>
+                {state.orders
+                  .filter((o) => o.current_status === "Waiting" && !o.archived)
+                  .map((order) => renderOrderCard(order))}
+              </div>
+              <div className="col-md-8">
+                <h6 className="bg-success text-white p-2">
+                  🚀 Active Orders: {activeCount}
+                </h6>
+                {state.orders
+                  .filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status))
+                  .map((order) => renderOrderCard(order))}
+              </div>
             </div>
-          ))}
+          )}
+
+          {state.showReportModal && (
+            <ReportModal
+              onClose={() => setState((prev) => ({ ...prev, showReportModal: false }))}
+              reportData={state.reportData}
+              fetchReportData={fetchReportData}
+            />
+          )}
+
+          {state.selectedOrder && (
+            <div className="modal d-block" tabIndex="-1" onClick={() => setState((prev) => ({ ...prev, selectedOrder: null }))}>
+              <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+                <div className={`modal-content ${getModalCategoryClass(state.selectedOrder.category)}`}>
+                  <div className="modal-header">
+                    <h5 className="modal-title">🧾 Order Details</h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => setState((prev) => ({ ...prev, selectedOrder: null }))}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <p><strong>Transaction ID:</strong> {state.selectedOrder.transaction_id}</p>
+                    <p><strong>Customer:</strong> {state.selectedOrder.customer_name}</p>
+                    <p><strong>Contact:</strong> {state.selectedOrder.client_contact}</p>
+                    <p><strong>Paint:</strong> {state.selectedOrder.paint_type}</p>
+                    <p><strong>Category:</strong> {state.selectedOrder.category}</p>
+                    <p><strong>Quantity:</strong> {state.selectedOrder.paint_quantity}</p>
+                    <p><strong>Colour Code:</strong> {state.selectedOrder.colour_code || "N/A"}</p>
+                    <p><strong>Status:</strong> {state.selectedOrder.current_status}</p>
+                    <p><strong>Order Type:</strong> {state.selectedOrder.order_type}</p>
+                    <p><strong>PO Type:</strong> {state.selectedOrder.po_type || "N/A"}</p>
+                    <p><strong>Assigned To:</strong> {state.selectedOrder.assigned_employee || "Unassigned"}</p>
+                    <p><strong>Note:</strong> {state.selectedOrder.note || "No note"}</p>
+                    <div>
+                      <textarea
+                        className="form-control mb-2"
+                        value={state.orderNote}
+                        onChange={(e) => setState((prev) => ({ ...prev, orderNote: e.target.value }))}
+                        placeholder="Add or edit note"
+                      />
+                      <button
+                        className="btn btn-primary me-2"
+                        onClick={() => updateNote(state.selectedOrder)}
+                      >
+                        Save Note
+                      </button>
+                      {state.userRole === "Admin" && state.selectedOrder.current_status === "Ready" && (
+                        <button
+                          className="btn btn-success me-2"
+                          onClick={() => markAsPaid(state.selectedOrder.transaction_id)}
+                        >
+                          {state.selectedOrder.order_type === "Order" ? "💰 Mark as Paid" : "✅ Mark as Complete"}
+                        </button>
+                      )}
+                      {state.userRole === "Admin" && (
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => setState((prev) => ({ ...prev, showCancelConfirm: state.selectedOrder.transaction_id }))}
+                        >
+                          Cancel Order
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {state.showCancelConfirm && (
+            <div className="modal d-block" tabIndex="-1" onClick={() => setState((prev) => ({ ...prev, showCancelConfirm: null }))}>
+              <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Confirm Order Cancellation</h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => setState((prev) => ({ ...prev, showCancelConfirm: null }))}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <p>Are you sure you want to cancel order <strong>{state.showCancelConfirm}</strong>?</p>
+                    <textarea
+                      className="form-control mb-2"
+                      value={state.cancelReason}
+                      onChange={(e) => setState((prev) => ({ ...prev, cancelReason: e.target.value }))}
+                      placeholder="Enter reason for cancellation"
+                    />
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setState((prev) => ({ ...prev, showCancelConfirm: null }))}
+                    >
+                      Close
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => cancelOrder(state.showCancelConfirm)}
+                      disabled={!state.cancelReason.trim()}
+                    >
+                      Confirm Cancellation
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {state.pendingColourUpdate && (
+            <ColourCodeModal
+              onSubmit={async ({ colourCode, employeeCode }) => {
+                try {
+                  const res = await axios.get(`${BASE_URL}/api/employees?code=${employeeCode}`);
+                  if (!res.data?.employee_name) {
+                    triggerToast("Invalid employee code!", "danger");
+                    return;
+                  }
+                  const employeeName = res.data.employee_name;
+                  const fullOrder = state.orders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId) ||
+                                   state.readyOrders.find((o) => o.transaction_id === state.pendingColourUpdate.orderId);
+                  updateStatus(fullOrder, state.pendingColourUpdate.newStatus, colourCode, employeeName);
+                  setState((prev) => ({ ...prev, pendingColourUpdate: null }));
+                } catch {
+                  triggerToast("Unable to verify employee!", "danger");
+                }
+              }}
+              onCancel={() => setState((prev) => ({ ...prev, pendingColourUpdate: null }))}
+            />
+          )}
+
+          <ToastContainer
+            className="position-fixed top-0 start-50 translate-middle-x p-3"
+            style={{ zIndex: 9999 }}
+          >
+            <Toast
+              bg={toast.type}
+              onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+              show={toast.show}
+              delay={toast.type === "danger" ? null : 3500}
+              autohide={toast.type !== "danger"}
+            >
+              <Toast.Header
+                closeButton={true}
+                className="text-white"
+                style={{
+                  backgroundColor: toast.type === "danger" ? "#dc3545" : "#198754",
+                }}
+              >
+                <strong className="me-auto">
+                  {toast.type === "danger" ? "⚠️ Error" : "✅ Success"}
+                </strong>
+              </Toast.Header>
+              <Toast.Body className="text-white fs-6 fw-bold text-center">
+                {toast.message}
+              </Toast.Body>
+            </Toast>
+          </ToastContainer>
         </div>
       </div>
     </div>
