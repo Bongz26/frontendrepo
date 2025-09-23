@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import Chart from "chart.js/auto";
 import "./styles/queueStyles.css";
 import "./styles/queueSortStyles.css";
 import LoginPopup from "./LoginPopup";
@@ -114,9 +113,9 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   };
 
   React.useEffect(() => {
-    if (!reportData) return;
+    if (!reportData || !window.Chart) return;
 
-    const statusChart = new Chart(document.getElementById("statusChart"), {
+    const statusChart = new window.Chart(document.getElementById("statusChart"), {
       type: "bar",
       data: {
         labels: Object.keys(reportData.statusSummary),
@@ -137,7 +136,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
       },
     });
 
-    const categoryChart = new Chart(document.getElementById("categoryChart"), {
+    const categoryChart = new window.Chart(document.getElementById("categoryChart"), {
       type: "pie",
       data: {
         labels: Object.keys(reportData.categorySummary),
@@ -154,7 +153,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
       },
     });
 
-    const historyChart = new Chart(document.getElementById("historyChart"), {
+    const historyChart = new window.Chart(document.getElementById("historyChart"), {
       type: "doughnut",
       data: {
         labels: Object.keys(reportData.historySummary),
@@ -172,7 +171,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
     });
 
     const deletedChart = reportData.deletedSummary && Object.keys(reportData.deletedSummary).length > 0
-      ? new Chart(document.getElementById("deletedChart"), {
+      ? new window.Chart(document.getElementById("deletedChart"), {
           type: "bar",
           data: {
             labels: Object.keys(reportData.deletedSummary),
@@ -362,7 +361,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
                           <tr key={status}>
                             <td>{status}</td>
                             <td>{count}</td>
-                          </tr>
+                        </tr>
                         ))}
                       </tbody>
                     </table>
