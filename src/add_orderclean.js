@@ -35,6 +35,9 @@ const AddOrderC = () => {
   const [userRole, setUserRole] = useState("Admin");
   const [contactSuggestions, setContactSuggestions] = useState([]);
   const [nameSuggestions, setNameSuggestions] = useState([]);
+  // Added sorting states
+  const [sortBy, setSortBy] = useState("transaction_id");
+  const [sortOrder, setSortOrder] = useState("DESC");
 
   const triggerToast = (message, type = "success") => {
     setToastMessage(message);
@@ -176,7 +179,7 @@ const AddOrderC = () => {
   const handleSearch = async () => {
     try {
       const res = await axios.get(`${BASE_URL}/api/orders/search`, {
-        params: { q: searchTerm },
+        params: { q: searchTerm, sortBy, sortOrder },
       });
       setSearchResults(res.data);
     } catch (error) {
@@ -607,7 +610,7 @@ Track ID       : TRK-${order.transaction_id}
           </button>
           <div className="mb-4">
             <label className="form-label">🔎 Search Existing Order</label>
-            <div className="input-group">
+            <div className="input-group mb-2">
               <input
                 type="text"
                 className="form-control"
@@ -629,6 +632,34 @@ Track ID       : TRK-${order.transaction_id}
               >
                 Clear
               </button>
+            </div>
+            {/* Added sorting controls */}
+            <div className="row mb-2">
+              <div className="col-md-6">
+                <label className="form-label">Sort By</label>
+                <select
+                  className="form-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="transaction_id">Transaction ID</option>
+                  <option value="customer_name">Customer Name</option>
+                  <option value="client_contact">Contact</option>
+                  <option value="start_time">Start Time</option>
+                  <option value="current_status">Status</option>
+                </select>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Sort Order</label>
+                <select
+                  className="form-select"
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                >
+                  <option value="DESC">Descending</option>
+                  <option value="ASC">Ascending</option>
+                </select>
+              </div>
             </div>
             {eta && (
               <div className="mt-2">
@@ -656,7 +687,7 @@ Track ID       : TRK-${order.transaction_id}
                 </div>
               </div>
             )}
-            {searchResults.length > 0 && (
+            {searchResults.length > 0 ? (
               <div className="mt-3">
                 <small className="text-muted">
                   {searchResults.length} result(s):
@@ -697,6 +728,10 @@ Track ID       : TRK-${order.transaction_id}
                     </li>
                   ))}
                 </ul>
+              </div>
+            ) : searchTerm && (
+              <div className="mt-3">
+                <small className="text-muted">No orders found</small>
               </div>
             )}
           </div>
