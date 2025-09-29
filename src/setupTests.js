@@ -59,6 +59,403 @@ const ElapsedTime = ({ statusStartedAt, fallbackTime }) => {
   return <span>⏱ {displayTime}</span>;
 };
 
+// Enhanced ReportModal component
+const ReportModal = ({ onClose, reportData, fetchReportData }) => {
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [filterError, setFilterError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("summary");
+
+  const fetchAuditLogs = useCallback(async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/audit_logs`, {
+        params: { 
+          start_date: startDate, 
+          end_date: endDate, 
+          status: selectedStatus === "All" ? "" : selectedStatus 
+        },
+      });
+      setAuditLogs(response.data);
+    } catch (err) {
+      console.error("Error fetching audit logs:", err);
+      setFilterError(err.response?.data?.error || "Failed to fetch audit logs.");
+    }
+  }, [startDate, endDate, selectedStatus]);
+
+  const handleFilterSubmit = async () => {
+    setFilterError("");
+    setLoading(true);
+    try {
+      await fetchReportData(startDate, endDate, selectedStatus, selectedCategory, includeDeleted);
+      await fetchAuditLogs();
+    } catch (err) {
+      setFilterError(err.response?.data?.error || "Failed to fetch report data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadCSV = () => {
+    if (!reportData) return;
+
+    const headers = ["Metric,Value"];
+    const statusRows = Object.entries(reportData.statusSummary).map(
+      ([status, count]) => `Status: ${status},${count}`
+    );
+    const categoryRows = Object.entries(reportData.categorySummary).map(
+      ([category, count]) => `Category: ${category},${count}`
+    );
+    const historyRows = Object.entries(reportData.historySummary).map(
+      ([action, count]) => `History: ${action},${count}`
+    );
+    const deletedRows = reportData.deletedSummary
+      ? Object.entries(reportData.deletedSummary).map(([status, count]) => `Deleted Status: ${status},${count}`)
+      : [];
+    const auditLogRows = auditLogs.map(
+      (log) => `Audit Log,${log.order_id},${log.action},${log.from_status || ""},${log.to_status || ""},${log.employee_name || ""},${log.timestamp},${log.remarks || ""}`
+    );
+
+    const csvContent = [
+      headers,
+      ...statusRows,
+      ...categoryRows,
+      ...historyRows,
+      ...deletedRows,
+      "Audit Log,Order ID,Action,From Status,To Status,Employee,Timestamp,Remarks",
+      ...auditLogRows,
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `order_report_${startDate || "all"}_${endDate || "all"}_${selectedStatus}_${selectedCategory}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const downloadPDF = () => {
+    // Simple PDF generation using window.print()
+    window.print();
+  };
+
+  const getTotalOrders = () => {
+    if (!reportData) return 0;
+    return Object.values(reportData.statusSummary).reduce((sum, count) => sum + count, 0);
+  };
+
+  const getCompletionRate = () => {
+    if (!reportData) return 0;
+    const total = getTotalOrders();
+    const complete = reportData.statusSummary.Complete || 0;
+    return total > 0 ? ((complete / total) * 100).toFixed(1) : 0;
+  };
+
+  const getAverageProcessingTime = () => {
+    // This would need additional backend support to calculate
+    return "N/A";
+  };
+
+  return (
+    <div className="modal d-block" tabIndex="-1" onClick={onClose}>
+      <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-content">
+          <div className="modal-header bg-primary text-white">
+            <h5 className="modal-title">📊 Enhanced Order Report</h5>
+            <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+          </div>
+          <div className="modal-body">
+            {/* Filter Section */}
+            <div className="card mb-3 shadow-sm">
+              <div className="card-body">
+                <h6 className="card-title">🔍 Filter Report</h6>
+                <div className="row">
+                  <div className="col-md-3">
+                    <label className="form-label">Start Date:</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">End Date:</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Status:</label>
+                    <select
+                      className="form-control"
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                    >
+                      <option value="All">All</option>
+                      <option value="Waiting">Waiting</option>
+                      <option value="Mixing">Mixing</option>
+                      <option value="Spraying">Spraying</option>
+                      <option value="Re-Mixing">Re-Mixing</option>
+                      <option value="Ready">Ready</option>
+                      <option value="Complete">Complete</option>
+                    </select>
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Category:</label>
+                    <select
+                      className="form-control"
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                    >
+                      <option value="All">All</option>
+                      <option value="New Mix">New Mix</option>
+                      <option value="Mix More">Mix More</option>
+                      <option value="Colour Code">Colour Code</option>
+                      <option value="Detailing">Detailing</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-check mt-2">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    checked={includeDeleted}
+                    onChange={(e) => setIncludeDeleted(e.target.checked)}
+                  />
+                  <label className="form-check-label">Include Deleted Orders</label>
+                </div>
+                <div className="mt-3">
+                  <button 
+                    className="btn btn-primary me-2" 
+                    onClick={handleFilterSubmit}
+                    disabled={loading}
+                  >
+                    {loading ? "⏳ Loading..." : "🔍 Apply Filters"}
+                  </button>
+                  {reportData && (
+                    <>
+                      <button className="btn btn-success me-2" onClick={downloadCSV}>
+                        📊 Download CSV
+                      </button>
+                      <button className="btn btn-danger" onClick={downloadPDF}>
+                        📄 Print PDF
+                      </button>
+                    </>
+                  )}
+                </div>
+                {filterError && <div className="alert alert-danger mt-2">{filterError}</div>}
+              </div>
+            </div>
+
+            {reportData ? (
+              <>
+                {/* Key Metrics Dashboard */}
+                <div className="row mb-4">
+                  <div className="col-md-3">
+                    <div className="card bg-primary text-white">
+                      <div className="card-body text-center">
+                        <h5 className="card-title">📋 Total Orders</h5>
+                        <h2 className="card-text">{getTotalOrders()}</h2>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="card bg-success text-white">
+                      <div className="card-body text-center">
+                        <h5 className="card-title">✅ Completion Rate</h5>
+                        <h2 className="card-text">{getCompletionRate()}%</h2>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="card bg-info text-white">
+                      <div className="card-body text-center">
+                        <h5 className="card-title">⏱️ Avg Processing Time</h5>
+                        <h2 className="card-text">{getAverageProcessingTime()}</h2>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="card bg-warning text-white">
+                      <div className="card-body text-center">
+                        <h5 className="card-title">🚀 Active Orders</h5>
+                        <h2 className="card-text">
+                          {(reportData.statusSummary.Mixing || 0) + (reportData.statusSummary.Spraying || 0) + (reportData.statusSummary['Re-Mixing'] || 0)}
+                        </h2>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tab Navigation */}
+                <ul className="nav nav-tabs mb-3">
+                  <li className="nav-item">
+                    <button 
+                      className={`nav-link ${activeTab === 'summary' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('summary')}
+                    >
+                      📊 Summary
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button 
+                      className={`nav-link ${activeTab === 'charts' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('charts')}
+                    >
+                      📈 Charts
+                    </button>
+                  </li>
+                  <li className="nav-item">
+                    <button 
+                      className={`nav-link ${activeTab === 'audit' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('audit')}
+                    >
+                      📝 Audit Logs
+                    </button>
+                  </li>
+                </ul>
+
+                {/* Tab Content */}
+                {activeTab === 'summary' && (
+                  <div className="row">
+                    <div className="col-md-6">
+                      <h6>Order Status Summary</h6>
+                      <table className="table table-sm table-bordered">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Status</th>
+                            <th>Count</th>
+                            <th>Percentage</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(reportData.statusSummary).map(([status, count]) => (
+                            <tr key={status}>
+                              <td>
+                                <span className={`badge ${
+                                  status === 'Complete' ? 'bg-success' :
+                                  status === 'Ready' ? 'bg-secondary' :
+                                  status === 'Waiting' ? 'bg-primary' :
+                                  status === 'Mixing' ? 'bg-info' :
+                                  status === 'Spraying' ? 'bg-warning' :
+                                  'bg-dark'
+                                }`}>
+                                  {status}
+                                </span>
+                              </td>
+                              <td>{count}</td>
+                              <td>{getTotalOrders() > 0 ? ((count / getTotalOrders()) * 100).toFixed(1) : 0}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="col-md-6">
+                      <h6>Category Summary</h6>
+                      <table className="table table-sm table-bordered">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Category</th>
+                            <th>Count</th>
+                            <th>Percentage</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(reportData.categorySummary).map(([category, count]) => (
+                            <tr key={category}>
+                              <td>{category}</td>
+                              <td>{count}</td>
+                              <td>{getTotalOrders() > 0 ? ((count / getTotalOrders()) * 100).toFixed(1) : 0}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'charts' && (
+                  <div className="row">
+                    <div className="col-md-6">
+                      <h6 className="text-center">Order Status Distribution</h6>
+                      <canvas id="statusChart" height="300"></canvas>
+                    </div>
+                    <div className="col-md-6">
+                      <h6 className="text-center">Category Distribution</h6>
+                      <canvas id="categoryChart" height="300"></canvas>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'audit' && (
+                  <div className="col-12">
+                    <h6>Audit Log Details</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm table-bordered">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Order ID</th>
+                            <th>Action</th>
+                            <th>From Status</th>
+                            <th>To Status</th>
+                            <th>Employee</th>
+                            <th>Timestamp</th>
+                            <th>Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {auditLogs.map((log) => (
+                            <tr key={log.log_id}>
+                              <td>{log.order_id}</td>
+                              <td>
+                                <span className={`badge ${
+                                  log.action === 'Status Changed' ? 'bg-primary' :
+                                  log.action === 'Order Details Updated' ? 'bg-warning' :
+                                  log.action === 'Order Deleted' ? 'bg-danger' :
+                                  'bg-secondary'
+                                }`}>
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td>{log.from_status || "N/A"}</td>
+                              <td>{log.to_status || "N/A"}</td>
+                              <td>{log.employee_name || "N/A"}</td>
+                              <td>{new Date(log.timestamp).toLocaleString()}</td>
+                              <td>{log.remarks || "N/A"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-5">
+                <h5 className="text-muted">📊 No Report Data Available</h5>
+                <p className="text-muted">Apply filters to generate a comprehensive report</p>
+              </div>
+            )}
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-secondary" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CardViewBOC = () => {
   const [state, setState] = useState({
     orders: [],
@@ -102,6 +499,9 @@ const CardViewBOC = () => {
       po_type: "",
       note: ""
     },
+    // Report states
+    showReportModal: false,
+    reportData: null,
   });
 
   const { toast, triggerToast, setToast } = useToast();
@@ -176,6 +576,26 @@ const CardViewBOC = () => {
     } catch (err) {
       console.error("Error fetching complete orders:", err);
       triggerToast("Error fetching complete orders.", "danger");
+    }
+  }, []);
+
+  const fetchReportData = useCallback(async (startDate = "", endDate = "", status = "All", category = "All", includeDeleted = false) => {
+    try {
+      console.log("Fetching report data from /api/orders/report");
+      const response = await axios.get(`${BASE_URL}/api/orders/report`, {
+        params: {
+          start_date: startDate,
+          end_date: endDate,
+          status: status === "All" ? "" : status,
+          category: category === "All" ? "" : category,
+          include_deleted: includeDeleted,
+        },
+      });
+      setState((prev) => ({ ...prev, reportData: response.data, showReportModal: true }));
+    } catch (err) {
+      console.error("Error fetching report data:", err);
+      triggerToast(err.response?.data?.error || "Failed to fetch report data.", "danger");
+      throw err;
     }
   }, []);
 
@@ -822,13 +1242,23 @@ const CardViewBOC = () => {
             >
               {state.loading ? "Refreshing..." : "🔄 Refresh"}
             </button>
-            <Link
-              to="/add-"
-              className="btn btn-light fw-bold rounded-pill px-4 py-2"
-              style={{ fontSize: "1rem" }}
-            >
-              ← Back To Add Order
-            </Link>
+            <div>
+              {state.userRole === "Admin" && (
+                <button
+                  className="btn btn-primary me-2"
+                  onClick={() => setState((prev) => ({ ...prev, showReportModal: true }))}
+                >
+                  📊 View Report
+                </button>
+              )}
+              <Link
+                to="/add-"
+                className="btn btn-light fw-bold rounded-pill px-4 py-2"
+                style={{ fontSize: "1rem" }}
+              >
+                ← Back To Add Order
+              </Link>
+            </div>
           </div>
 
           {state.userRole === "Admin" && (
@@ -1629,6 +2059,14 @@ const CardViewBOC = () => {
             {toast.message}
           </Toast.Body>
         </Toast>
+      {state.showReportModal && (
+        <ReportModal
+          onClose={() => setState((prev) => ({ ...prev, showReportModal: false }))}
+          reportData={state.reportData}
+          fetchReportData={fetchReportData}
+        />
+      )}
+
       </ToastContainer>
     </div>
   );
