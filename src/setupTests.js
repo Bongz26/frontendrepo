@@ -421,69 +421,80 @@ const CardViewBOC = () => {
     if (!state.editingOrder) return;
 
     try {
-      // Prepare the data according to what the backend expects
-      const updateData = {
-        current_status: state.editingOrder.current_status, // Keep current status
-        assigned_employee: state.editingOrder.assigned_employee || null, // Keep current employee
-        colour_code: state.editFormData.colour_code || "Pending",
-        note: state.editFormData.note || null,
-        userRole: state.userRole,
-        old_status: state.editingOrder.current_status,
-        po_type: state.editFormData.po_type || null
-      };
+      // Check if this is a complete order - only allow note editing
+      if (state.editingOrder.current_status === "Complete") {
+        // For complete orders, only update the note
+        const updateData = {
+          current_status: state.editingOrder.current_status,
+          assigned_employee: state.editingOrder.assigned_employee || null,
+          colour_code: state.editingOrder.colour_code || "Pending",
+          note: state.editFormData.note || null,
+          userRole: state.userRole,
+          old_status: state.editingOrder.current_status,
+          po_type: state.editingOrder.po_type || null
+        };
 
-      // Ensure colour_code is not empty string for Ready orders
-      if (state.editingOrder.current_status === "Ready" && updateData.colour_code === "Pending") {
-        updateData.colour_code = state.editFormData.colour_code || "Pending";
+        console.log("Updating complete order note only:", updateData);
+        
+        const fullUrl = `${BASE_URL}/api/orders/${encodeURIComponent(state.editingOrder.transaction_id)}`;
+        await axios.put(fullUrl, updateData);
+        
+        triggerToast("✅ Note updated successfully!");
+      } else {
+        // For all other orders, allow full editing
+        const updateData = {
+          customer_name: state.editingOrder.customer_name, // Keep original
+          client_contact: state.editFormData.client_contact,
+          paint_type: state.editFormData.paint_type,
+          paint_quantity: state.editFormData.paint_quantity,
+          category: state.editFormData.category,
+          po_type: state.editFormData.po_type || null,
+          colour_code: state.editFormData.colour_code || "Pending",
+          note: state.editFormData.note || null,
+          userRole: state.userRole
+        };
+
+        // Validate required fields
+        if (!updateData.client_contact || updateData.client_contact.trim() === "") {
+          triggerToast("❌ Contact number is required!", "danger");
+          return;
+        }
+
+        if (!updateData.paint_type || updateData.paint_type.trim() === "") {
+          triggerToast("❌ Paint type is required!", "danger");
+          return;
+        }
+
+        if (!updateData.paint_quantity || updateData.paint_quantity.trim() === "") {
+          triggerToast("❌ Paint quantity is required!", "danger");
+          return;
+        }
+
+        if (!updateData.category || updateData.category.trim() === "") {
+          triggerToast("❌ Category is required!", "danger");
+          return;
+        }
+
+        if (state.editingOrder.current_status === "Ready" && (!updateData.colour_code || updateData.colour_code.trim() === "")) {
+          triggerToast("❌ Colour Code is required for Ready orders!", "danger");
+          return;
+        }
+
+        // Validate PO Type for Paid orders
+        if (state.editingOrder.order_type === "Paid" && updateData.po_type && !["Nexa", "Carvello"].includes(updateData.po_type)) {
+          triggerToast("❌ PO Type must be 'Nexa' or 'Carvello' for Paid orders!", "danger");
+          return;
+        }
+
+        console.log("Updating order with full edit data:", updateData);
+        
+        // Use the new edit endpoint for full editing
+        const fullUrl = `${BASE_URL}/api/orders/edit/${encodeURIComponent(state.editingOrder.transaction_id)}`;
+        await axios.put(fullUrl, updateData);
+        
+        triggerToast("✅ Order updated successfully!");
       }
 
-      console.log("Updating order with data:", updateData);
-      console.log("Order ID:", state.editingOrder.transaction_id);
-      console.log("Order ID type:", typeof state.editingOrder.transaction_id);
-      console.log("Order ID length:", state.editingOrder.transaction_id?.length);
-
-      // Validate required fields based on backend requirements
-      if (state.editingOrder.current_status !== "Waiting" && !updateData.assigned_employee) {
-        triggerToast("❌ Employee must be assigned for this order status!", "danger");
-        return;
-      }
-
-      if (state.editingOrder.current_status === "Ready" && (!updateData.colour_code || updateData.colour_code.trim() === "")) {
-        triggerToast("❌ Colour Code is required for Ready orders!", "danger");
-        return;
-      }
-
-      // Validate PO Type for Paid orders
-      if (state.editingOrder.order_type === "Paid" && updateData.po_type && !["Nexa", "Carvello"].includes(updateData.po_type)) {
-        triggerToast("❌ PO Type must be 'Nexa' or 'Carvello' for Paid orders!", "danger");
-        return;
-      }
-
-      // Validate order ID
-      if (!state.editingOrder.transaction_id || state.editingOrder.transaction_id.trim() === "") {
-        triggerToast("❌ Invalid order ID!", "danger");
-        return;
-      }
-
-      // Try with URL encoding first, then without if that fails
-      let fullUrl = `${BASE_URL}/api/orders/${encodeURIComponent(state.editingOrder.transaction_id)}`;
-      console.log("Encoded order ID:", encodeURIComponent(state.editingOrder.transaction_id));
-      console.log("Full URL:", fullUrl);
-      console.log("Request data:", updateData);
-      
-      try {
-        const response = await axios.put(fullUrl, updateData);
-        console.log("Success response:", response.data);
-      } catch (firstError) {
-        console.log("First attempt failed, trying without encoding...");
-        console.log("First error:", firstError.response?.data);
-        console.log("First error status:", firstError.response?.status);
-        fullUrl = `${BASE_URL}/api/orders/${state.editingOrder.transaction_id}`;
-        console.log("Retry URL:", fullUrl);
-        const response = await axios.put(fullUrl, updateData);
-        console.log("Retry success response:", response.data);
-      }
-      triggerToast("✅ Order updated successfully!");
       setState((prev) => ({
         ...prev,
         showEditModal: false,
@@ -503,9 +514,6 @@ const CardViewBOC = () => {
       fetchReadyOrders();
     } catch (error) {
       console.error("Error updating order:", error);
-      console.error("Error response:", error.response?.data);
-      console.error("Error status:", error.response?.status);
-      console.error("Error headers:", error.response?.headers);
       triggerToast(`❌ Error updating order: ${error.response?.data?.error || error.message}`, "danger");
     }
   };
@@ -1435,51 +1443,144 @@ const CardViewBOC = () => {
                 ></button>
               </div>
               <div className="modal-body">
-                {/* Display read-only order info */}
-                <div className="alert alert-info mb-3">
-                  <strong>Order Details (Read-only):</strong><br/>
-                  <strong>Customer:</strong> {state.editingOrder?.customer_name}<br/>
-                  <strong>Contact:</strong> {state.editingOrder?.client_contact}<br/>
-                  <strong>Paint Type:</strong> {state.editingOrder?.paint_type}<br/>
-                  <strong>Quantity:</strong> {state.editingOrder?.paint_quantity}<br/>
-                  <strong>Category:</strong> {state.editingOrder?.category}
-                </div>
-                
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label">PO Type</label>
-                    <select
-                      className="form-select"
-                      value={state.editFormData.po_type}
-                      onChange={(e) => handleEditFormChange('po_type', e.target.value)}
-                    >
-                      <option value="">Select PO Type</option>
-                      <option value="Nexa">Nexa</option>
-                      <option value="Carvello">Carvello</option>
-                    </select>
+                {state.editingOrder?.current_status === "Complete" ? (
+                  // Complete orders - read-only with only notes editable
+                  <div>
+                    <div className="alert alert-warning mb-3">
+                      <strong>⚠️ Complete Order - Limited Editing</strong><br/>
+                      Only notes can be edited for completed orders.
+                    </div>
+                    
+                    <div className="alert alert-info mb-3">
+                      <strong>Order Details (Read-only):</strong><br/>
+                      <strong>Customer:</strong> {state.editingOrder?.customer_name}<br/>
+                      <strong>Contact:</strong> {state.editingOrder?.client_contact}<br/>
+                      <strong>Paint Type:</strong> {state.editingOrder?.paint_type}<br/>
+                      <strong>Quantity:</strong> {state.editingOrder?.paint_quantity}<br/>
+                      <strong>Category:</strong> {state.editingOrder?.category}<br/>
+                      <strong>PO Type:</strong> {state.editingOrder?.po_type || "N/A"}<br/>
+                      <strong>Colour Code:</strong> {state.editingOrder?.colour_code || "N/A"}
+                    </div>
+                    
+                    <div className="mb-3">
+                      <label className="form-label">Notes (Editable)</label>
+                      <textarea
+                        className="form-control"
+                        rows={4}
+                        value={state.editFormData.note}
+                        onChange={(e) => handleEditFormChange('note', e.target.value)}
+                        placeholder="Enter any additional notes"
+                      />
+                    </div>
                   </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label">Colour Code</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={state.editFormData.colour_code}
-                      onChange={(e) => handleEditFormChange('colour_code', e.target.value)}
-                      placeholder="Enter colour code"
-                    />
+                ) : (
+                  // All other orders - full editing capabilities
+                  <div>
+                    <div className="alert alert-info mb-3">
+                      <strong>Order Details (Editable):</strong><br/>
+                      <strong>Customer:</strong> {state.editingOrder?.customer_name} (Read-only)<br/>
+                      <strong>Transaction ID:</strong> {state.editingOrder?.transaction_id} (Read-only)
+                    </div>
+                    
+                    <div className="row">
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Contact Number</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={state.editFormData.client_contact}
+                          onChange={(e) => handleEditFormChange('client_contact', e.target.value)}
+                          placeholder="Enter contact number"
+                        />
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Paint Type</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={state.editFormData.paint_type}
+                          onChange={(e) => handleEditFormChange('paint_type', e.target.value)}
+                          placeholder="Enter paint type"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="row">
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Paint Quantity</label>
+                        <select
+                          className="form-select"
+                          value={state.editFormData.paint_quantity}
+                          onChange={(e) => handleEditFormChange('paint_quantity', e.target.value)}
+                        >
+                          <option value="">Select Quantity</option>
+                          <option value="250ml">250ml</option>
+                          <option value="500ml">500ml</option>
+                          <option value="750ml">750ml</option>
+                          <option value="1L">1L</option>
+                          <option value="1.25L">1.25L</option>
+                          <option value="1.5L">1.5L</option>
+                          <option value="2L">2L</option>
+                          <option value="2.5L">2.5L</option>
+                          <option value="3L">3L</option>
+                          <option value="4L">4L</option>
+                          <option value="5L">5L</option>
+                          <option value="10L">10L</option>
+                        </select>
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Category</label>
+                        <select
+                          className="form-select"
+                          value={state.editFormData.category}
+                          onChange={(e) => handleEditFormChange('category', e.target.value)}
+                        >
+                          <option value="">Select Category</option>
+                          <option value="New Mix">New Mix</option>
+                          <option value="Mix More">Mix More</option>
+                          <option value="Colour Code">Colour Code</option>
+                          <option value="Detailing">Detailing</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="row">
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">PO Type</label>
+                        <select
+                          className="form-select"
+                          value={state.editFormData.po_type}
+                          onChange={(e) => handleEditFormChange('po_type', e.target.value)}
+                        >
+                          <option value="">Select PO Type</option>
+                          <option value="Nexa">Nexa</option>
+                          <option value="Carvello">Carvello</option>
+                        </select>
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <label className="form-label">Colour Code</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={state.editFormData.colour_code}
+                          onChange={(e) => handleEditFormChange('colour_code', e.target.value)}
+                          placeholder="Enter colour code"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <label className="form-label">Notes</label>
+                      <textarea
+                        className="form-control"
+                        rows={3}
+                        value={state.editFormData.note}
+                        onChange={(e) => handleEditFormChange('note', e.target.value)}
+                        placeholder="Enter any additional notes"
+                      />
+                    </div>
                   </div>
-                </div>
-                
-                <div className="mb-3">
-                  <label className="form-label">Notes</label>
-                  <textarea
-                    className="form-control"
-                    rows={3}
-                    value={state.editFormData.note}
-                    onChange={(e) => handleEditFormChange('note', e.target.value)}
-                    placeholder="Enter any additional notes"
-                  />
-                </div>
+                )}
               </div>
               <div className="modal-footer">
                 <button
