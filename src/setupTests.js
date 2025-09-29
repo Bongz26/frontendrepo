@@ -675,12 +675,27 @@ const CardViewBOC = () => {
         // Apply date filtering if dates are provided
         if (state.completeStartDate || state.completeEndDate) {
           completeOrders = completeOrders.filter(order => {
-            const orderDate = new Date(order.completed_at || order.updated_at || order.start_time);
-            const startDate = state.completeStartDate ? new Date(state.completeStartDate) : null;
-            const endDate = state.completeEndDate ? new Date(state.completeEndDate) : null;
+            // Get the order date and convert to date string for comparison
+            const orderDateStr = order.completed_at || order.updated_at || order.start_time;
+            const orderDate = new Date(orderDateStr);
+            const orderDateOnly = orderDate.toISOString().split('T')[0]; // Get YYYY-MM-DD format
             
-            if (startDate && orderDate < startDate) return false;
-            if (endDate && orderDate > endDate) return false;
+            console.log("Comparing dates:", {
+              orderDateStr,
+              orderDateOnly,
+              startDate: state.completeStartDate,
+              endDate: state.completeEndDate
+            });
+            
+            if (state.completeStartDate && orderDateOnly < state.completeStartDate) {
+              console.log("Filtered out - before start date:", orderDateOnly, "<", state.completeStartDate);
+              return false;
+            }
+            if (state.completeEndDate && orderDateOnly > state.completeEndDate) {
+              console.log("Filtered out - after end date:", orderDateOnly, ">", state.completeEndDate);
+              return false;
+            }
+            console.log("Order passed date filter:", order.transaction_id, orderDateOnly);
             return true;
           });
         }
