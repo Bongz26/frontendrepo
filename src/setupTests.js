@@ -244,6 +244,32 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
           .modal-header.bg-purple {
             background-color: #6b46c1 !important;
           }
+          .modal-dialog.modal-xl {
+            max-width: 95vw !important;
+            width: 95vw !important;
+            max-height: 95vh !important;
+            margin: 1.75rem auto !important;
+          }
+          .modal-content {
+            max-height: 90vh !important;
+            overflow-y: auto !important;
+          }
+          .modal-body {
+            max-height: 70vh !important;
+            overflow-y: auto !important;
+            padding: 2rem !important;
+          }
+          @media (max-width: 768px) {
+            .modal-dialog.modal-xl {
+              max-width: 98vw !important;
+              width: 98vw !important;
+              margin: 0.5rem auto !important;
+            }
+            .modal-body {
+              padding: 1rem !important;
+              max-height: 80vh !important;
+            }
+          }
         `}
       </style>
       <div className="modal d-block" tabIndex="-1" onClick={onClose}>
@@ -256,8 +282,8 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
           <div className="modal-body">
             {/* Welcome Message */}
             <div className="alert alert-success mb-3" style={{ fontSize: '1.1rem', padding: '1rem' }}>
-              <strong>🎉 Using Bootstrap Standard Modal!</strong><br/>
-              Now using Bootstrap's standard modal classes like in Dashboard.jsx. This should align perfectly!
+              <strong>🎉 Large Modal with Proper Scrolling!</strong><br/>
+              Modal is now 95% of screen size with proper scrolling. You should be able to see all data clearly!
             </div>
             
             {/* Filter Section */}
