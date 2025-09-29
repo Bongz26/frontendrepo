@@ -87,6 +87,19 @@ const CardViewBOC = () => {
     showReady: true,
     showWaiting: true,
     showActive: true,
+    // Edit order states
+    showEditModal: false,
+    editingOrder: null,
+    editFormData: {
+      customer_name: "",
+      client_contact: "",
+      paint_type: "",
+      paint_quantity: "",
+      colour_code: "",
+      category: "",
+      po_type: "",
+      note: ""
+    },
   });
 
   const { toast, triggerToast, setToast } = useToast();
@@ -358,6 +371,85 @@ const CardViewBOC = () => {
     setState((prev) => ({ ...prev, orderNote: "", selectedOrder: null }));
   };
 
+  // Edit order functionality
+  const handleEditOrder = (order) => {
+    setState((prev) => ({
+      ...prev,
+      editingOrder: order,
+      editFormData: {
+        customer_name: order.customer_name || "",
+        client_contact: order.client_contact || "",
+        paint_type: order.paint_type || "",
+        paint_quantity: order.paint_quantity || "",
+        colour_code: order.colour_code || "",
+        category: order.category || "",
+        po_type: order.po_type || "",
+        note: order.note || ""
+      },
+      showEditModal: true
+    }));
+  };
+
+  const handleEditFormChange = (field, value) => {
+    setState((prev) => ({
+      ...prev,
+      editFormData: {
+        ...prev.editFormData,
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!state.editingOrder) return;
+
+    try {
+      await axios.put(`${BASE_URL}/api/orders/${state.editingOrder.transaction_id}`, {
+        ...state.editFormData,
+        userRole: state.userRole,
+        old_status: state.editingOrder.current_status
+      });
+      triggerToast("✅ Order updated successfully!");
+      setState((prev) => ({
+        ...prev,
+        showEditModal: false,
+        editingOrder: null,
+        editFormData: {
+          customer_name: "",
+          client_contact: "",
+          paint_type: "",
+          paint_quantity: "",
+          colour_code: "",
+          category: "",
+          po_type: "",
+          note: ""
+        }
+      }));
+      fetchOrders();
+      fetchReadyOrders();
+    } catch (error) {
+      triggerToast("❌ Error updating order.", "danger");
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setState((prev) => ({
+      ...prev,
+      showEditModal: false,
+      editingOrder: null,
+      editFormData: {
+        customer_name: "",
+        client_contact: "",
+        paint_type: "",
+        paint_quantity: "",
+        colour_code: "",
+        category: "",
+        po_type: "",
+        note: ""
+      }
+    }));
+  };
+
   // Styling for categories and selected order
   const getCategoryClass = (cat) => {
     switch (cat?.toLowerCase()) {
@@ -441,30 +533,44 @@ const CardViewBOC = () => {
           {!isArchived && !isDeleted && (
             <>
               <br />
-              <select
-                className="form-select form-select-sm mt-1"
-                style={{ minWidth: "130px" }}
-                onClick={(e) => e.stopPropagation()}
-                value={order.current_status}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  updateStatus(order, e.target.value, order.colour_code, order.assigned_employee);
-                }}
-              >
-                <option value={order.current_status}>{order.current_status}</option>
-                {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
-                {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
-                {order.current_status === "Spraying" && (
-                  <>
-                    <option value="Re-Mixing">Back to Mixing</option>
-                    <option value="Ready">Ready</option>
-                  </>
+              <div className="d-flex gap-1 mt-1">
+                <select
+                  className="form-select form-select-sm"
+                  style={{ minWidth: "130px" }}
+                  onClick={(e) => e.stopPropagation()}
+                  value={order.current_status}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    updateStatus(order, e.target.value, order.colour_code, order.assigned_employee);
+                  }}
+                >
+                  <option value={order.current_status}>{order.current_status}</option>
+                  {order.current_status === "Waiting" && <option value="Mixing">Mixing</option>}
+                  {order.current_status === "Mixing" && <option value="Spraying">Spraying</option>}
+                  {order.current_status === "Spraying" && (
+                    <>
+                      <option value="Re-Mixing">Back to Mixing</option>
+                      <option value="Ready">Ready</option>
+                    </>
+                  )}
+                  {order.current_status === "Re-Mixing" && <option value="Spraying">Spraying</option>}
+                  {order.current_status === "Ready" && state.userRole === "Admin" && (
+                    <option value="Complete">Complete</option>
+                  )}
+                </select>
+                {state.userRole === "Admin" && (
+                  <button
+                    className="btn btn-warning btn-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditOrder(order);
+                    }}
+                    title="Edit Order"
+                  >
+                    ✏️
+                  </button>
                 )}
-                {order.current_status === "Re-Mixing" && <option value="Spraying">Spraying</option>}
-                {order.current_status === "Ready" && state.userRole === "Admin" && (
-                  <option value="Complete">Complete</option>
-                )}
-              </select>
+              </div>
             </>
           )}
         </div>
@@ -504,6 +610,20 @@ const CardViewBOC = () => {
           <option value="Spraying">Spraying</option>
           <option value="Re-Mixing">Re-Mixing</option>
         </select>
+      </td>
+      <td>
+        <button
+          className="btn btn-warning btn-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleEditOrder(order);
+          }}
+          title="Edit Order"
+        >
+          ✏️ Edit
+        </button>
+      </td>
+      <td>
         <button
           className="btn btn-success btn-sm"
           onClick={(e) => {
@@ -713,6 +833,7 @@ const CardViewBOC = () => {
                               <th>Assigned To</th>
                               <th>Time in Status</th>
                               <th>Revert</th>
+                              <th>Edit</th>
                               <th>Action</th>
                             </tr>
                           </thead>
@@ -1095,6 +1216,152 @@ const CardViewBOC = () => {
           }}
           onCancel={() => setState((prev) => ({ ...prev, pendingColourUpdate: null }))}
         />
+      )}
+
+      {/* Edit Order Modal */}
+      {state.showEditModal && (
+        <div className="modal d-block" tabIndex="-1" onClick={handleCloseEditModal}>
+          <div className="modal-dialog modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">✏️ Edit Order - {state.editingOrder?.transaction_id}</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={handleCloseEditModal}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Customer Name</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={state.editFormData.customer_name}
+                      onChange={(e) => handleEditFormChange('customer_name', e.target.value)}
+                      placeholder="Enter customer name"
+                    />
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Contact Number</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={state.editFormData.client_contact}
+                      onChange={(e) => handleEditFormChange('client_contact', e.target.value)}
+                      placeholder="Enter contact number"
+                    />
+                  </div>
+                </div>
+                
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Paint Type</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={state.editFormData.paint_type}
+                      onChange={(e) => handleEditFormChange('paint_type', e.target.value)}
+                      placeholder="Enter paint type"
+                    />
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Paint Quantity</label>
+                    <select
+                      className="form-select"
+                      value={state.editFormData.paint_quantity}
+                      onChange={(e) => handleEditFormChange('paint_quantity', e.target.value)}
+                    >
+                      <option value="">Select Quantity</option>
+                      <option value="250ml">250ml</option>
+                      <option value="500ml">500ml</option>
+                      <option value="750ml">750ml</option>
+                      <option value="1L">1L</option>
+                      <option value="1.25L">1.25L</option>
+                      <option value="1.5L">1.5L</option>
+                      <option value="2L">2L</option>
+                      <option value="2.5L">2.5L</option>
+                      <option value="3L">3L</option>
+                      <option value="4L">4L</option>
+                      <option value="5L">5L</option>
+                      <option value="10L">10L</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Category</label>
+                    <select
+                      className="form-select"
+                      value={state.editFormData.category}
+                      onChange={(e) => handleEditFormChange('category', e.target.value)}
+                    >
+                      <option value="">Select Category</option>
+                      <option value="New Mix">New Mix</option>
+                      <option value="Mix More">Mix More</option>
+                      <option value="Colour Code">Colour Code</option>
+                      <option value="Detailing">Detailing</option>
+                    </select>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">PO Type</label>
+                    <select
+                      className="form-select"
+                      value={state.editFormData.po_type}
+                      onChange={(e) => handleEditFormChange('po_type', e.target.value)}
+                    >
+                      <option value="">Select PO Type</option>
+                      <option value="Nexa">Nexa</option>
+                      <option value="Carvello">Carvello</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">Colour Code</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={state.editFormData.colour_code}
+                      onChange={(e) => handleEditFormChange('colour_code', e.target.value)}
+                      placeholder="Enter colour code"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mb-3">
+                  <label className="form-label">Notes</label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    value={state.editFormData.note}
+                    onChange={(e) => handleEditFormChange('note', e.target.value)}
+                    placeholder="Enter any additional notes"
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleCloseEditModal}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSaveEdit}
+                >
+                  💾 Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <ToastContainer
