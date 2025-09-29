@@ -87,6 +87,8 @@ const CardViewBOC = () => {
     showReady: true,
     showWaiting: true,
     showActive: true,
+    showComplete: true,
+    completeOrders: [],
     // Edit order states
     showEditModal: false,
     editingOrder: null,
@@ -162,6 +164,18 @@ const CardViewBOC = () => {
     } catch (err) {
       console.error("Error fetching deleted orders:", err);
       triggerToast("Error fetching deleted orders.", "danger");
+    }
+  }, []);
+
+  const fetchCompleteOrders = useCallback(async () => {
+    try {
+      // For now, we'll use a mock approach since the backend doesn't have a complete orders endpoint
+      // In a real implementation, you'd add this endpoint to your backend
+      console.log("Note: Complete orders endpoint not available in backend yet");
+      setState((prev) => ({ ...prev, completeOrders: [] }));
+    } catch (err) {
+      console.error("Error fetching complete orders:", err);
+      triggerToast("Error fetching complete orders.", "danger");
     }
   }, []);
 
@@ -373,6 +387,9 @@ const CardViewBOC = () => {
 
   // Edit order functionality
   const handleEditOrder = (order) => {
+    console.log("Editing order:", order);
+    console.log("Order transaction_id:", order.transaction_id);
+    
     setState((prev) => ({
       ...prev,
       editingOrder: order,
@@ -404,11 +421,68 @@ const CardViewBOC = () => {
     if (!state.editingOrder) return;
 
     try {
-      await axios.put(`${BASE_URL}/api/orders/${state.editingOrder.transaction_id}`, {
-        ...state.editFormData,
+      // Prepare the data according to what the backend expects
+      const updateData = {
+        current_status: state.editingOrder.current_status, // Keep current status
+        assigned_employee: state.editingOrder.assigned_employee || null, // Keep current employee
+        colour_code: state.editFormData.colour_code || "Pending",
+        note: state.editFormData.note || null,
         userRole: state.userRole,
-        old_status: state.editingOrder.current_status
-      });
+        old_status: state.editingOrder.current_status,
+        po_type: state.editFormData.po_type || null
+      };
+
+      // Ensure colour_code is not empty string for Ready orders
+      if (state.editingOrder.current_status === "Ready" && updateData.colour_code === "Pending") {
+        updateData.colour_code = state.editFormData.colour_code || "Pending";
+      }
+
+      console.log("Updating order with data:", updateData);
+      console.log("Order ID:", state.editingOrder.transaction_id);
+      console.log("Order ID type:", typeof state.editingOrder.transaction_id);
+      console.log("Order ID length:", state.editingOrder.transaction_id?.length);
+
+      // Validate required fields based on backend requirements
+      if (state.editingOrder.current_status !== "Waiting" && !updateData.assigned_employee) {
+        triggerToast("❌ Employee must be assigned for this order status!", "danger");
+        return;
+      }
+
+      if (state.editingOrder.current_status === "Ready" && (!updateData.colour_code || updateData.colour_code.trim() === "")) {
+        triggerToast("❌ Colour Code is required for Ready orders!", "danger");
+        return;
+      }
+
+      // Validate PO Type for Paid orders
+      if (state.editingOrder.order_type === "Paid" && updateData.po_type && !["Nexa", "Carvello"].includes(updateData.po_type)) {
+        triggerToast("❌ PO Type must be 'Nexa' or 'Carvello' for Paid orders!", "danger");
+        return;
+      }
+
+      // Validate order ID
+      if (!state.editingOrder.transaction_id || state.editingOrder.transaction_id.trim() === "") {
+        triggerToast("❌ Invalid order ID!", "danger");
+        return;
+      }
+
+      // Try with URL encoding first, then without if that fails
+      let fullUrl = `${BASE_URL}/api/orders/${encodeURIComponent(state.editingOrder.transaction_id)}`;
+      console.log("Encoded order ID:", encodeURIComponent(state.editingOrder.transaction_id));
+      console.log("Full URL:", fullUrl);
+      console.log("Request data:", updateData);
+      
+      try {
+        const response = await axios.put(fullUrl, updateData);
+        console.log("Success response:", response.data);
+      } catch (firstError) {
+        console.log("First attempt failed, trying without encoding...");
+        console.log("First error:", firstError.response?.data);
+        console.log("First error status:", firstError.response?.status);
+        fullUrl = `${BASE_URL}/api/orders/${state.editingOrder.transaction_id}`;
+        console.log("Retry URL:", fullUrl);
+        const response = await axios.put(fullUrl, updateData);
+        console.log("Retry success response:", response.data);
+      }
       triggerToast("✅ Order updated successfully!");
       setState((prev) => ({
         ...prev,
@@ -428,7 +502,11 @@ const CardViewBOC = () => {
       fetchOrders();
       fetchReadyOrders();
     } catch (error) {
-      triggerToast("❌ Error updating order.", "danger");
+      console.error("Error updating order:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      console.error("Error headers:", error.response?.headers);
+      triggerToast(`❌ Error updating order: ${error.response?.data?.error || error.message}`, "danger");
     }
   };
 
@@ -659,18 +737,23 @@ const CardViewBOC = () => {
       fetchWithRetry(fetchStaff, "staff");
       fetchWithRetry(fetchReadyOrders, "ready orders");
       fetchWithRetry(fetchArchivedOrders, "archived orders");
+      fetchWithRetry(fetchCompleteOrders, "complete orders");
     }
     const interval = setInterval(() => {
       fetchOrders();
-      if (state.userRole === "Admin") fetchReadyOrders();
+      if (state.userRole === "Admin") {
+        fetchReadyOrders();
+        fetchCompleteOrders();
+      }
     }, 30000);
     return () => clearInterval(interval);
-  }, [fetchOrders, fetchReadyOrders, fetchStaff, fetchArchivedOrders, state.userRole]);
+  }, [fetchOrders, fetchReadyOrders, fetchStaff, fetchArchivedOrders, fetchCompleteOrders, state.userRole]);
 
   // Order filtering
   const waitingCount = state.orders.filter((o) => o.current_status === "Waiting").length;
   const activeCount = state.orders.filter((o) => !["Waiting", "Ready", "Complete"].includes(o.current_status)).length;
   const readyCount = state.readyOrders.length;
+  const completeCount = state.completeOrders.length;
   const filteredOrders = state.orders.filter(
     (o) =>
       (state.userRole === "Admin" ? !["Complete"].includes(o.current_status) : !["Ready", "Complete"].includes(o.current_status)) &&
@@ -722,7 +805,10 @@ const CardViewBOC = () => {
               className="btn btn-outline-secondary"
               onClick={() => {
                 fetchOrders();
-                if (state.userRole === "Admin") fetchReadyOrders();
+                if (state.userRole === "Admin") {
+                  fetchReadyOrders();
+                  fetchCompleteOrders();
+                }
               }}
               disabled={state.loading}
             >
@@ -758,16 +844,61 @@ const CardViewBOC = () => {
                 {state.showDeletedOrders ? "Hide Deleted Orders" : "Show Deleted Orders"}
               </button>
               <button
-                className="btn btn-outline-secondary"
+                className="btn btn-outline-secondary me-2"
                 onClick={() => setState((prev) => ({ ...prev, showOnlyReady: !prev.showOnlyReady }))}
               >
                 {state.showOnlyReady ? "Show All Orders" : "Show Only Ready Orders"}
+              </button>
+              <button
+                className="btn btn-outline-success"
+                onClick={() => {
+                  setState((prev) => ({ ...prev, showComplete: !prev.showComplete }));
+                  if (!state.showComplete) fetchCompleteOrders();
+                }}
+              >
+                {state.showComplete ? "Hide Complete Orders" : "Show Complete Orders"}
               </button>
             </div>
           )}
 
           {state.userRole === "Admin" && (
             <>
+              {/* Order Summary Dashboard */}
+              <div className="row mb-4">
+                <div className="col-md-3">
+                  <div className="card bg-primary text-white">
+                    <div className="card-body text-center">
+                      <h5 className="card-title">📋 Waiting</h5>
+                      <h2 className="card-text">{waitingCount}</h2>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="card bg-info text-white">
+                    <div className="card-body text-center">
+                      <h5 className="card-title">🚀 Active</h5>
+                      <h2 className="card-text">{activeCount}</h2>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="card bg-secondary text-white">
+                    <div className="card-body text-center">
+                      <h5 className="card-title">✅ Ready</h5>
+                      <h2 className="card-text">{readyCount}</h2>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="card bg-success text-white">
+                    <div className="card-body text-center">
+                      <h5 className="card-title">🎉 Complete</h5>
+                      <h2 className="card-text">{completeCount}</h2>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="d-flex justify-content-end mb-3">
                 <select
                   className="form-select form-select-sm me-2"
@@ -851,6 +982,78 @@ const CardViewBOC = () => {
                     </div>
                   ) : (
                     <p className="text-muted">No ready orders found.</p>
+                  )}
+                </div>
+              </Collapse>
+
+              <h6 className="bg-success text-white p-2 mt-3">
+                ✅ Complete Orders ({completeCount})
+                <button
+                  className="btn btn-sm btn-outline-light ms-2"
+                  onClick={() => setState((prev) => ({ ...prev, showComplete: !prev.showComplete }))}
+                >
+                  {state.showComplete ? "Hide" : "Show"}
+                </button>
+              </h6>
+              <Collapse in={state.showComplete}>
+                <div>
+                  {state.completeOrders.length > 0 ? (
+                    <div className="card shadow-sm border-0 mb-3">
+                      <div className="card-body p-0">
+                        <table className="table table-bordered mb-0">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Transaction ID</th>
+                              <th>Customer</th>
+                              <th>Customer No.</th>
+                              <th>Quantity</th>
+                              <th>Paint Details</th>
+                              <th>Category</th>
+                              <th>PO Type</th>
+                              <th>Colour Code</th>
+                              <th>Completed By</th>
+                              <th>Completion Time</th>
+                              <th>Edit</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {state.completeOrders
+                              .filter(
+                                (o) =>
+                                  (state.filterCategory === "All" || o.category === state.filterCategory) &&
+                                  (state.filterPoType === "All" || o.po_type === state.filterPoType)
+                              )
+                              .map((order) => (
+                                <tr key={order.transaction_id}>
+                                  <td>{order.transaction_id}</td>
+                                  <td>{order.customer_name}</td>
+                                  <td>{order.client_contact}</td>
+                                  <td>{order.paint_quantity || "0.00"}</td>
+                                  <td>{order.paint_type}</td>
+                                  <td>{order.category}</td>
+                                  <td>{order.po_type || "N/A"}</td>
+                                  <td>{order.colour_code || "N/A"}</td>
+                                  <td>{order.assigned_employee || "N/A"}</td>
+                                  <td>
+                                    {order.completed_at ? new Date(order.completed_at).toLocaleString() : "N/A"}
+                                  </td>
+                                  <td>
+                                    <button
+                                      className="btn btn-warning btn-sm"
+                                      onClick={() => handleEditOrder(order)}
+                                      title="Edit Order"
+                                    >
+                                      ✏️ Edit
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-muted">No complete orders found.</p>
                   )}
                 </div>
               </Collapse>
@@ -1232,79 +1435,17 @@ const CardViewBOC = () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label">Customer Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={state.editFormData.customer_name}
-                      onChange={(e) => handleEditFormChange('customer_name', e.target.value)}
-                      placeholder="Enter customer name"
-                    />
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label">Contact Number</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={state.editFormData.client_contact}
-                      onChange={(e) => handleEditFormChange('client_contact', e.target.value)}
-                      placeholder="Enter contact number"
-                    />
-                  </div>
+                {/* Display read-only order info */}
+                <div className="alert alert-info mb-3">
+                  <strong>Order Details (Read-only):</strong><br/>
+                  <strong>Customer:</strong> {state.editingOrder?.customer_name}<br/>
+                  <strong>Contact:</strong> {state.editingOrder?.client_contact}<br/>
+                  <strong>Paint Type:</strong> {state.editingOrder?.paint_type}<br/>
+                  <strong>Quantity:</strong> {state.editingOrder?.paint_quantity}<br/>
+                  <strong>Category:</strong> {state.editingOrder?.category}
                 </div>
                 
                 <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label">Paint Type</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={state.editFormData.paint_type}
-                      onChange={(e) => handleEditFormChange('paint_type', e.target.value)}
-                      placeholder="Enter paint type"
-                    />
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label">Paint Quantity</label>
-                    <select
-                      className="form-select"
-                      value={state.editFormData.paint_quantity}
-                      onChange={(e) => handleEditFormChange('paint_quantity', e.target.value)}
-                    >
-                      <option value="">Select Quantity</option>
-                      <option value="250ml">250ml</option>
-                      <option value="500ml">500ml</option>
-                      <option value="750ml">750ml</option>
-                      <option value="1L">1L</option>
-                      <option value="1.25L">1.25L</option>
-                      <option value="1.5L">1.5L</option>
-                      <option value="2L">2L</option>
-                      <option value="2.5L">2.5L</option>
-                      <option value="3L">3L</option>
-                      <option value="4L">4L</option>
-                      <option value="5L">5L</option>
-                      <option value="10L">10L</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label">Category</label>
-                    <select
-                      className="form-select"
-                      value={state.editFormData.category}
-                      onChange={(e) => handleEditFormChange('category', e.target.value)}
-                    >
-                      <option value="">Select Category</option>
-                      <option value="New Mix">New Mix</option>
-                      <option value="Mix More">Mix More</option>
-                      <option value="Colour Code">Colour Code</option>
-                      <option value="Detailing">Detailing</option>
-                    </select>
-                  </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">PO Type</label>
                     <select
@@ -1317,9 +1458,6 @@ const CardViewBOC = () => {
                       <option value="Carvello">Carvello</option>
                     </select>
                   </div>
-                </div>
-                
-                <div className="row">
                   <div className="col-md-6 mb-3">
                     <label className="form-label">Colour Code</label>
                     <input
