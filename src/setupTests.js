@@ -615,45 +615,17 @@ const CardViewBOC = () => {
         endDate: state.completeEndDate
       });
       
-      // Try the complete orders endpoint first
-      try {
-        const response = await axios.get(`${BASE_URL}/api/orders/complete`, {
-          params: {
-            start_date: state.completeStartDate || undefined,
-            end_date: state.completeEndDate || undefined,
-          },
-        });
-        
-        console.log("Complete orders fetched:", response.data);
-        setState((prev) => ({ ...prev, completeOrders: response.data }));
-        return;
-      } catch (completeErr) {
-        console.log("Complete orders endpoint not available, trying alternative approach:", completeErr);
-        
-        // Fallback: Get all orders and filter for complete ones
-        const allOrdersResponse = await axios.get(`${BASE_URL}/api/orders`);
-        const allOrders = allOrdersResponse.data;
-        
-        // Filter for complete orders
-        let completeOrders = allOrders.filter(order => order.current_status === "Complete");
-        
-        // Apply date filtering if dates are provided
-        if (state.completeStartDate || state.completeEndDate) {
-          completeOrders = completeOrders.filter(order => {
-            const orderDate = new Date(order.completed_at || order.updated_at || order.created_at);
-            const startDate = state.completeStartDate ? new Date(state.completeStartDate) : null;
-            const endDate = state.completeEndDate ? new Date(state.completeEndDate) : null;
-            
-            if (startDate && orderDate < startDate) return false;
-            if (endDate && orderDate > endDate) return false;
-            return true;
-          });
-        }
-        
-        console.log("Complete orders filtered from all orders:", completeOrders);
-        setState((prev) => ({ ...prev, completeOrders }));
-        triggerToast(`Found ${completeOrders.length} complete orders${state.completeStartDate || state.completeEndDate ? ' for the selected date range' : ''}`, "success");
-      }
+      // Use the complete orders endpoint (now fixed in backend)
+      const response = await axios.get(`${BASE_URL}/api/orders/complete`, {
+        params: {
+          start_date: state.completeStartDate || undefined,
+          end_date: state.completeEndDate || undefined,
+        },
+      });
+      
+      console.log("Complete orders fetched:", response.data);
+      setState((prev) => ({ ...prev, completeOrders: response.data }));
+      triggerToast(`Found ${response.data.length} complete orders${state.completeStartDate || state.completeEndDate ? ' for the selected date range' : ''}`, "success");
     } catch (err) {
       console.error("Error fetching complete orders:", err);
       triggerToast("Error fetching complete orders. Please try again.", "danger");
