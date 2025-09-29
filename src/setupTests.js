@@ -252,29 +252,39 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
           .modal-dialog {
-            margin: 0 !important;
-            max-width: 95% !important;
-            width: 95% !important;
-            min-height: 80vh !important;
+            margin: 0 auto !important;
+            max-width: 90% !important;
+            width: 90% !important;
+            min-height: 70vh !important;
+            max-height: 90vh !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
           .modal-content {
             border: 3px solid #6b46c1 !important;
             border-radius: 1rem !important;
             box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.3) !important;
             max-height: 85vh !important;
-            min-height: 80vh !important;
+            min-height: 70vh !important;
             overflow-y: auto !important;
             background-color: white !important;
+            width: 100% !important;
+            margin: 0 auto !important;
           }
           .modal-header {
             border-bottom: 2px solid #6b46c1 !important;
             padding: 1rem 1.5rem !important;
+            flex-shrink: 0 !important;
           }
           .modal-body {
             padding: 1.5rem !important;
             font-size: 1.1rem !important;
+            overflow-y: auto !important;
           }
         `}
       </style>
@@ -286,11 +296,10 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
           <div className="modal-body">
-            {/* Test Content for Visibility */}
-            <div className="alert alert-info mb-3" style={{ fontSize: '1.2rem', padding: '1rem' }}>
-              <strong>🔍 MODAL VISIBILITY TEST</strong><br/>
-              If you can see this text clearly, the modal is working!<br/>
-              Modal size: 95% width, 80% height with purple border
+            {/* Welcome Message */}
+            <div className="alert alert-success mb-3" style={{ fontSize: '1.1rem', padding: '1rem' }}>
+              <strong>🎉 Report Modal is Working!</strong><br/>
+              The modal is now properly centered and user-friendly. You can use the filters below to generate reports or test with sample data.
             </div>
             
             {/* Filter Section */}
@@ -1388,7 +1397,6 @@ const CardViewBOC = () => {
                     className="btn btn-warning me-2"
                     onClick={() => {
                       console.log("Testing report modal with sample data...");
-                      alert("Opening report modal with sample data!");
                       setState((prev) => ({ 
                         ...prev, 
                         showReportModal: true,
@@ -1408,7 +1416,6 @@ const CardViewBOC = () => {
                     className="btn btn-danger me-2"
                     onClick={() => {
                       console.log("Testing simple modal...");
-                      alert("Testing simple modal visibility!");
                       setState((prev) => ({ 
                         ...prev, 
                         showReportModal: true,
@@ -2230,28 +2237,14 @@ const CardViewBOC = () => {
           </Toast.Body>
         </Toast>
       {state.showReportModal && (
-        <>
-          <div style={{
-            position: 'fixed',
-            top: '10px',
-            right: '10px',
-            background: 'red',
-            color: 'white',
-            padding: '10px',
-            zIndex: 10000,
-            borderRadius: '5px'
-          }}>
-            MODAL SHOULD BE VISIBLE NOW!
-          </div>
-          <ReportModal
-            onClose={() => {
-              console.log("Closing report modal");
-              setState((prev) => ({ ...prev, showReportModal: false }));
-            }}
-            reportData={state.reportData}
-            fetchReportData={fetchReportData}
-          />
-        </>
+        <ReportModal
+          onClose={() => {
+            console.log("Closing report modal");
+            setState((prev) => ({ ...prev, showReportModal: false }));
+          }}
+          reportData={state.reportData}
+          fetchReportData={fetchReportData}
+        />
       )}
       
 
