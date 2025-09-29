@@ -534,6 +534,9 @@ const CardViewBOC = () => {
     // Report states
     showReportModal: false,
     reportData: null,
+    // Complete orders date range
+    completeStartDate: "",
+    completeEndDate: "",
   });
 
   const { toast, triggerToast, setToast } = useToast();
@@ -604,6 +607,29 @@ const CardViewBOC = () => {
     console.log("Skipping complete orders fetch - endpoint not implemented yet");
     setState((prev) => ({ ...prev, completeOrders: [] }));
   }, []);
+
+  const fetchCompleteOrdersWithDateRange = useCallback(async () => {
+    try {
+      console.log("Fetching complete orders with date range:", {
+        startDate: state.completeStartDate,
+        endDate: state.completeEndDate
+      });
+      
+      const response = await axios.get(`${BASE_URL}/api/orders/complete`, {
+        params: {
+          start_date: state.completeStartDate || undefined,
+          end_date: state.completeEndDate || undefined,
+        },
+      });
+      
+      console.log("Complete orders fetched:", response.data);
+      setState((prev) => ({ ...prev, completeOrders: response.data }));
+    } catch (err) {
+      console.error("Error fetching complete orders:", err);
+      triggerToast("Error fetching complete orders.", "danger");
+      setState((prev) => ({ ...prev, completeOrders: [] }));
+    }
+  }, [state.completeStartDate, state.completeEndDate]);
 
   const fetchReportData = useCallback(async (startDate = "", endDate = "", status = "All", category = "All", includeDeleted = false) => {
     try {
@@ -1411,7 +1437,7 @@ const CardViewBOC = () => {
                   </div>
                 </div>
                 <div className="col-md-4">
-                  <div className="card bg-secondary text-black">
+                  <div className="card bg-secondary text-white">
                     <div className="card-body text-center">
                       <h5 className="card-title">✅ Ready</h5>
                       <h2 className="card-text">{readyCount}</h2>
@@ -1433,6 +1459,7 @@ const CardViewBOC = () => {
                   <option value="Spraying">Spraying</option>
                   <option value="Re-Mixing">Re-Mixing</option>
                   <option value="Ready">Ready</option>
+                  <option value="Complete">Complete</option>
                 </select>
                 <select
                   className="form-select form-select-sm me-2"
@@ -1447,7 +1474,7 @@ const CardViewBOC = () => {
                   <option value="Detailing">Detailing</option>
                 </select>
                 <select
-                  className="form-select form-select-sm"
+                  className="form-select form-select-sm me-2"
                   value={state.filterPoType}
                   onChange={(e) => setState((prev) => ({ ...prev, filterPoType: e.target.value }))}
                   style={{ display: "inline-block", width: "auto" }}
@@ -1456,6 +1483,32 @@ const CardViewBOC = () => {
                   <option value="Nexa">Nexa</option>
                   <option value="Carvello">Carvello</option>
                 </select>
+                {state.filterStatus === "Complete" && (
+                  <>
+                    <input
+                      type="date"
+                      className="form-control form-control-sm me-2"
+                      value={state.completeStartDate || ""}
+                      onChange={(e) => setState((prev) => ({ ...prev, completeStartDate: e.target.value }))}
+                      style={{ display: "inline-block", width: "auto" }}
+                      placeholder="Start Date"
+                    />
+                    <input
+                      type="date"
+                      className="form-control form-control-sm me-2"
+                      value={state.completeEndDate || ""}
+                      onChange={(e) => setState((prev) => ({ ...prev, completeEndDate: e.target.value }))}
+                      style={{ display: "inline-block", width: "auto" }}
+                      placeholder="End Date"
+                    />
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => fetchCompleteOrdersWithDateRange()}
+                    >
+                      🔍 Filter
+                    </button>
+                  </>
+                )}
               </div>
 
               <h6 className="bg-secondary text-white p-2">
@@ -1509,6 +1562,81 @@ const CardViewBOC = () => {
                 </div>
               </Collapse>
 
+              {state.filterStatus === "Complete" && (
+                <>
+                  <h6 className="bg-success text-white p-2 mt-3">
+                    🎉 Complete Orders ({state.completeOrders.length})
+                  </h6>
+                  <div>
+                    {state.completeOrders.length > 0 ? (
+                      <div className="card shadow-sm border-0 mb-3">
+                        <div className="card-body p-0">
+                          <div className="table-responsive">
+                            <table className="table table-bordered mb-0">
+                              <thead className="table-light">
+                                <tr>
+                                  <th>Transaction ID</th>
+                                  <th>Customer</th>
+                                  <th>Customer No.</th>
+                                  <th>Quantity</th>
+                                  <th>Paint Details</th>
+                                  <th>Category</th>
+                                  <th>PO Type</th>
+                                  <th>Colour Code</th>
+                                  <th>Completed By</th>
+                                  <th>Completion Time</th>
+                                  <th>Edit</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {state.completeOrders
+                                  .filter(
+                                    (o) =>
+                                      (state.filterCategory === "All" || o.category === state.filterCategory) &&
+                                      (state.filterPoType === "All" || o.po_type === state.filterPoType)
+                                  )
+                                  .map((order) => (
+                                    <tr key={order.transaction_id}>
+                                      <td>{order.transaction_id}</td>
+                                      <td>{order.customer_name}</td>
+                                      <td>{order.client_contact}</td>
+                                      <td>{order.paint_quantity || "0.00"}</td>
+                                      <td>{order.paint_type}</td>
+                                      <td>{order.category}</td>
+                                      <td>{order.po_type || "N/A"}</td>
+                                      <td>{order.colour_code || "N/A"}</td>
+                                      <td>{order.assigned_employee || "N/A"}</td>
+                                      <td>
+                                        {order.completed_at ? new Date(order.completed_at).toLocaleString() : "N/A"}
+                                      </td>
+                                      <td>
+                                        <button
+                                          className="btn btn-warning btn-sm"
+                                          onClick={() => handleEditOrder(order)}
+                                          title="Edit Order"
+                                        >
+                                          ✏️ Edit
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <p className="text-muted">
+                          {state.completeStartDate || state.completeEndDate 
+                            ? "No complete orders found for the selected date range." 
+                            : "Select a date range and click Filter to view complete orders."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               {!state.showOnlyReady && (
                 <>
