@@ -277,6 +277,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             display: flex !important;
             flex-direction: column !important;
             flex: 1 !important;
+            text-align: center !important;
           }
           .modal-header {
             border-bottom: 2px solid #6b46c1 !important;
@@ -288,6 +289,21 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             font-size: 1.1rem !important;
             overflow-y: auto !important;
             flex: 1 !important;
+            text-align: left !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+          }
+          .modal-body > * {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          .modal-body .card {
+            width: 100% !important;
+            margin: 0 auto !important;
+          }
+          .modal-body .row {
+            justify-content: center !important;
           }
           @media (max-width: 768px) {
             .modal.d-block {
@@ -318,8 +334,8 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
           <div className="modal-body">
             {/* Welcome Message */}
             <div className="alert alert-success mb-3" style={{ fontSize: '1.1rem', padding: '1rem' }}>
-              <strong>🎉 CSS Grid Centering Test!</strong><br/>
-              Using CSS Grid with place-items: center for perfect centering. If you can see this clearly, the modal should be centered!
+              <strong>🎉 Content Alignment Fixed!</strong><br/>
+              The modal content is now properly centered and aligned. All elements should be perfectly positioned!
             </div>
             
             {/* Filter Section */}
