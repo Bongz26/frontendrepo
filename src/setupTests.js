@@ -238,39 +238,30 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   }, [reportData]);
 
   return (
-    <div 
-      className="modal d-block" 
-      tabIndex="-1" 
-      onClick={onClose} 
-      style={{ 
-        zIndex: 9999,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
-      <div 
-        className="modal-dialog modal-xl" 
-        onClick={(e) => e.stopPropagation()}
-        style={{ margin: 0, maxWidth: '95%', width: '95%' }}
-      >
-        <div className="modal-content" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-          <div className="modal-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h5 className="modal-title mb-0">📊 Enhanced Order Report</h5>
-            <button 
-              type="button" 
-              className="btn btn-light btn-sm" 
-              onClick={onClose}
-              style={{ fontSize: '1.2rem', fontWeight: 'bold' }}
-            >
-              ✕ Close
-            </button>
+    <>
+      <style>
+        {`
+          .modal.d-block {
+            background-color: rgba(0,0,0,0.5) !important;
+            z-index: 9999 !important;
+          }
+          .modal-dialog {
+            margin: 1.75rem auto !important;
+            max-width: 90% !important;
+          }
+          .modal-content {
+            border: none !important;
+            border-radius: 0.5rem !important;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+          }
+        `}
+      </style>
+      <div className="modal d-block" tabIndex="-1" onClick={onClose}>
+        <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content">
+          <div className="modal-header bg-primary text-white">
+            <h5 className="modal-title">📊 Enhanced Order Report</h5>
+            <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
           <div className="modal-body">
             {/* Filter Section */}
@@ -556,7 +547,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -2203,12 +2194,6 @@ const CardViewBOC = () => {
         />
       )}
       
-      {/* Debug info */}
-      {state.userRole === "Admin" && (
-        <div className="position-fixed bottom-0 start-0 p-2 bg-dark text-white" style={{ zIndex: 1000 }}>
-          <small>Debug: showReportModal = {state.showReportModal.toString()}</small>
-        </div>
-      )}
 
       </ToastContainer>
     </div>
