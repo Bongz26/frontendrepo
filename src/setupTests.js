@@ -227,8 +227,11 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
     };
   }, [reportData, activeTab]);
 
+  console.log("ReportModal rendering with reportData:", reportData);
+  console.log("ReportModal activeTab:", activeTab);
+
   return (
-    <div className="modal d-block" tabIndex="-1" onClick={onClose}>
+    <div className="modal d-block" tabIndex="-1" onClick={onClose} style={{ zIndex: 9999 }}>
       <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
         <div className="modal-content">
           <div className="modal-header bg-primary text-white">
@@ -635,15 +638,9 @@ const CardViewBOC = () => {
   }, []);
 
   const fetchCompleteOrders = useCallback(async () => {
-    try {
-      const response = await axios.get(`${BASE_URL}/api/orders/complete`);
-      setState((prev) => ({ ...prev, completeOrders: response.data }));
-    } catch (err) {
-      console.error("Error fetching complete orders:", err);
-      // Fallback to empty array if endpoint doesn't exist yet
-      setState((prev) => ({ ...prev, completeOrders: [] }));
-      console.log("Note: Complete orders endpoint not available in backend yet");
-    }
+    // Skip fetching complete orders until backend endpoint is added
+    console.log("Skipping complete orders fetch - endpoint not implemented yet");
+    setState((prev) => ({ ...prev, completeOrders: [] }));
   }, []);
 
   const fetchReportData = useCallback(async (startDate = "", endDate = "", status = "All", category = "All", includeDeleted = false) => {
@@ -1322,15 +1319,35 @@ const CardViewBOC = () => {
             </button>
             <div>
               {state.userRole === "Admin" && (
-                <button
-                  className="btn btn-primary me-2"
-                  onClick={() => {
-                    console.log("Opening report modal...");
-                    setState((prev) => ({ ...prev, showReportModal: true }));
-                  }}
-                >
-                  📊 View Report
-                </button>
+                <>
+                  <button
+                    className="btn btn-primary me-2"
+                    onClick={() => {
+                      console.log("Opening report modal...");
+                      setState((prev) => ({ ...prev, showReportModal: true }));
+                    }}
+                  >
+                    📊 View Report
+                  </button>
+                  <button
+                    className="btn btn-warning me-2"
+                    onClick={() => {
+                      console.log("Testing report modal with sample data...");
+                      setState((prev) => ({ 
+                        ...prev, 
+                        showReportModal: true,
+                        reportData: {
+                          statusSummary: { "Waiting": 5, "Mixing": 3, "Ready": 2, "Complete": 10 },
+                          categorySummary: { "New Mix": 8, "Mix More": 5, "Colour Code": 7 },
+                          historySummary: { "Status Changed": 15, "Order Details Updated": 3 },
+                          deletedSummary: { "Waiting": 1, "Mixing": 1 }
+                        }
+                      }));
+                    }}
+                  >
+                    🧪 Test Report
+                  </button>
+                </>
               )}
               <Link
                 to="/add-"
@@ -2142,10 +2159,20 @@ const CardViewBOC = () => {
         </Toast>
       {state.showReportModal && (
         <ReportModal
-          onClose={() => setState((prev) => ({ ...prev, showReportModal: false }))}
+          onClose={() => {
+            console.log("Closing report modal");
+            setState((prev) => ({ ...prev, showReportModal: false }));
+          }}
           reportData={state.reportData}
           fetchReportData={fetchReportData}
         />
+      )}
+      
+      {/* Debug info */}
+      {state.userRole === "Admin" && (
+        <div className="position-fixed bottom-0 start-0 p-2 bg-dark text-white" style={{ zIndex: 1000 }}>
+          <small>Debug: showReportModal = {state.showReportModal.toString()}</small>
+        </div>
       )}
 
       </ToastContainer>
