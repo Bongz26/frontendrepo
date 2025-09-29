@@ -204,16 +204,6 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
       if (window.statusChart) window.statusChart.destroy();
       if (window.categoryChart) window.categoryChart.destroy();
     };
-  }, [reportData, activeTab]);
-
-  console.log("ReportModal rendering with reportData:", reportData);
-  console.log("ReportModal activeTab:", activeTab);
-  
-  // Add a simple alert to confirm modal is opening
-  useEffect(() => {
-    if (reportData) {
-      console.log("🎉 Report modal should be visible now!");
-    }
   }, [reportData]);
 
   return (
@@ -481,125 +471,9 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
                     </div>
                   )}
                 </div>
-                      <table className="table table-sm table-bordered">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Status</th>
-                            <th>Count</th>
-                            <th>Percentage</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(reportData.statusSummary).map(([status, count]) => (
-                            <tr key={status}>
-                              <td>
-                                <span className={`badge ${
-                                  status === 'Complete' ? 'bg-success' :
-                                  status === 'Ready' ? 'bg-secondary' :
-                                  status === 'Waiting' ? 'bg-primary' :
-                                  status === 'Mixing' ? 'bg-info' :
-                                  status === 'Spraying' ? 'bg-warning' :
-                                  'bg-dark'
-                                }`}>
-                                  {status}
-                                </span>
-                              </td>
-                              <td>{count}</td>
-                              <td>{getTotalOrders() > 0 ? ((count / getTotalOrders()) * 100).toFixed(1) : 0}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="col-md-6">
-                      <h6>Category Summary</h6>
-                      <table className="table table-sm table-bordered">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Category</th>
-                            <th>Count</th>
-                            <th>Percentage</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(reportData.categorySummary).map(([category, count]) => (
-                            <tr key={category}>
-                              <td>{category}</td>
-                              <td>{count}</td>
-                              <td>{getTotalOrders() > 0 ? ((count / getTotalOrders()) * 100).toFixed(1) : 0}%</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'charts' && (
-                  <div className="row">
-                    <div className="col-md-6">
-                      <h6 className="text-center">Order Status Distribution</h6>
-                      <div className="canvas-container">
-                        <canvas id="statusChart" height="300"></canvas>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <h6 className="text-center">Category Distribution</h6>
-                      <div className="canvas-container">
-                        <canvas id="categoryChart" height="300"></canvas>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'audit' && (
-                  <div className="col-12">
-                    <h6>Audit Log Details</h6>
-                    <div className="table-responsive">
-                      <table className="table table-sm table-bordered">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Order ID</th>
-                            <th>Action</th>
-                            <th>From Status</th>
-                            <th>To Status</th>
-                            <th>Employee</th>
-                            <th>Timestamp</th>
-                            <th>Remarks</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {auditLogs.map((log) => (
-                            <tr key={log.log_id}>
-                              <td>{log.order_id}</td>
-                              <td>
-                                <span className={`badge ${
-                                  log.action === 'Status Changed' ? 'bg-primary' :
-                                  log.action === 'Order Details Updated' ? 'bg-warning' :
-                                  log.action === 'Order Deleted' ? 'bg-danger' :
-                                  'bg-secondary'
-                                }`}>
-                                  {log.action}
-                                </span>
-                              </td>
-                              <td>{log.from_status || "N/A"}</td>
-                              <td>{log.to_status || "N/A"}</td>
-                              <td>{log.employee_name || "N/A"}</td>
-                              <td>{new Date(log.timestamp).toLocaleString()}</td>
-                              <td>{log.remarks || "N/A"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
               </>
             ) : (
-              <div className="text-center py-5">
-                <h5 className="text-muted">📊 No Report Data Available</h5>
-                <p className="text-muted">Apply filters to generate a comprehensive report</p>
-              </div>
+              <p className="text-muted">No report data available. Apply filters to generate a report.</p>
             )}
           </div>
           <div className="modal-footer">
