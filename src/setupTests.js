@@ -249,32 +249,34 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             left: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 0 !important;
             margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+            overflow: auto !important;
           }
           .modal-dialog {
-            margin: 0 auto !important;
-            max-width: 90% !important;
-            width: 90% !important;
-            min-height: 70vh !important;
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            margin: 0 !important;
+            max-width: 90vw !important;
+            width: 90vw !important;
             max-height: 90vh !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+            min-height: 60vh !important;
           }
           .modal-content {
             border: 3px solid #6b46c1 !important;
             border-radius: 1rem !important;
             box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.3) !important;
-            max-height: 85vh !important;
-            min-height: 70vh !important;
+            max-height: 90vh !important;
+            min-height: 60vh !important;
             overflow-y: auto !important;
             background-color: white !important;
             width: 100% !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
           }
           .modal-header {
             border-bottom: 2px solid #6b46c1 !important;
@@ -285,6 +287,21 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             padding: 1.5rem !important;
             font-size: 1.1rem !important;
             overflow-y: auto !important;
+            flex: 1 !important;
+          }
+          @media (max-width: 768px) {
+            .modal-dialog {
+              max-width: 95vw !important;
+              width: 95vw !important;
+              min-height: 70vh !important;
+            }
+            .modal-content {
+              min-height: 70vh !important;
+            }
+            .modal-body {
+              padding: 1rem !important;
+              font-size: 1rem !important;
+            }
           }
         `}
       </style>
