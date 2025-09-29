@@ -241,86 +241,8 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
     <>
       <style>
         {`
-          .modal.d-block {
-            background-color: rgba(0,0,0,0.8) !important;
-            z-index: 9999 !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            margin: 0 !important;
-            padding: 20px !important;
-            display: grid !important;
-            place-items: center !important;
-            box-sizing: border-box !important;
-          }
-          .modal-dialog {
-            margin: 0 !important;
-            max-width: 90vw !important;
-            width: 90vw !important;
-            max-height: 90vh !important;
-            min-height: 60vh !important;
-            display: flex !important;
-            flex-direction: column !important;
-          }
-          .modal-content {
-            border: 3px solid #6b46c1 !important;
-            border-radius: 1rem !important;
-            box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.3) !important;
-            max-height: 90vh !important;
-            min-height: 60vh !important;
-            overflow-y: auto !important;
-            background-color: white !important;
-            width: 100% !important;
-            margin: 0 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            flex: 1 !important;
-            text-align: center !important;
-          }
-          .modal-header {
-            border-bottom: 2px solid #6b46c1 !important;
-            padding: 1rem 1.5rem !important;
-            flex-shrink: 0 !important;
-          }
-          .modal-body {
-            padding: 1.5rem !important;
-            font-size: 1.1rem !important;
-            overflow-y: auto !important;
-            flex: 1 !important;
-            text-align: left !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-          }
-          .modal-body > * {
-            width: 100% !important;
-            max-width: 100% !important;
-          }
-          .modal-body .card {
-            width: 100% !important;
-            margin: 0 auto !important;
-          }
-          .modal-body .row {
-            justify-content: center !important;
-          }
-          @media (max-width: 768px) {
-            .modal.d-block {
-              padding: 10px !important;
-            }
-            .modal-dialog {
-              max-width: 95vw !important;
-              width: 95vw !important;
-              min-height: 70vh !important;
-            }
-            .modal-content {
-              min-height: 70vh !important;
-            }
-            .modal-body {
-              padding: 1rem !important;
-              font-size: 1rem !important;
-            }
+          .modal-header.bg-purple {
+            background-color: #6b46c1 !important;
           }
         `}
       </style>
@@ -334,8 +256,8 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
           <div className="modal-body">
             {/* Welcome Message */}
             <div className="alert alert-success mb-3" style={{ fontSize: '1.1rem', padding: '1rem' }}>
-              <strong>🎉 Content Alignment Fixed!</strong><br/>
-              The modal content is now properly centered and aligned. All elements should be perfectly positioned!
+              <strong>🎉 Using Bootstrap Standard Modal!</strong><br/>
+              Now using Bootstrap's standard modal classes like in Dashboard.jsx. This should align perfectly!
             </div>
             
             {/* Filter Section */}
