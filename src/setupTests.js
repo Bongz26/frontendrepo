@@ -229,14 +229,48 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
 
   console.log("ReportModal rendering with reportData:", reportData);
   console.log("ReportModal activeTab:", activeTab);
+  
+  // Add a simple alert to confirm modal is opening
+  useEffect(() => {
+    if (reportData) {
+      console.log("🎉 Report modal should be visible now!");
+    }
+  }, [reportData]);
 
   return (
-    <div className="modal d-block" tabIndex="-1" onClick={onClose} style={{ zIndex: 9999 }}>
-      <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-content">
-          <div className="modal-header bg-primary text-white">
-            <h5 className="modal-title">📊 Enhanced Order Report</h5>
-            <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+    <div 
+      className="modal d-block" 
+      tabIndex="-1" 
+      onClick={onClose} 
+      style={{ 
+        zIndex: 9999,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      <div 
+        className="modal-dialog modal-xl" 
+        onClick={(e) => e.stopPropagation()}
+        style={{ margin: 0, maxWidth: '95%', width: '95%' }}
+      >
+        <div className="modal-content" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="modal-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 className="modal-title mb-0">📊 Enhanced Order Report</h5>
+            <button 
+              type="button" 
+              className="btn btn-light btn-sm" 
+              onClick={onClose}
+              style={{ fontSize: '1.2rem', fontWeight: 'bold' }}
+            >
+              ✕ Close
+            </button>
           </div>
           <div className="modal-body">
             {/* Filter Section */}
@@ -1344,8 +1378,9 @@ const CardViewBOC = () => {
                         }
                       }));
                     }}
+                    style={{ fontSize: '1.1rem', padding: '8px 16px' }}
                   >
-                    🧪 Test Report
+                    🧪 Test Report (Sample Data)
                   </button>
                 </>
               )}
