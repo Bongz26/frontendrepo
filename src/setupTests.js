@@ -1382,19 +1382,10 @@ const CardViewBOC = () => {
                 {state.showDeletedOrders ? "Hide Deleted Orders" : "Show Deleted Orders"}
               </button>
               <button
-                className="btn btn-outline-secondary me-2"
+                className="btn btn-outline-secondary"
                 onClick={() => setState((prev) => ({ ...prev, showOnlyReady: !prev.showOnlyReady }))}
               >
                 {state.showOnlyReady ? "Show All Orders" : "Show Only Ready Orders"}
-              </button>
-              <button
-                className="btn btn-outline-success"
-                onClick={() => {
-                  setState((prev) => ({ ...prev, showComplete: !prev.showComplete }));
-                  if (!state.showComplete) fetchCompleteOrders();
-                }}
-              >
-                {state.showComplete ? "Hide Complete Orders" : "Show Complete Orders"}
               </button>
             </div>
           )}
@@ -1403,7 +1394,7 @@ const CardViewBOC = () => {
             <>
               {/* Order Summary Dashboard */}
               <div className="row mb-4">
-                <div className="col-md-3">
+                <div className="col-md-4">
                   <div className="card bg-primary text-black">
                     <div className="card-body text-center">
                       <h5 className="card-title">📋 Waiting</h5>
@@ -1411,7 +1402,7 @@ const CardViewBOC = () => {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3">
+                <div className="col-md-4">
                   <div className="card bg-info text-black">
                     <div className="card-body text-center">
                       <h5 className="card-title">🚀 Active</h5>
@@ -1419,19 +1410,11 @@ const CardViewBOC = () => {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-3">
+                <div className="col-md-4">
                   <div className="card bg-secondary text-black">
                     <div className="card-body text-center">
                       <h5 className="card-title">✅ Ready</h5>
                       <h2 className="card-text">{readyCount}</h2>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-md-3">
-                  <div className="card bg-success text-black">
-                    <div className="card-body text-center">
-                      <h5 className="card-title">🎉 Complete</h5>
-                      <h2 className="card-text">{completeCount}</h2>
                     </div>
                   </div>
                 </div>
@@ -1526,79 +1509,6 @@ const CardViewBOC = () => {
                 </div>
               </Collapse>
 
-              <h6 className="bg-success text-white p-2 mt-3">
-                ✅ Complete Orders ({completeCount})
-                <button
-                  className="btn btn-sm btn-outline-light ms-2"
-                  onClick={() => setState((prev) => ({ ...prev, showComplete: !prev.showComplete }))}
-                >
-                  {state.showComplete ? "Hide" : "Show"}
-                </button>
-              </h6>
-              <Collapse in={state.showComplete}>
-                <div>
-                  {state.completeOrders.length > 0 ? (
-                    <div className="card shadow-sm border-0 mb-3">
-                      <div className="card-body p-0">
-                        <div className="table-responsive">
-                          <table className="table table-bordered mb-0">
-                          <thead className="table-light">
-                            <tr>
-                              <th>Transaction ID</th>
-                              <th>Customer</th>
-                              <th>Customer No.</th>
-                              <th>Quantity</th>
-                              <th>Paint Details</th>
-                              <th>Category</th>
-                              <th>PO Type</th>
-                              <th>Colour Code</th>
-                              <th>Completed By</th>
-                              <th>Completion Time</th>
-                              <th>Edit</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {state.completeOrders
-                              .filter(
-                                (o) =>
-                                  (state.filterCategory === "All" || o.category === state.filterCategory) &&
-                                  (state.filterPoType === "All" || o.po_type === state.filterPoType)
-                              )
-                              .map((order) => (
-                                <tr key={order.transaction_id}>
-                                  <td>{order.transaction_id}</td>
-                                  <td>{order.customer_name}</td>
-                                  <td>{order.client_contact}</td>
-                                  <td>{order.paint_quantity || "0.00"}</td>
-                                  <td>{order.paint_type}</td>
-                                  <td>{order.category}</td>
-                                  <td>{order.po_type || "N/A"}</td>
-                                  <td>{order.colour_code || "N/A"}</td>
-                                  <td>{order.assigned_employee || "N/A"}</td>
-                                  <td>
-                                    {order.completed_at ? new Date(order.completed_at).toLocaleString() : "N/A"}
-                                  </td>
-                                  <td>
-                                    <button
-                                      className="btn btn-warning btn-sm"
-                                      onClick={() => handleEditOrder(order)}
-                                      title="Edit Order"
-                                    >
-                                      ✏️ Edit
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-muted">No complete orders found.</p>
-                  )}
-                </div>
-              </Collapse>
 
               {!state.showOnlyReady && (
                 <>
