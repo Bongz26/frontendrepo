@@ -615,17 +615,63 @@ const CardViewBOC = () => {
         endDate: state.completeEndDate
       });
       
-      // Use the complete orders endpoint (now fixed in backend)
-      const response = await axios.get(`${BASE_URL}/api/orders/complete`, {
-        params: {
-          start_date: state.completeStartDate || undefined,
-          end_date: state.completeEndDate || undefined,
-        },
-      });
-      
-      console.log("Complete orders fetched:", response.data);
-      setState((prev) => ({ ...prev, completeOrders: response.data }));
-      triggerToast(`Found ${response.data.length} complete orders${state.completeStartDate || state.completeEndDate ? ' for the selected date range' : ''}`, "success");
+      // Try the complete orders endpoint first
+      try {
+        const response = await axios.get(`${BASE_URL}/api/orders/complete`, {
+          params: {
+            start_date: state.completeStartDate || undefined,
+            end_date: state.completeEndDate || undefined,
+          },
+        });
+        
+        console.log("Complete orders fetched from endpoint:", response.data);
+        setState((prev) => ({ ...prev, completeOrders: response.data }));
+        triggerToast(`Found ${response.data.length} complete orders${state.completeStartDate || state.completeEndDate ? ' for the selected date range' : ''}`, "success");
+        return;
+      } catch (completeErr) {
+        console.log("Complete orders endpoint failed, using fallback method:", completeErr);
+        
+        // Fallback: Get all orders and filter for complete ones
+        const allOrdersResponse = await axios.get(`${BASE_URL}/api/orders`);
+        const allOrders = allOrdersResponse.data;
+        
+        // Also try to get ready orders which might contain complete ones
+        let readyOrders = [];
+        try {
+          const readyResponse = await axios.get(`${BASE_URL}/api/orders/admin`);
+          readyOrders = readyResponse.data;
+        } catch (readyErr) {
+          console.log("Could not fetch ready orders:", readyErr);
+        }
+        
+        // Combine all orders and filter for complete ones
+        const allOrdersCombined = [...allOrders, ...readyOrders];
+        let completeOrders = allOrdersCombined.filter(order => order.current_status === "Complete");
+        
+        // Remove duplicates based on transaction_id
+        const uniqueCompleteOrders = completeOrders.filter((order, index, self) => 
+          index === self.findIndex(o => o.transaction_id === order.transaction_id)
+        );
+        
+        // Apply date filtering if dates are provided
+        if (state.completeStartDate || state.completeEndDate) {
+          completeOrders = uniqueCompleteOrders.filter(order => {
+            const orderDate = new Date(order.completed_at || order.updated_at || order.start_time);
+            const startDate = state.completeStartDate ? new Date(state.completeStartDate) : null;
+            const endDate = state.completeEndDate ? new Date(state.completeEndDate) : null;
+            
+            if (startDate && orderDate < startDate) return false;
+            if (endDate && orderDate > endDate) return false;
+            return true;
+          });
+        } else {
+          completeOrders = uniqueCompleteOrders;
+        }
+        
+        console.log("Complete orders filtered from all orders:", completeOrders);
+        setState((prev) => ({ ...prev, completeOrders }));
+        triggerToast(`Found ${completeOrders.length} complete orders${state.completeStartDate || state.completeEndDate ? ' for the selected date range' : ''} (using fallback method)`, "success");
+      }
     } catch (err) {
       console.error("Error fetching complete orders:", err);
       triggerToast("Error fetching complete orders. Please try again.", "danger");
