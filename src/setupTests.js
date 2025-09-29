@@ -280,11 +280,6 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
           <div className="modal-body">
-            {/* Welcome Message */}
-            <div className="alert alert-success mb-3" style={{ fontSize: '1.1rem', padding: '1rem' }}>
-              <strong>🎉 Large Modal with Proper Scrolling!</strong><br/>
-              Modal is now 95% of screen size with proper scrolling. You should be able to see all data clearly!
-            </div>
             
             {/* Filter Section */}
             <div className="card mb-3 shadow-sm">
@@ -1434,39 +1429,6 @@ const CardViewBOC = () => {
                     }}
                   >
                     📊 View Report
-                  </button>
-                  <button
-                    className="btn btn-warning me-2"
-                    onClick={() => {
-                      console.log("Testing report modal with sample data...");
-                      setState((prev) => ({ 
-                        ...prev, 
-                        showReportModal: true,
-                        reportData: {
-                          statusSummary: { "Waiting": 5, "Mixing": 3, "Ready": 2, "Complete": 10 },
-                          categorySummary: { "New Mix": 8, "Mix More": 5, "Colour Code": 7 },
-                          historySummary: { "Status Changed": 15, "Order Details Updated": 3 },
-                          deletedSummary: { "Waiting": 1, "Mixing": 1 }
-                        }
-                      }));
-                    }}
-                    style={{ fontSize: '1.1rem', padding: '8px 16px' }}
-                  >
-                    🧪 Test Report (Sample Data)
-                  </button>
-                  <button
-                    className="btn btn-danger me-2"
-                    onClick={() => {
-                      console.log("Testing simple modal...");
-                      setState((prev) => ({ 
-                        ...prev, 
-                        showReportModal: true,
-                        reportData: null
-                      }));
-                    }}
-                    style={{ fontSize: '1.1rem', padding: '8px 16px' }}
-                  >
-                    🔴 Test Empty Modal
                   </button>
                 </>
               )}
