@@ -244,22 +244,33 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
           .modal.d-block {
             background-color: rgba(0,0,0,0.5) !important;
             z-index: 9999 !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
           .modal-dialog {
-            margin: 1.75rem auto !important;
+            margin: 0 !important;
             max-width: 90% !important;
+            width: 90% !important;
           }
           .modal-content {
             border: none !important;
             border-radius: 0.5rem !important;
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+            max-height: 90vh !important;
+            overflow-y: auto !important;
           }
         `}
       </style>
       <div className="modal d-block" tabIndex="-1" onClick={onClose}>
         <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
           <div className="modal-content">
-            <div className="modal-header bg-primary text-white">
+            <div className="modal-header bg-purple text-white">
             <h5 className="modal-title">📊 Enhanced Order Report</h5>
             <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
@@ -1359,6 +1370,7 @@ const CardViewBOC = () => {
                     className="btn btn-warning me-2"
                     onClick={() => {
                       console.log("Testing report modal with sample data...");
+                      alert("Opening report modal with sample data!");
                       setState((prev) => ({ 
                         ...prev, 
                         showReportModal: true,
@@ -1373,6 +1385,21 @@ const CardViewBOC = () => {
                     style={{ fontSize: '1.1rem', padding: '8px 16px' }}
                   >
                     🧪 Test Report (Sample Data)
+                  </button>
+                  <button
+                    className="btn btn-danger me-2"
+                    onClick={() => {
+                      console.log("Testing simple modal...");
+                      alert("Testing simple modal visibility!");
+                      setState((prev) => ({ 
+                        ...prev, 
+                        showReportModal: true,
+                        reportData: null
+                      }));
+                    }}
+                    style={{ fontSize: '1.1rem', padding: '8px 16px' }}
+                  >
+                    🔴 Test Empty Modal
                   </button>
                 </>
               )}
@@ -2185,14 +2212,28 @@ const CardViewBOC = () => {
           </Toast.Body>
         </Toast>
       {state.showReportModal && (
-        <ReportModal
-          onClose={() => {
-            console.log("Closing report modal");
-            setState((prev) => ({ ...prev, showReportModal: false }));
-          }}
-          reportData={state.reportData}
-          fetchReportData={fetchReportData}
-        />
+        <>
+          <div style={{
+            position: 'fixed',
+            top: '10px',
+            right: '10px',
+            background: 'red',
+            color: 'white',
+            padding: '10px',
+            zIndex: 10000,
+            borderRadius: '5px'
+          }}>
+            MODAL SHOULD BE VISIBLE NOW!
+          </div>
+          <ReportModal
+            onClose={() => {
+              console.log("Closing report modal");
+              setState((prev) => ({ ...prev, showReportModal: false }));
+            }}
+            reportData={state.reportData}
+            fetchReportData={fetchReportData}
+          />
+        </>
       )}
       
 
