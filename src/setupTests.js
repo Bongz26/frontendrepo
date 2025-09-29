@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Toast, ToastContainer, Collapse } from "react-bootstrap";
 import { Link } from "react-router-dom";
+import { jsPDF } from 'jspdf';
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./styles/queueStyles.css";
 import "./styles/queueSortStyles.css";
 import LoginPopup from "./LoginPopup";
 import ColourCodeModal from "./ColourCodeModal";
-import { jsPDF } from 'jspdf';
 
 const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
 
@@ -60,7 +60,7 @@ const ElapsedTime = ({ statusStartedAt, fallbackTime }) => {
   return <span>⏱ {displayTime}</span>;
 };
 
-// Enhanced ReportModal component
+// ReportModal component
 const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -69,8 +69,6 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
   const [filterError, setFilterError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("summary");
 
   const fetchAuditLogs = useCallback(async () => {
     try {
@@ -90,16 +88,11 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
 
   const handleFilterSubmit = async () => {
     setFilterError("");
-    setLoading(true);
     try {
-      console.log("Submitting report filters:", { startDate, endDate, selectedStatus, selectedCategory, includeDeleted });
       await fetchReportData(startDate, endDate, selectedStatus, selectedCategory, includeDeleted);
       await fetchAuditLogs();
     } catch (err) {
-      console.error("Report filter error:", err);
       setFilterError(err.response?.data?.error || "Failed to fetch report data.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -141,57 +134,6 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
     URL.revokeObjectURL(link.href);
   };
 
-  const downloadPDF = () => {
-    if (!reportData) return;
-
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Enhanced Order Report', 10, 10);
-    doc.setFontSize(12);
-
-    let y = 20;
-    doc.text('Order Status Summary', 10, y);
-    y += 10;
-    Object.entries(reportData.statusSummary).forEach(([status, count]) => {
-      doc.text(`${status}: ${count}`, 10, y);
-      y += 10;
-    });
-
-    doc.text('Category Summary', 10, y);
-    y += 10;
-    Object.entries(reportData.categorySummary).forEach(([category, count]) => {
-      doc.text(`${category}: ${count}`, 10, y);
-      y += 10;
-    });
-
-    if (auditLogs.length > 0) {
-      doc.text('Audit Logs', 10, y);
-      y += 10;
-      auditLogs.forEach(log => {
-        doc.text(`Order ${log.order_id}: ${log.action} by ${log.employee_name || 'N/A'} at ${new Date(log.timestamp).toLocaleString()}`, 10, y);
-        y += 10;
-      });
-    }
-
-    doc.save(`order_report_${startDate || 'all'}_${endDate || 'all'}_${selectedStatus}_${selectedCategory}.pdf`);
-  };
-
-  const getTotalOrders = () => {
-    if (!reportData) return 0;
-    return Object.values(reportData.statusSummary).reduce((sum, count) => sum + count, 0);
-  };
-
-  const getCompletionRate = () => {
-    if (!reportData) return 0;
-    const total = getTotalOrders();
-    const complete = reportData.statusSummary.Complete || 0;
-    return total > 0 ? ((complete / total) * 100).toFixed(1) : 0;
-  };
-
-  const getAverageProcessingTime = () => {
-    // This would need additional backend support to calculate
-    return "N/A";
-  };
 
   // Initialize charts when report data changes
   useEffect(() => {
@@ -338,7 +280,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
         <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
           <div className="modal-content">
             <div className="modal-header bg-purple text-white">
-            <h5 className="modal-title">📊 Enhanced Order Report</h5>
+            <h5 className="modal-title">📊 Order Report</h5>
             <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
           <div className="modal-body">
@@ -406,104 +348,139 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
                   />
                   <label className="form-check-label">Include Deleted Orders</label>
                 </div>
-                <div className="mt-3 d-flex gap-2">
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleFilterSubmit}
-                    disabled={loading}
-                  >
-                    {loading ? "⏳ Loading..." : "🔍 Apply Filters"}
+                <button className="btn btn-primary mt-3" onClick={handleFilterSubmit}>
+                  Apply Filters
+                </button>
+                {reportData && (
+                  <button className="btn btn-success mt-3 ms-2" onClick={downloadCSV}>
+                    Download CSV
                   </button>
-                  {reportData && (
-                    <>
-                      <button className="btn btn-success" onClick={downloadCSV}>
-                        📊 Download CSV
-                      </button>
-                      <button className="btn btn-danger" onClick={downloadPDF}>
-                        📄 Print PDF
-                      </button>
-                    </>
-                  )}
-                </div>
+                )}
                 {filterError && <div className="alert alert-danger mt-2">{filterError}</div>}
               </div>
             </div>
 
             {reportData ? (
               <>
-                {/* Key Metrics Dashboard */}
-                <div className="row mb-4 g-3">
-                  <div className="col-md-3 col-sm-6">
-                    <div className="card bg-primary text-white h-100">
-                      <div className="card-body text-center">
-                        <h5 className="card-title">📋 Total Orders</h5>
-                        <h2 className="card-text">{getTotalOrders()}</h2>
+
+
+                <div className="row">
+                  <div className="col-md-3">
+                    <h6 className="text-center">Order Status Summary</h6>
+                    <canvas id="statusChart" height="200"></canvas>
+                    <table className="table table-sm table-bordered mt-3">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Status</th>
+                          <th>Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(reportData.statusSummary).map(([status, count]) => (
+                          <tr key={status}>
+                            <td>{status}</td>
+                            <td>{count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="col-md-3">
+                    <h6 className="text-center">Order Category Summary</h6>
+                    <canvas id="categoryChart" height="200"></canvas>
+                    <table className="table table-sm table-bordered mt-3">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Category</th>
+                          <th>Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(reportData.categorySummary).map(([category, count]) => (
+                          <tr key={category}>
+                            <td>{category}</td>
+                            <td>{count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="col-md-3">
+                    <h6 className="text-center">Order History Summary</h6>
+                    <canvas id="historyChart" height="200"></canvas>
+                    <table className="table table-sm table-bordered mt-3">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Action</th>
+                          <th>Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(reportData.historySummary).map(([action, count]) => (
+                          <tr key={action}>
+                            <td>{action}</td>
+                            <td>{count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {reportData.deletedSummary && Object.keys(reportData.deletedSummary).length > 0 && (
+                    <div className="col-md-3">
+                      <h6 className="text-center">Deleted Orders Summary</h6>
+                      <canvas id="deletedChart" height="200"></canvas>
+                      <table className="table table-sm table-bordered mt-3">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Status</th>
+                            <th>Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(reportData.deletedSummary).map(([status, count]) => (
+                            <tr key={status}>
+                              <td>{status}</td>
+                              <td>{count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {auditLogs.length > 0 && (
+                    <div className="col-12 mt-4">
+                      <h6>Audit Log Details</h6>
+                      <div className="table-responsive">
+                        <table className="table table-sm table-bordered">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Order ID</th>
+                              <th>Action</th>
+                              <th>From Status</th>
+                              <th>To Status</th>
+                              <th>Employee</th>
+                              <th>Timestamp</th>
+                              <th>Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {auditLogs.map((log) => (
+                              <tr key={log.log_id}>
+                                <td>{log.order_id}</td>
+                                <td>{log.action}</td>
+                                <td>{log.from_status || "N/A"}</td>
+                                <td>{log.to_status || "N/A"}</td>
+                                <td>{log.employee_name || "N/A"}</td>
+                                <td>{new Date(log.timestamp).toLocaleString()}</td>
+                                <td>{log.remarks || "N/A"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
-                  </div>
-                  <div className="col-md-3 col-sm-6">
-                    <div className="card bg-success text-white h-100">
-                      <div className="card-body text-center">
-                        <h5 className="card-title">✅ Completion Rate</h5>
-                        <h2 className="card-text">{getCompletionRate()}%</h2>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-md-3 col-sm-6">
-                    <div className="card bg-info text-white h-100">
-                      <div className="card-body text-center">
-                        <h5 className="card-title">⏱️ Avg Processing Time</h5>
-                        <h2 className="card-text">{getAverageProcessingTime()}</h2>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="col-md-3 col-sm-6">
-                    <div className="card bg-warning text-white h-100">
-                      <div className="card-body text-center">
-                        <h5 className="card-title">🚀 Active Orders</h5>
-                        <h2 className="card-text">
-                          {(reportData.statusSummary.Mixing || 0) +
-                            (reportData.statusSummary.Spraying || 0) +
-                            (reportData.statusSummary['Re-Mixing'] || 0)}
-                        </h2>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
-
-                {/* Tab Navigation */}
-                <ul className="nav nav-tabs mb-3">
-                  <li className="nav-item">
-                    <button 
-                      className={`nav-link ${activeTab === 'summary' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('summary')}
-                    >
-                      📊 Summary
-                    </button>
-                  </li>
-                  <li className="nav-item">
-                    <button 
-                      className={`nav-link ${activeTab === 'charts' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('charts')}
-                    >
-                      📈 Charts
-                    </button>
-                  </li>
-                  <li className="nav-item">
-                    <button 
-                      className={`nav-link ${activeTab === 'audit' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('audit')}
-                    >
-                      📝 Audit Logs
-                    </button>
-                  </li>
-                </ul>
-
-                {/* Tab Content */}
-                {activeTab === 'summary' && (
-                  <div className="row">
-                    <div className="col-md-6">
-                      <h6>Order Status Summary</h6>
                       <table className="table table-sm table-bordered">
                         <thead className="table-light">
                           <tr>
