@@ -7,6 +7,7 @@ import "./styles/queueStyles.css";
 import "./styles/queueSortStyles.css";
 import LoginPopup from "./LoginPopup";
 import ColourCodeModal from "./ColourCodeModal";
+import { jsPDF } from 'jspdf';
 
 const BASE_URL = process.env.REACT_APP_API_URL || "https://queue-backendser.onrender.com";
 
