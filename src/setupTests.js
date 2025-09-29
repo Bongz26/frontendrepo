@@ -1404,7 +1404,7 @@ const CardViewBOC = () => {
               {/* Order Summary Dashboard */}
               <div className="row mb-4">
                 <div className="col-md-3">
-                  <div className="card bg-primary text-white">
+                  <div className="card bg-primary text-black">
                     <div className="card-body text-center">
                       <h5 className="card-title">📋 Waiting</h5>
                       <h2 className="card-text">{waitingCount}</h2>
@@ -1412,7 +1412,7 @@ const CardViewBOC = () => {
                   </div>
                 </div>
                 <div className="col-md-3">
-                  <div className="card bg-info text-white">
+                  <div className="card bg-info text-black">
                     <div className="card-body text-center">
                       <h5 className="card-title">🚀 Active</h5>
                       <h2 className="card-text">{activeCount}</h2>
@@ -1420,7 +1420,7 @@ const CardViewBOC = () => {
                   </div>
                 </div>
                 <div className="col-md-3">
-                  <div className="card bg-secondary text-white">
+                  <div className="card bg-secondary text-black">
                     <div className="card-body text-center">
                       <h5 className="card-title">✅ Ready</h5>
                       <h2 className="card-text">{readyCount}</h2>
@@ -1428,7 +1428,7 @@ const CardViewBOC = () => {
                   </div>
                 </div>
                 <div className="col-md-3">
-                  <div className="card bg-success text-white">
+                  <div className="card bg-success text-black">
                     <div className="card-body text-center">
                       <h5 className="card-title">🎉 Complete</h5>
                       <h2 className="card-text">{completeCount}</h2>
