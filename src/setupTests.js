@@ -91,9 +91,11 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
     setFilterError("");
     setLoading(true);
     try {
+      console.log("Submitting report filters:", { startDate, endDate, selectedStatus, selectedCategory, includeDeleted });
       await fetchReportData(startDate, endDate, selectedStatus, selectedCategory, includeDeleted);
       await fetchAuditLogs();
     } catch (err) {
+      console.error("Report filter error:", err);
       setFilterError(err.response?.data?.error || "Failed to fetch report data.");
     } finally {
       setLoading(false);
@@ -159,6 +161,71 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
     // This would need additional backend support to calculate
     return "N/A";
   };
+
+  // Initialize charts when report data changes
+  useEffect(() => {
+    if (!reportData || !window.Chart) return;
+
+    // Destroy existing charts
+    const existingCharts = [window.statusChart, window.categoryChart];
+    existingCharts.forEach(chart => {
+      if (chart) chart.destroy();
+    });
+
+    // Create status chart
+    const statusCtx = document.getElementById("statusChart");
+    if (statusCtx) {
+      window.statusChart = new window.Chart(statusCtx, {
+        type: "bar",
+        data: {
+          labels: Object.keys(reportData.statusSummary),
+          datasets: [{
+            label: "Order Status Count",
+            data: Object.values(reportData.statusSummary),
+            backgroundColor: ["#36A2EB", "#FF6384", "#4BC0C0", "#FFCE56", "#9966FF", "#C9CB3F"],
+            borderColor: ["#2A87D0", "#E05570", "#3BA8A8", "#E0B447", "#7A52CC", "#A8AA2E"],
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: "Count" } },
+            x: { title: { display: true, text: "Status" } },
+          },
+        },
+      });
+    }
+
+    // Create category chart
+    const categoryCtx = document.getElementById("categoryChart");
+    if (categoryCtx) {
+      window.categoryChart = new window.Chart(categoryCtx, {
+        type: "pie",
+        data: {
+          labels: Object.keys(reportData.categorySummary),
+          datasets: [{
+            label: "Order Category Count",
+            data: Object.values(reportData.categorySummary),
+            backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
+            borderColor: ["#E05570", "#2A87D0", "#E0B447", "#3BA8A8"],
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+        },
+      });
+    }
+
+    return () => {
+      // Cleanup charts on unmount
+      if (window.statusChart) window.statusChart.destroy();
+      if (window.categoryChart) window.categoryChart.destroy();
+    };
+  }, [reportData, activeTab]);
 
   return (
     <div className="modal d-block" tabIndex="-1" onClick={onClose}>
@@ -569,19 +636,27 @@ const CardViewBOC = () => {
 
   const fetchCompleteOrders = useCallback(async () => {
     try {
-      // For now, we'll use a mock approach since the backend doesn't have a complete orders endpoint
-      // In a real implementation, you'd add this endpoint to your backend
-      console.log("Note: Complete orders endpoint not available in backend yet");
-      setState((prev) => ({ ...prev, completeOrders: [] }));
+      const response = await axios.get(`${BASE_URL}/api/orders/complete`);
+      setState((prev) => ({ ...prev, completeOrders: response.data }));
     } catch (err) {
       console.error("Error fetching complete orders:", err);
-      triggerToast("Error fetching complete orders.", "danger");
+      // Fallback to empty array if endpoint doesn't exist yet
+      setState((prev) => ({ ...prev, completeOrders: [] }));
+      console.log("Note: Complete orders endpoint not available in backend yet");
     }
   }, []);
 
   const fetchReportData = useCallback(async (startDate = "", endDate = "", status = "All", category = "All", includeDeleted = false) => {
     try {
       console.log("Fetching report data from /api/orders/report");
+      console.log("Request params:", {
+        start_date: startDate,
+        end_date: endDate,
+        status: status === "All" ? "" : status,
+        category: category === "All" ? "" : category,
+        include_deleted: includeDeleted,
+      });
+      
       const response = await axios.get(`${BASE_URL}/api/orders/report`, {
         params: {
           start_date: startDate,
@@ -591,9 +666,12 @@ const CardViewBOC = () => {
           include_deleted: includeDeleted,
         },
       });
+      
+      console.log("Report data received:", response.data);
       setState((prev) => ({ ...prev, reportData: response.data, showReportModal: true }));
     } catch (err) {
       console.error("Error fetching report data:", err);
+      console.error("Error response:", err.response?.data);
       triggerToast(err.response?.data?.error || "Failed to fetch report data.", "danger");
       throw err;
     }
@@ -1246,7 +1324,10 @@ const CardViewBOC = () => {
               {state.userRole === "Admin" && (
                 <button
                   className="btn btn-primary me-2"
-                  onClick={() => setState((prev) => ({ ...prev, showReportModal: true }))}
+                  onClick={() => {
+                    console.log("Opening report modal...");
+                    setState((prev) => ({ ...prev, showReportModal: true }));
+                  }}
                 >
                   📊 View Report
                 </button>
