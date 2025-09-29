@@ -250,20 +250,20 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             width: 100vw !important;
             height: 100vh !important;
             margin: 0 !important;
-            padding: 0 !important;
-            display: block !important;
-            overflow: auto !important;
+            padding: 20px !important;
+            display: grid !important;
+            place-items: center !important;
+            box-sizing: border-box !important;
           }
           .modal-dialog {
-            position: absolute !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
             margin: 0 !important;
             max-width: 90vw !important;
             width: 90vw !important;
             max-height: 90vh !important;
             min-height: 60vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            border: 2px solid red !important;
           }
           .modal-content {
             border: 3px solid #6b46c1 !important;
@@ -277,6 +277,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             margin: 0 !important;
             display: flex !important;
             flex-direction: column !important;
+            flex: 1 !important;
           }
           .modal-header {
             border-bottom: 2px solid #6b46c1 !important;
@@ -290,6 +291,9 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             flex: 1 !important;
           }
           @media (max-width: 768px) {
+            .modal.d-block {
+              padding: 10px !important;
+            }
             .modal-dialog {
               max-width: 95vw !important;
               width: 95vw !important;
@@ -315,8 +319,8 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
           <div className="modal-body">
             {/* Welcome Message */}
             <div className="alert alert-success mb-3" style={{ fontSize: '1.1rem', padding: '1rem' }}>
-              <strong>🎉 Report Modal is Working!</strong><br/>
-              The modal is now properly centered and user-friendly. You can use the filters below to generate reports or test with sample data.
+              <strong>🎉 CSS Grid Centering Test!</strong><br/>
+              Using CSS Grid with place-items: center for perfect centering. If you can see this clearly, the modal should be centered!
             </div>
             
             {/* Filter Section */}
