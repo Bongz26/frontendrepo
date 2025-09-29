@@ -263,7 +263,6 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             min-height: 60vh !important;
             display: flex !important;
             flex-direction: column !important;
-            border: 2px solid red !important;
           }
           .modal-content {
             border: 3px solid #6b46c1 !important;
@@ -1351,9 +1350,19 @@ const CardViewBOC = () => {
   );
 
   return (
-    <div className="container mt-4">
+    <div className="container-fluid px-3 py-4">
       <style>
         {`
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #f8f9fa !important;
+          }
+          .container-fluid {
+            max-width: 1400px !important;
+            margin: 0 auto !important;
+            padding: 0 15px !important;
+          }
           .selected-order {
             background-color: #fff3cd !important;
             border: 2px solid #ffca2c !important;
@@ -1366,6 +1375,54 @@ const CardViewBOC = () => {
           }
           .selected-order td {
             background-color: #fff3cd !important;
+          }
+          .table-responsive {
+            border: none !important;
+          }
+          .table {
+            margin-bottom: 0 !important;
+          }
+          @media (max-width: 768px) {
+            .container-fluid {
+              padding: 0 10px !important;
+            }
+            .card {
+              margin-bottom: 1rem !important;
+            }
+            .btn {
+              font-size: 0.9rem !important;
+              padding: 0.5rem 0.75rem !important;
+            }
+            .table-responsive {
+              font-size: 0.8rem !important;
+            }
+            .table {
+              font-size: 0.75rem !important;
+            }
+            .table th,
+            .table td {
+              padding: 0.4rem 0.2rem !important;
+              white-space: nowrap !important;
+            }
+            .btn-sm {
+              font-size: 0.7rem !important;
+              padding: 0.25rem 0.4rem !important;
+            }
+            .card-body {
+              padding: 1rem !important;
+            }
+            .row {
+              margin: 0 !important;
+            }
+            .col-md-3 {
+              margin-bottom: 1rem !important;
+            }
+            .d-flex {
+              flex-wrap: wrap !important;
+            }
+            .d-flex > * {
+              margin-bottom: 0.5rem !important;
+            }
           }
         `}
       </style>
@@ -1587,33 +1644,35 @@ const CardViewBOC = () => {
                   {state.readyOrders.length > 0 ? (
                     <div className="card shadow-sm border-0 mb-3">
                       <div className="card-body p-0">
-                        <table className="table table-bordered mb-0">
-                          <thead className="table-light">
-                            <tr>
-                              <th>Transaction ID</th>
-                              <th>Customer</th>
-                              <th>Customer No.</th>
-                              <th>Quantity</th>
-                              <th>Paint Details</th>
-                              <th>PO Type</th>
-                              <th>Note</th>
-                              <th>Assigned To</th>
-                              <th>Time in Status</th>
-                              <th>Revert</th>
-                              <th>Edit</th>
-                              <th>Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {state.readyOrders
-                              .filter(
-                                (o) =>
-                                  (state.filterCategory === "All" || o.category === state.filterCategory) &&
-                                  (state.filterPoType === "All" || o.po_type === state.filterPoType)
-                              )
-                              .map((order) => renderReadyOrderRow(order))}
-                          </tbody>
-                        </table>
+                        <div className="table-responsive">
+                          <table className="table table-bordered mb-0">
+                            <thead className="table-light">
+                              <tr>
+                                <th>Transaction ID</th>
+                                <th>Customer</th>
+                                <th>Customer No.</th>
+                                <th>Quantity</th>
+                                <th>Paint Details</th>
+                                <th>PO Type</th>
+                                <th>Note</th>
+                                <th>Assigned To</th>
+                                <th>Time in Status</th>
+                                <th>Revert</th>
+                                <th>Edit</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {state.readyOrders
+                                .filter(
+                                  (o) =>
+                                    (state.filterCategory === "All" || o.category === state.filterCategory) &&
+                                    (state.filterPoType === "All" || o.po_type === state.filterPoType)
+                                )
+                                .map((order) => renderReadyOrderRow(order))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -1636,7 +1695,8 @@ const CardViewBOC = () => {
                   {state.completeOrders.length > 0 ? (
                     <div className="card shadow-sm border-0 mb-3">
                       <div className="card-body p-0">
-                        <table className="table table-bordered mb-0">
+                        <div className="table-responsive">
+                          <table className="table table-bordered mb-0">
                           <thead className="table-light">
                             <tr>
                               <th>Transaction ID</th>
@@ -1686,6 +1746,7 @@ const CardViewBOC = () => {
                               ))}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     </div>
                   ) : (
