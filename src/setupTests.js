@@ -259,7 +259,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
       <div className="modal d-block" tabIndex="-1" onClick={onClose}>
         <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
           <div className="modal-content">
-          <div className="modal-header bg-primary text-white">
+            <div className="modal-header bg-primary text-white">
             <h5 className="modal-title">📊 Enhanced Order Report</h5>
             <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
           </div>
@@ -544,6 +544,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             <button className="btn btn-secondary" onClick={onClose}>
               Close
             </button>
+          </div>
           </div>
         </div>
       </div>
