@@ -141,8 +141,38 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   };
 
   const downloadPDF = () => {
-    // Simple PDF generation using window.print()
-    window.print();
+    if (!reportData) return;
+
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Enhanced Order Report', 10, 10);
+    doc.setFontSize(12);
+
+    let y = 20;
+    doc.text('Order Status Summary', 10, y);
+    y += 10;
+    Object.entries(reportData.statusSummary).forEach(([status, count]) => {
+      doc.text(`${status}: ${count}`, 10, y);
+      y += 10;
+    });
+
+    doc.text('Category Summary', 10, y);
+    y += 10;
+    Object.entries(reportData.categorySummary).forEach(([category, count]) => {
+      doc.text(`${category}: ${count}`, 10, y);
+      y += 10;
+    });
+
+    if (auditLogs.length > 0) {
+      doc.text('Audit Logs', 10, y);
+      y += 10;
+      auditLogs.forEach(log => {
+        doc.text(`Order ${log.order_id}: ${log.action} by ${log.employee_name || 'N/A'} at ${new Date(log.timestamp).toLocaleString()}`, 10, y);
+        y += 10;
+      });
+    }
+
+    doc.save(`order_report_${startDate || 'all'}_${endDate || 'all'}_${selectedStatus}_${selectedCategory}.pdf`);
   };
 
   const getTotalOrders = () => {
@@ -194,6 +224,9 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             y: { beginAtZero: true, title: { display: true, text: "Count" } },
             x: { title: { display: true, text: "Status" } },
           },
+          plugins: {
+            legend: { position: 'top' },
+          },
         },
       });
     }
@@ -216,6 +249,9 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+          },
         },
       });
     }
@@ -240,39 +276,64 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   return (
     <>
       <style>
-        {`
-          .modal-header.bg-purple {
-            background-color: #6b46c1 !important;
-          }
-          .modal-dialog.modal-xl {
-            max-width: 95vw !important;
-            width: 95vw !important;
-            max-height: 95vh !important;
-            margin: 1.75rem auto !important;
-          }
-          .modal-content {
-            max-height: 90vh !important;
-            overflow-y: auto !important;
-          }
-          .modal-body {
-            max-height: 70vh !important;
-            overflow-y: auto !important;
-            padding: 2rem !important;
-          }
-          @media (max-width: 768px) {
-            .modal-dialog.modal-xl {
-              max-width: 98vw !important;
-              width: 98vw !important;
-              margin: 0.5rem auto !important;
-            }
-            .modal-body {
-              padding: 1rem !important;
-              max-height: 80vh !important;
-            }
-          }
-        `}
-      </style>
-      <div className="modal d-block" tabIndex="-1" onClick={onClose}>
+  {`
+    .report-modal {
+      z-index: 1055 !important; /* Ensure modal is above other elements */
+      background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent backdrop */
+    }
+    .report-modal .modal-dialog.modal-xl {
+      width: 90vw !important; /* Consistent width */
+      max-width: 1400px !important; /* Cap for very large screens */
+      min-width: 90% !important; /* Ensure minimum width */
+      margin: 1rem auto !important;
+      max-height: 95vh !important;
+    }
+    .report-modal .modal-content {
+      max-height: 90vh !important;
+      overflow-y: auto !important;
+      border-radius: 8px !important;
+      background-color: #fff !important;
+    }
+    .report-modal .modal-body {
+      max-height: 80vh !important;
+      overflow-y: auto !important;
+      padding: 1.5rem !important;
+    }
+    .report-modal .canvas-container {
+      position: relative !important;
+      width: 100% !important;
+      height: 300px !important; /* Fixed height for charts */
+    }
+    @media (max-width: 768px) {
+      .report-modal .modal-dialog.modal-xl {
+        width: 95vw !important;
+        min-width: 95vw !important;
+        margin: 0.5rem auto !important;
+      }
+      .report-modal .modal-body {
+        padding: 1rem !important;
+        max-height: 85vh !important;
+      }
+      .report-modal .canvas-container {
+        height: 250px !important; /* Smaller charts on mobile */
+      }
+    }
+    @media (max-width: 576px) {
+      .report-modal .modal-dialog.modal-xl {
+        width: 98vw !important;
+        min-width: 98vw !important;
+        margin: 0.25rem auto !important;
+      }
+      .report-modal .modal-body {
+        padding: 0.75rem !important;
+      }
+      .report-modal .canvas-container {
+        height: 200px !important;
+      }
+    }
+  `}
+</style>
+      <div className="modal d-block report-modal" tabIndex="-1" onClick={onClose}>
         <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
           <div className="modal-content">
             <div className="modal-header bg-purple text-white">
@@ -285,7 +346,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             <div className="card mb-3 shadow-sm">
               <div className="card-body">
                 <h6 className="card-title">🔍 Filter Report</h6>
-                <div className="row">
+                <div className="row g-3">
                   <div className="col-md-3">
                     <label className="form-label">Start Date:</label>
                     <input
@@ -344,9 +405,9 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
                   />
                   <label className="form-check-label">Include Deleted Orders</label>
                 </div>
-                <div className="mt-3">
-                  <button 
-                    className="btn btn-primary me-2" 
+                <div className="mt-3 d-flex gap-2">
+                  <button
+                    className="btn btn-primary"
                     onClick={handleFilterSubmit}
                     disabled={loading}
                   >
@@ -354,7 +415,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
                   </button>
                   {reportData && (
                     <>
-                      <button className="btn btn-success me-2" onClick={downloadCSV}>
+                      <button className="btn btn-success" onClick={downloadCSV}>
                         📊 Download CSV
                       </button>
                       <button className="btn btn-danger" onClick={downloadPDF}>
@@ -370,37 +431,39 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
             {reportData ? (
               <>
                 {/* Key Metrics Dashboard */}
-                <div className="row mb-4">
-                  <div className="col-md-3">
-                    <div className="card bg-primary text-white">
+                <div className="row mb-4 g-3">
+                  <div className="col-md-3 col-sm-6">
+                    <div className="card bg-primary text-white h-100">
                       <div className="card-body text-center">
                         <h5 className="card-title">📋 Total Orders</h5>
                         <h2 className="card-text">{getTotalOrders()}</h2>
                       </div>
                     </div>
                   </div>
-                  <div className="col-md-3">
-                    <div className="card bg-success text-white">
+                  <div className="col-md-3 col-sm-6">
+                    <div className="card bg-success text-white h-100">
                       <div className="card-body text-center">
                         <h5 className="card-title">✅ Completion Rate</h5>
                         <h2 className="card-text">{getCompletionRate()}%</h2>
                       </div>
                     </div>
                   </div>
-                  <div className="col-md-3">
-                    <div className="card bg-info text-white">
+                  <div className="col-md-3 col-sm-6">
+                    <div className="card bg-info text-white h-100">
                       <div className="card-body text-center">
                         <h5 className="card-title">⏱️ Avg Processing Time</h5>
                         <h2 className="card-text">{getAverageProcessingTime()}</h2>
                       </div>
                     </div>
                   </div>
-                  <div className="col-md-3">
-                    <div className="card bg-warning text-white">
+                  <div className="col-md-3 col-sm-6">
+                    <div className="card bg-warning text-white h-100">
                       <div className="card-body text-center">
                         <h5 className="card-title">🚀 Active Orders</h5>
                         <h2 className="card-text">
-                          {(reportData.statusSummary.Mixing || 0) + (reportData.statusSummary.Spraying || 0) + (reportData.statusSummary['Re-Mixing'] || 0)}
+                          {(reportData.statusSummary.Mixing || 0) +
+                            (reportData.statusSummary.Spraying || 0) +
+                            (reportData.statusSummary['Re-Mixing'] || 0)}
                         </h2>
                       </div>
                     </div>
@@ -498,11 +561,15 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
                   <div className="row">
                     <div className="col-md-6">
                       <h6 className="text-center">Order Status Distribution</h6>
-                      <canvas id="statusChart" height="300"></canvas>
+                      <div className="canvas-container">
+                        <canvas id="statusChart" height="300"></canvas>
+                      </div>
                     </div>
                     <div className="col-md-6">
                       <h6 className="text-center">Category Distribution</h6>
-                      <canvas id="categoryChart" height="300"></canvas>
+                      <div className="canvas-container">
+                        <canvas id="categoryChart" height="300"></canvas>
+                      </div>
                     </div>
                   </div>
                 )}
