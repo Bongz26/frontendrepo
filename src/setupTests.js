@@ -2383,5 +2383,4 @@ const CardViewBOC = () => {
     </div>
   );
 };
-
 export default CardViewBOC;
