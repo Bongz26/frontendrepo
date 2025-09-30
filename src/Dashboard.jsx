@@ -72,7 +72,11 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   const fetchAuditLogs = useCallback(async () => {
     try {
       const response = await axios.get(`${BASE_URL}/api/audit_logs`, {
-        params: { start_date: startDate, end_date: endDate, status: selectedStatus === "All" ? "" : selectedStatus },
+        params: { 
+          start_date: startDate, 
+          end_date: endDate, 
+          status: selectedStatus === "All" ? "" : selectedStatus 
+        },
       });
       setAuditLogs(response.data);
     } catch (err) {
@@ -129,307 +133,439 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
     URL.revokeObjectURL(link.href);
   };
 
+  // Initialize charts when report data changes
   useEffect(() => {
     if (!reportData || !window.Chart) return;
 
-    const statusChart = new window.Chart(document.getElementById("statusChart"), {
-      type: "bar",
-      data: {
-        labels: Object.keys(reportData.statusSummary),
-        datasets: [{
-          label: "Order Status Count",
-          data: Object.values(reportData.statusSummary),
-          backgroundColor: ["#36A2EB", "#FF6384", "#4BC0C0", "#FFCE56", "#9966FF", "#C9CB3F"],
-          borderColor: ["#2A87D0", "#E05570", "#3BA8A8", "#E0B447", "#7A52CC", "#A8AA2E"],
-          borderWidth: 1,
-        }],
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: { beginAtZero: true, title: { display: true, text: "Count" } },
-          x: { title: { display: true, text: "Status" } },
+    // Destroy existing charts
+    const existingCharts = [window.statusChart, window.categoryChart];
+    existingCharts.forEach(chart => {
+      if (chart) chart.destroy();
+    });
+
+    // Create status chart
+    const statusCtx = document.getElementById("statusChart");
+    if (statusCtx) {
+      window.statusChart = new window.Chart(statusCtx, {
+        type: "bar",
+        data: {
+          labels: Object.keys(reportData.statusSummary),
+          datasets: [{
+            label: "Order Status Count",
+            data: Object.values(reportData.statusSummary),
+            backgroundColor: ["#36A2EB", "#FF6384", "#4BC0C0", "#FFCE56", "#9966FF", "#C9CB3F"],
+            borderColor: ["#2A87D0", "#E05570", "#3BA8A8", "#E0B447", "#7A52CC", "#A8AA2E"],
+            borderWidth: 1,
+          }],
         },
-      },
-    });
-
-    const categoryChart = new window.Chart(document.getElementById("categoryChart"), {
-      type: "pie",
-      data: {
-        labels: Object.keys(reportData.categorySummary),
-        datasets: [{
-          label: "Order Category Count",
-          data: Object.values(reportData.categorySummary),
-          backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
-          borderColor: ["#E05570", "#2A87D0", "#E0B447", "#3BA8A8"],
-          borderWidth: 1,
-        }],
-      },
-      options: {
-        responsive: true,
-      },
-    });
-
-    const historyChart = new window.Chart(document.getElementById("historyChart"), {
-      type: "doughnut",
-      data: {
-        labels: Object.keys(reportData.historySummary),
-        datasets: [{
-          label: "History Action Count",
-          data: Object.values(reportData.historySummary),
-          backgroundColor: ["#9966FF", "#FF9F40", "#FF6384", "#36A2EB"],
-          borderColor: ["#7A52CC", "#E08E38", "#E05570", "#2A87D0"],
-          borderWidth: 1,
-        }],
-      },
-      options: {
-        responsive: true,
-      },
-    });
-
-    const deletedChart = reportData.deletedSummary && Object.keys(reportData.deletedSummary).length > 0
-      ? new window.Chart(document.getElementById("deletedChart"), {
-          type: "bar",
-          data: {
-            labels: Object.keys(reportData.deletedSummary),
-            datasets: [{
-              label: "Deleted Orders Status Count",
-              data: Object.values(reportData.deletedSummary),
-              backgroundColor: ["#FF6384", "#36A2EB", "#4BC0C0", "#FFCE56"],
-              borderColor: ["#E05570", "#2A87D0", "#3BA8A8", "#E0B447"],
-              borderWidth: 1,
-            }],
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: "Count" } },
+            x: { title: { display: true, text: "Status" } },
           },
-          options: {
-            responsive: true,
-            scales: {
-              y: { beginAtZero: true, title: { display: true, text: "Count" } },
-              x: { title: { display: true, text: "Deleted Status" } },
-            },
+          plugins: {
+            legend: { position: 'top' },
           },
-        })
-      : null;
+        },
+      });
+    }
+
+    // Create category chart
+    const categoryCtx = document.getElementById("categoryChart");
+    if (categoryCtx) {
+      window.categoryChart = new window.Chart(categoryCtx, {
+        type: "pie",
+        data: {
+          labels: Object.keys(reportData.categorySummary),
+          datasets: [{
+            label: "Order Category Count",
+            data: Object.values(reportData.categorySummary),
+            backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
+            borderColor: ["#E05570", "#2A87D0", "#E0B447", "#3BA8A8"],
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+          },
+        },
+      });
+    }
 
     return () => {
-      statusChart.destroy();
-      categoryChart.destroy();
-      historyChart.destroy();
-      if (deletedChart) deletedChart.destroy();
+      // Cleanup charts on unmount
+      if (window.statusChart) window.statusChart.destroy();
+      if (window.categoryChart) window.categoryChart.destroy();
     };
   }, [reportData]);
 
   return (
-    <div className="modal d-block" tabIndex="-1" onClick={onClose}>
-      <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-content">
-          <div className="modal-header bg-purple text-white">
-            <h5 className="modal-title">📊 Order Report</h5>
-            <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
-          </div>
-          <div className="modal-body">
-            <div className="card mb-3 shadow-sm">
-              <div className="card-body">
-                <h6 className="card-title">Filter Report</h6>
-                <div className="row">
-                  <div className="col-md-3">
-                    <label className="form-label">Start Date:</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">End Date:</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">Status:</label>
-                    <select
-                      className="form-control"
-                      value={selectedStatus}
-                      onChange={(e) => setSelectedStatus(e.target.value)}
-                    >
-                      <option value="All">All</option>
-                      <option value="Waiting">Waiting</option>
-                      <option value="Mixing">Mixing</option>
-                      <option value="Spraying">Spraying</option>
-                      <option value="Re-Mixing">Re-Mixing</option>
-                      <option value="Ready">Ready</option>
-                      <option value="Complete">Complete</option>
-                    </select>
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">Category:</label>
-                    <select
-                      className="form-control"
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                    >
-                      <option value="All">All</option>
-                      <option value="New Mix">New Mix</option>
-                      <option value="Colour Code">Colour Code</option>
-                      <option value="Detailing">Detailing</option>
-                      <option value="Re-Mix">Re-Mix</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="form-check mt-2">
-                  <input
-                    type="checkbox"
-                    className="form-check-input"
-                    checked={includeDeleted}
-                    onChange={(e) => setIncludeDeleted(e.target.checked)}
-                  />
-                  <label className="form-check-label">Include Deleted Orders</label>
-                </div>
-                <button className="btn btn-primary mt-3" onClick={handleFilterSubmit}>
-                  Apply Filters
-                </button>
-                {reportData && (
-                  <button className="btn btn-success mt-3 ms-2" onClick={downloadCSV}>
-                    Download CSV
-                  </button>
-                )}
-                {filterError && <div className="alert alert-danger mt-2">{filterError}</div>}
-              </div>
+    <>
+      <style>
+        {`
+          .report-modal {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 1055 !important;
+            background-color: rgba(0, 0, 0, 0.5) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .report-modal .modal-dialog.modal-xl {
+            width: 95vw !important;
+            max-width: 1600px !important;
+            margin: 2rem auto !important;
+            height: auto !important;
+            max-height: 90vh !important;
+          }
+          .report-modal .modal-content {
+            height: auto !important;
+            max-height: 90vh !important;
+            overflow: visible !important;
+            border-radius: 8px !important;
+            background-color: #fff !important;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5) !important;
+          }
+          .report-modal .modal-header {
+            padding: 1.5rem !important;
+            border-bottom: 1px solid #dee2e6 !important;
+            flex-shrink: 0 !important;
+          }
+          .report-modal .modal-body {
+            max-height: calc(90vh - 140px) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding: 2rem !important;
+          }
+          .report-modal .modal-footer {
+            padding: 1rem !important;
+            border-top: 1px solid #dee2e6 !important;
+            flex-shrink: 0 !important;
+          }
+          .report-modal .canvas-container {
+            position: relative !important;
+            width: 100% !important;
+            height: 400px !important;
+            margin-bottom: 1rem !important;
+          }
+          .report-modal canvas {
+            max-width: 100% !important;
+            height: 300px !important;
+          }
+          .report-modal .table-responsive {
+            max-height: 500px !important;
+            overflow-y: auto !important;
+          }
+          .report-modal .card {
+            margin-bottom: 1.5rem !important;
+          }
+          .report-modal .card-body {
+            padding: 1.5rem !important;
+          }
+          .report-modal h6 {
+            font-size: 1.1rem !important;
+            font-weight: 600 !important;
+            margin-bottom: 1rem !important;
+          }
+          .report-modal .table {
+            font-size: 0.95rem !important;
+          }
+          .report-modal .btn {
+            font-size: 1rem !important;
+            padding: 0.5rem 1rem !important;
+          }
+          
+          /* Mobile Responsive */
+          @media (max-width: 768px) {
+            .report-modal .modal-dialog.modal-xl {
+              width: 98vw !important;
+              margin: 0.5rem auto !important;
+              max-height: 95vh !important;
+            }
+            .report-modal .modal-body {
+              padding: 1rem !important;
+              max-height: calc(95vh - 120px) !important;
+            }
+            .report-modal .canvas-container {
+              height: 300px !important;
+            }
+            .report-modal canvas {
+              height: 250px !important;
+            }
+            .report-modal .row > div {
+              margin-bottom: 1rem !important;
+            }
+            .report-modal .table {
+              font-size: 0.85rem !important;
+            }
+            .report-modal .btn {
+              font-size: 0.9rem !important;
+              padding: 0.4rem 0.8rem !important;
+            }
+          }
+          
+          @media (max-width: 576px) {
+            .report-modal .modal-dialog.modal-xl {
+              width: 100vw !important;
+              margin: 0 !important;
+              max-height: 100vh !important;
+              border-radius: 0 !important;
+            }
+            .report-modal .modal-content {
+              border-radius: 0 !important;
+              max-height: 100vh !important;
+            }
+            .report-modal .modal-body {
+              padding: 0.75rem !important;
+              max-height: calc(100vh - 120px) !important;
+            }
+            .report-modal .canvas-container {
+              height: 250px !important;
+            }
+            .report-modal canvas {
+              height: 200px !important;
+            }
+            .report-modal .col-md-3 {
+              width: 100% !important;
+              max-width: 100% !important;
+            }
+          }
+        `}
+      </style>
+      <div className="modal d-block report-modal" tabIndex="-1" onClick={onClose}>
+        <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content">
+            <div className="modal-header bg-purple text-white">
+              <h5 className="modal-title">📊 Order Report</h5>
+              <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
             </div>
-            {reportData ? (
-              <div className="row">
-                <div className="col-md-3">
-                  <h6 className="text-center">Order Status Summary</h6>
-                  <canvas id="statusChart" height="200"></canvas>
-                  <table className="table table-sm table-bordered mt-3">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Status</th>
-                        <th>Count</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(reportData.statusSummary).map(([status, count]) => (
-                        <tr key={status}>
-                          <td>{status}</td>
-                          <td>{count}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="col-md-3">
-                  <h6 className="text-center">Order Category Summary</h6>
-                  <canvas id="categoryChart" height="200"></canvas>
-                  <table className="table table-sm table-bordered mt-3">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Category</th>
-                        <th>Count</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(reportData.categorySummary).map(([category, count]) => (
-                        <tr key={category}>
-                          <td>{category}</td>
-                          <td>{count}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="col-md-3">
-                  <h6 className="text-center">Order History Summary</h6>
-                  <canvas id="historyChart" height="200"></canvas>
-                  <table className="table table-sm table-bordered mt-3">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Action</th>
-                        <th>Count</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(reportData.historySummary).map(([action, count]) => (
-                        <tr key={action}>
-                          <td>{action}</td>
-                          <td>{count}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {reportData.deletedSummary && Object.keys(reportData.deletedSummary).length > 0 && (
-                  <div className="col-md-3">
-                    <h6 className="text-center">Deleted Orders Summary</h6>
-                    <canvas id="deletedChart" height="200"></canvas>
-                    <table className="table table-sm table-bordered mt-3">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Status</th>
-                          <th>Count</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(reportData.deletedSummary).map(([status, count]) => (
-                          <tr key={status}>
-                            <td>{status}</td>
-                            <td>{count}</td>
-                        </tr>
-                        ))}
-                      </tbody>
-                    </table>
+            <div className="modal-body">
+              
+              {/* Filter Section */}
+              <div className="card mb-3 shadow-sm">
+                <div className="card-body">
+                  <h6 className="card-title">🔍 Filter Report</h6>
+                  <div className="row g-3">
+                    <div className="col-md-3">
+                      <label className="form-label">Start Date:</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">End Date:</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Status:</label>
+                      <select
+                        className="form-control"
+                        value={selectedStatus}
+                        onChange={(e) => setSelectedStatus(e.target.value)}
+                      >
+                        <option value="All">All</option>
+                        <option value="Waiting">Waiting</option>
+                        <option value="Mixing">Mixing</option>
+                        <option value="Spraying">Spraying</option>
+                        <option value="Re-Mixing">Re-Mixing</option>
+                        <option value="Ready">Ready</option>
+                        <option value="Complete">Complete</option>
+                      </select>
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Category:</label>
+                      <select
+                        className="form-control"
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                      >
+                        <option value="All">All</option>
+                        <option value="New Mix">New Mix</option>
+                        <option value="Mix More">Mix More</option>
+                        <option value="Colour Code">Colour Code</option>
+                        <option value="Detailing">Detailing</option>
+                      </select>
+                    </div>
                   </div>
-                )}
-                {auditLogs.length > 0 && (
-                  <div className="col-12 mt-4">
-                    <h6>Audit Log Details</h6>
-                    <div className="table-responsive">
-                      <table className="table table-sm table-bordered">
+                  <div className="form-check mt-2">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={includeDeleted}
+                      onChange={(e) => setIncludeDeleted(e.target.checked)}
+                    />
+                    <label className="form-check-label">Include Deleted Orders</label>
+                  </div>
+                  <button className="btn btn-primary mt-3" onClick={handleFilterSubmit}>
+                    Apply Filters
+                  </button>
+                  {reportData && (
+                    <button className="btn btn-success mt-3 ms-2" onClick={downloadCSV}>
+                      Download CSV
+                    </button>
+                  )}
+                  {filterError && <div className="alert alert-danger mt-2">{filterError}</div>}
+                </div>
+              </div>
+
+              {reportData ? (
+                <>
+                  <div className="row">
+                    <div className="col-md-3">
+                      <h6 className="text-center">Order Status Summary</h6>
+                      <div className="canvas-container">
+                        <canvas id="statusChart"></canvas>
+                      </div>
+                      <table className="table table-sm table-bordered mt-3">
                         <thead className="table-light">
                           <tr>
-                            <th>Order ID</th>
-                            <th>Action</th>
-                            <th>From Status</th>
-                            <th>To Status</th>
-                            <th>Employee</th>
-                            <th>Timestamp</th>
-                            <th>Remarks</th>
+                            <th>Status</th>
+                            <th>Count</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {auditLogs.map((log) => (
-                            <tr key={log.log_id}>
-                              <td>{log.order_id}</td>
-                              <td>{log.action}</td>
-                              <td>{log.from_status || "N/A"}</td>
-                              <td>{log.to_status || "N/A"}</td>
-                              <td>{log.employee_name || "N/A"}</td>
-                              <td>{new Date(log.timestamp).toLocaleString()}</td>
-                              <td>{log.remarks || "N/A"}</td>
+                          {Object.entries(reportData.statusSummary).map(([status, count]) => (
+                            <tr key={status}>
+                              <td>{status}</td>
+                              <td>{count}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
+                    <div className="col-md-3">
+                      <h6 className="text-center">Order Category Summary</h6>
+                      <div className="canvas-container">
+                        <canvas id="categoryChart"></canvas>
+                      </div>
+                      <table className="table table-sm table-bordered mt-3">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Category</th>
+                            <th>Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(reportData.categorySummary).map(([category, count]) => (
+                            <tr key={category}>
+                              <td>{category}</td>
+                              <td>{count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="col-md-3">
+                      <h6 className="text-center">Order History Summary</h6>
+                      <div className="canvas-container">
+                        <canvas id="historyChart"></canvas>
+                      </div>
+                      <table className="table table-sm table-bordered mt-3">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Action</th>
+                            <th>Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(reportData.historySummary).map(([action, count]) => (
+                            <tr key={action}>
+                              <td>{action}</td>
+                              <td>{count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {reportData.deletedSummary && Object.keys(reportData.deletedSummary).length > 0 && (
+                      <div className="col-md-3">
+                        <h6 className="text-center">Deleted Orders Summary</h6>
+                        <div className="canvas-container">
+                          <canvas id="deletedChart"></canvas>
+                        </div>
+                        <table className="table table-sm table-bordered mt-3">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Status</th>
+                              <th>Count</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(reportData.deletedSummary).map(([status, count]) => (
+                              <tr key={status}>
+                                <td>{status}</td>
+                                <td>{count}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {auditLogs.length > 0 && (
+                      <div className="col-12 mt-4">
+                        <h6>Audit Log Details</h6>
+                        <div className="table-responsive">
+                          <table className="table table-sm table-bordered">
+                            <thead className="table-light">
+                              <tr>
+                                <th>Order ID</th>
+                                <th>Action</th>
+                                <th>From Status</th>
+                                <th>To Status</th>
+                                <th>Employee</th>
+                                <th>Timestamp</th>
+                                <th>Remarks</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {auditLogs.map((log) => (
+                                <tr key={log.log_id}>
+                                  <td>{log.order_id}</td>
+                                  <td>{log.action}</td>
+                                  <td>{log.from_status || "N/A"}</td>
+                                  <td>{log.to_status || "N/A"}</td>
+                                  <td>{log.employee_name || "N/A"}</td>
+                                  <td>{new Date(log.timestamp).toLocaleString()}</td>
+                                  <td>{log.remarks || "N/A"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-muted">No report data available. Apply filters to generate a report.</p>
-            )}
+                </>
+              ) : (
+                <p className="text-muted">No report data available. Apply filters to generate a report.</p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={onClose}>
+                Close
+              </button>
           </div>
-          <div className="modal-footer">
-            <button className="btn btn-secondary" onClick={onClose}>
-              Close
-            </button>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
