@@ -89,9 +89,12 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   const handleFilterSubmit = async () => {
     setFilterError("");
     try {
+      console.log("Applying filters:", { startDate, endDate, selectedStatus, selectedCategory, includeDeleted });
       await fetchReportData(startDate, endDate, selectedStatus, selectedCategory, includeDeleted);
       await fetchAuditLogs();
+      console.log("Report data fetched successfully");
     } catch (err) {
+      console.error("Error in handleFilterSubmit:", err);
       setFilterError(err.response?.data?.error || "Failed to fetch report data.");
     }
   };
@@ -136,17 +139,25 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
 
   // Initialize charts when report data changes
   useEffect(() => {
-    if (!reportData || !window.Chart) return;
+    console.log("Chart useEffect triggered, reportData:", reportData);
+    console.log("window.Chart available:", !!window.Chart);
+    
+    if (!reportData || !window.Chart) {
+      console.log("Skipping chart initialization - missing data or Chart library");
+      return;
+    }
 
     // Destroy existing charts
-    const existingCharts = [window.statusChart, window.categoryChart];
+    const existingCharts = [window.statusChart, window.categoryChart, window.historyChart, window.deletedChart];
     existingCharts.forEach(chart => {
-      if (chart) chart.destroy();
+      if (chart && typeof chart.destroy === 'function') {
+        chart.destroy();
+      }
     });
 
     // Create status chart
     const statusCtx = document.getElementById("statusChart");
-    if (statusCtx) {
+    if (statusCtx && reportData.statusSummary) {
       window.statusChart = new window.Chart(statusCtx, {
         type: "bar",
         data: {
@@ -175,7 +186,7 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
 
     // Create category chart
     const categoryCtx = document.getElementById("categoryChart");
-    if (categoryCtx) {
+    if (categoryCtx && reportData.categorySummary) {
       window.categoryChart = new window.Chart(categoryCtx, {
         type: "pie",
         data: {
@@ -198,10 +209,74 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
       });
     }
 
+    // Create history chart
+    const historyCtx = document.getElementById("historyChart");
+    if (historyCtx && reportData.historySummary) {
+      window.historyChart = new window.Chart(historyCtx, {
+        type: "doughnut",
+        data: {
+          labels: Object.keys(reportData.historySummary),
+          datasets: [{
+            label: "History Action Count",
+            data: Object.values(reportData.historySummary),
+            backgroundColor: ["#9966FF", "#FF9F40", "#FF6384", "#36A2EB"],
+            borderColor: ["#7A52CC", "#E08E38", "#E05570", "#2A87D0"],
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+          },
+        },
+      });
+    }
+
+    // Create deleted chart (if data exists)
+    const deletedCtx = document.getElementById("deletedChart");
+    if (deletedCtx && reportData.deletedSummary && Object.keys(reportData.deletedSummary).length > 0) {
+      window.deletedChart = new window.Chart(deletedCtx, {
+        type: "bar",
+        data: {
+          labels: Object.keys(reportData.deletedSummary),
+          datasets: [{
+            label: "Deleted Orders Status Count",
+            data: Object.values(reportData.deletedSummary),
+            backgroundColor: ["#FF6384", "#36A2EB", "#4BC0C0", "#FFCE56"],
+            borderColor: ["#E05570", "#2A87D0", "#3BA8A8", "#E0B447"],
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: "Count" } },
+            x: { title: { display: true, text: "Deleted Status" } },
+          },
+          plugins: {
+            legend: { position: 'top' },
+          },
+        },
+      });
+    }
+
     return () => {
       // Cleanup charts on unmount
-      if (window.statusChart) window.statusChart.destroy();
-      if (window.categoryChart) window.categoryChart.destroy();
+      if (window.statusChart && typeof window.statusChart.destroy === 'function') {
+        window.statusChart.destroy();
+      }
+      if (window.categoryChart && typeof window.categoryChart.destroy === 'function') {
+        window.categoryChart.destroy();
+      }
+      if (window.historyChart && typeof window.historyChart.destroy === 'function') {
+        window.historyChart.destroy();
+      }
+      if (window.deletedChart && typeof window.deletedChart.destroy === 'function') {
+        window.deletedChart.destroy();
+      }
     };
   }, [reportData]);
 
@@ -2383,4 +2458,5 @@ const CardViewBOC = () => {
     </div>
   );
 };
+
 export default CardViewBOC;
