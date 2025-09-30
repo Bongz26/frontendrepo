@@ -149,7 +149,9 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
     // Destroy existing charts
     const existingCharts = [window.statusChart, window.categoryChart, window.historyChart, window.deletedChart];
     existingCharts.forEach(chart => {
-      if (chart) chart.destroy();
+      if (chart && typeof chart.destroy === 'function') {
+        chart.destroy();
+      }
     });
 
     // Create status chart
@@ -262,10 +264,18 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
 
     return () => {
       // Cleanup charts on unmount
-      if (window.statusChart) window.statusChart.destroy();
-      if (window.categoryChart) window.categoryChart.destroy();
-      if (window.historyChart) window.historyChart.destroy();
-      if (window.deletedChart) window.deletedChart.destroy();
+      if (window.statusChart && typeof window.statusChart.destroy === 'function') {
+        window.statusChart.destroy();
+      }
+      if (window.categoryChart && typeof window.categoryChart.destroy === 'function') {
+        window.categoryChart.destroy();
+      }
+      if (window.historyChart && typeof window.historyChart.destroy === 'function') {
+        window.historyChart.destroy();
+      }
+      if (window.deletedChart && typeof window.deletedChart.destroy === 'function') {
+        window.deletedChart.destroy();
+      }
     };
   }, [reportData]);
 
