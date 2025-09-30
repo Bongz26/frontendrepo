@@ -88,9 +88,12 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
   const handleFilterSubmit = async () => {
     setFilterError("");
     try {
+      console.log("Applying filters:", { startDate, endDate, selectedStatus, selectedCategory, includeDeleted });
       await fetchReportData(startDate, endDate, selectedStatus, selectedCategory, includeDeleted);
       await fetchAuditLogs();
+      console.log("Report data fetched successfully");
     } catch (err) {
+      console.error("Error in handleFilterSubmit:", err);
       setFilterError(err.response?.data?.error || "Failed to fetch report data.");
     }
   };
@@ -135,61 +138,121 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
 
   // Initialize charts when report data changes
   useEffect(() => {
-    if (!reportData || !window.Chart) return;
+    console.log("Chart useEffect triggered, reportData:", reportData);
+    console.log("window.Chart available:", !!window.Chart);
+    
+    if (!reportData || !window.Chart) {
+      console.log("Skipping chart initialization - missing data or Chart library");
+      return;
+    }
 
     // Destroy existing charts
-    const existingCharts = [window.statusChart, window.categoryChart];
+    const existingCharts = [window.statusChart, window.categoryChart, window.historyChart, window.deletedChart];
     existingCharts.forEach(chart => {
       if (chart) chart.destroy();
     });
 
     // Create status chart
     const statusCtx = document.getElementById("statusChart");
-    if (statusCtx) {
+    if (statusCtx && reportData.statusSummary) {
       window.statusChart = new window.Chart(statusCtx, {
-        type: "bar",
-        data: {
-          labels: Object.keys(reportData.statusSummary),
-          datasets: [{
-            label: "Order Status Count",
-            data: Object.values(reportData.statusSummary),
-            backgroundColor: ["#36A2EB", "#FF6384", "#4BC0C0", "#FFCE56", "#9966FF", "#C9CB3F"],
-            borderColor: ["#2A87D0", "#E05570", "#3BA8A8", "#E0B447", "#7A52CC", "#A8AA2E"],
-            borderWidth: 1,
-          }],
-        },
-        options: {
-          responsive: true,
+      type: "bar",
+      data: {
+        labels: Object.keys(reportData.statusSummary),
+        datasets: [{
+          label: "Order Status Count",
+          data: Object.values(reportData.statusSummary),
+          backgroundColor: ["#36A2EB", "#FF6384", "#4BC0C0", "#FFCE56", "#9966FF", "#C9CB3F"],
+          borderColor: ["#2A87D0", "#E05570", "#3BA8A8", "#E0B447", "#7A52CC", "#A8AA2E"],
+          borderWidth: 1,
+        }],
+      },
+      options: {
+        responsive: true,
           maintainAspectRatio: false,
-          scales: {
-            y: { beginAtZero: true, title: { display: true, text: "Count" } },
-            x: { title: { display: true, text: "Status" } },
-          },
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: "Count" } },
+          x: { title: { display: true, text: "Status" } },
+        },
           plugins: {
             legend: { position: 'top' },
           },
-        },
-      });
+      },
+    });
     }
 
     // Create category chart
     const categoryCtx = document.getElementById("categoryChart");
-    if (categoryCtx) {
+    if (categoryCtx && reportData.categorySummary) {
       window.categoryChart = new window.Chart(categoryCtx, {
-        type: "pie",
-        data: {
-          labels: Object.keys(reportData.categorySummary),
-          datasets: [{
-            label: "Order Category Count",
-            data: Object.values(reportData.categorySummary),
-            backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
-            borderColor: ["#E05570", "#2A87D0", "#E0B447", "#3BA8A8"],
-            borderWidth: 1,
-          }],
-        },
-        options: {
-          responsive: true,
+      type: "pie",
+      data: {
+        labels: Object.keys(reportData.categorySummary),
+        datasets: [{
+          label: "Order Category Count",
+          data: Object.values(reportData.categorySummary),
+          backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"],
+          borderColor: ["#E05570", "#2A87D0", "#E0B447", "#3BA8A8"],
+          borderWidth: 1,
+        }],
+      },
+      options: {
+        responsive: true,
           maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+          },
+      },
+    });
+    }
+
+    // Create history chart
+    const historyCtx = document.getElementById("historyChart");
+    if (historyCtx && reportData.historySummary) {
+      window.historyChart = new window.Chart(historyCtx, {
+      type: "doughnut",
+      data: {
+        labels: Object.keys(reportData.historySummary),
+        datasets: [{
+          label: "History Action Count",
+          data: Object.values(reportData.historySummary),
+          backgroundColor: ["#9966FF", "#FF9F40", "#FF6384", "#36A2EB"],
+          borderColor: ["#7A52CC", "#E08E38", "#E05570", "#2A87D0"],
+          borderWidth: 1,
+        }],
+      },
+      options: {
+        responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top' },
+          },
+      },
+    });
+    }
+
+    // Create deleted chart (if data exists)
+    const deletedCtx = document.getElementById("deletedChart");
+    if (deletedCtx && reportData.deletedSummary && Object.keys(reportData.deletedSummary).length > 0) {
+      window.deletedChart = new window.Chart(deletedCtx, {
+          type: "bar",
+          data: {
+            labels: Object.keys(reportData.deletedSummary),
+            datasets: [{
+              label: "Deleted Orders Status Count",
+              data: Object.values(reportData.deletedSummary),
+              backgroundColor: ["#FF6384", "#36A2EB", "#4BC0C0", "#FFCE56"],
+              borderColor: ["#E05570", "#2A87D0", "#3BA8A8", "#E0B447"],
+              borderWidth: 1,
+            }],
+          },
+          options: {
+            responsive: true,
+          maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true, title: { display: true, text: "Count" } },
+              x: { title: { display: true, text: "Deleted Status" } },
+            },
           plugins: {
             legend: { position: 'top' },
           },
@@ -201,6 +264,8 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
       // Cleanup charts on unmount
       if (window.statusChart) window.statusChart.destroy();
       if (window.categoryChart) window.categoryChart.destroy();
+      if (window.historyChart) window.historyChart.destroy();
+      if (window.deletedChart) window.deletedChart.destroy();
     };
   }, [reportData]);
 
@@ -342,229 +407,229 @@ const ReportModal = ({ onClose, reportData, fetchReportData }) => {
         `}
       </style>
       <div className="modal d-block report-modal" tabIndex="-1" onClick={onClose}>
-        <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-content">
-            <div className="modal-header bg-purple text-white">
-              <h5 className="modal-title">📊 Order Report</h5>
-              <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
-            </div>
-            <div className="modal-body">
+      <div className="modal-dialog modal-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-content">
+          <div className="modal-header bg-purple text-white">
+            <h5 className="modal-title">📊 Order Report</h5>
+            <button type="button" className="btn-close btn-close-white" onClick={onClose}></button>
+          </div>
+          <div className="modal-body">
               
               {/* Filter Section */}
-              <div className="card mb-3 shadow-sm">
-                <div className="card-body">
+            <div className="card mb-3 shadow-sm">
+              <div className="card-body">
                   <h6 className="card-title">🔍 Filter Report</h6>
                   <div className="row g-3">
-                    <div className="col-md-3">
-                      <label className="form-label">Start Date:</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">End Date:</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Status:</label>
-                      <select
-                        className="form-control"
-                        value={selectedStatus}
-                        onChange={(e) => setSelectedStatus(e.target.value)}
-                      >
-                        <option value="All">All</option>
-                        <option value="Waiting">Waiting</option>
-                        <option value="Mixing">Mixing</option>
-                        <option value="Spraying">Spraying</option>
-                        <option value="Re-Mixing">Re-Mixing</option>
-                        <option value="Ready">Ready</option>
-                        <option value="Complete">Complete</option>
-                      </select>
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Category:</label>
-                      <select
-                        className="form-control"
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                      >
-                        <option value="All">All</option>
-                        <option value="New Mix">New Mix</option>
-                        <option value="Mix More">Mix More</option>
-                        <option value="Colour Code">Colour Code</option>
-                        <option value="Detailing">Detailing</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-check mt-2">
+                  <div className="col-md-3">
+                    <label className="form-label">Start Date:</label>
                     <input
-                      type="checkbox"
-                      className="form-check-input"
-                      checked={includeDeleted}
-                      onChange={(e) => setIncludeDeleted(e.target.checked)}
+                      type="date"
+                      className="form-control"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
                     />
-                    <label className="form-check-label">Include Deleted Orders</label>
                   </div>
-                  <button className="btn btn-primary mt-3" onClick={handleFilterSubmit}>
-                    Apply Filters
-                  </button>
-                  {reportData && (
-                    <button className="btn btn-success mt-3 ms-2" onClick={downloadCSV}>
-                      Download CSV
-                    </button>
-                  )}
-                  {filterError && <div className="alert alert-danger mt-2">{filterError}</div>}
+                  <div className="col-md-3">
+                    <label className="form-label">End Date:</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Status:</label>
+                    <select
+                      className="form-control"
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                    >
+                      <option value="All">All</option>
+                      <option value="Waiting">Waiting</option>
+                      <option value="Mixing">Mixing</option>
+                      <option value="Spraying">Spraying</option>
+                      <option value="Re-Mixing">Re-Mixing</option>
+                      <option value="Ready">Ready</option>
+                      <option value="Complete">Complete</option>
+                    </select>
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Category:</label>
+                    <select
+                      className="form-control"
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                    >
+                      <option value="All">All</option>
+                      <option value="New Mix">New Mix</option>
+                        <option value="Mix More">Mix More</option>
+                      <option value="Colour Code">Colour Code</option>
+                      <option value="Detailing">Detailing</option>
+                    </select>
+                  </div>
                 </div>
+                <div className="form-check mt-2">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    checked={includeDeleted}
+                    onChange={(e) => setIncludeDeleted(e.target.checked)}
+                  />
+                  <label className="form-check-label">Include Deleted Orders</label>
+                </div>
+                <button className="btn btn-primary mt-3" onClick={handleFilterSubmit}>
+                  Apply Filters
+                </button>
+                {reportData && (
+                  <button className="btn btn-success mt-3 ms-2" onClick={downloadCSV}>
+                    Download CSV
+                  </button>
+                )}
+                {filterError && <div className="alert alert-danger mt-2">{filterError}</div>}
               </div>
+            </div>
 
-              {reportData ? (
+            {reportData ? (
                 <>
-                  <div className="row">
-                    <div className="col-md-3">
-                      <h6 className="text-center">Order Status Summary</h6>
+              <div className="row">
+                <div className="col-md-3">
+                  <h6 className="text-center">Order Status Summary</h6>
                       <div className="canvas-container">
                         <canvas id="statusChart"></canvas>
                       </div>
-                      <table className="table table-sm table-bordered mt-3">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Status</th>
-                            <th>Count</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(reportData.statusSummary).map(([status, count]) => (
-                            <tr key={status}>
-                              <td>{status}</td>
-                              <td>{count}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="col-md-3">
-                      <h6 className="text-center">Order Category Summary</h6>
+                  <table className="table table-sm table-bordered mt-3">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Status</th>
+                        <th>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(reportData.statusSummary).map(([status, count]) => (
+                        <tr key={status}>
+                          <td>{status}</td>
+                          <td>{count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="col-md-3">
+                  <h6 className="text-center">Order Category Summary</h6>
                       <div className="canvas-container">
                         <canvas id="categoryChart"></canvas>
                       </div>
-                      <table className="table table-sm table-bordered mt-3">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Category</th>
-                            <th>Count</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(reportData.categorySummary).map(([category, count]) => (
-                            <tr key={category}>
-                              <td>{category}</td>
-                              <td>{count}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="col-md-3">
-                      <h6 className="text-center">Order History Summary</h6>
+                  <table className="table table-sm table-bordered mt-3">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Category</th>
+                        <th>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(reportData.categorySummary).map(([category, count]) => (
+                        <tr key={category}>
+                          <td>{category}</td>
+                          <td>{count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="col-md-3">
+                  <h6 className="text-center">Order History Summary</h6>
                       <div className="canvas-container">
                         <canvas id="historyChart"></canvas>
                       </div>
-                      <table className="table table-sm table-bordered mt-3">
+                  <table className="table table-sm table-bordered mt-3">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Action</th>
+                        <th>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(reportData.historySummary).map(([action, count]) => (
+                        <tr key={action}>
+                          <td>{action}</td>
+                          <td>{count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {reportData.deletedSummary && Object.keys(reportData.deletedSummary).length > 0 && (
+                  <div className="col-md-3">
+                    <h6 className="text-center">Deleted Orders Summary</h6>
+                        <div className="canvas-container">
+                          <canvas id="deletedChart"></canvas>
+                        </div>
+                    <table className="table table-sm table-bordered mt-3">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Status</th>
+                          <th>Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(reportData.deletedSummary).map(([status, count]) => (
+                          <tr key={status}>
+                            <td>{status}</td>
+                            <td>{count}</td>
+                        </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {auditLogs.length > 0 && (
+                  <div className="col-12 mt-4">
+                    <h6>Audit Log Details</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm table-bordered">
                         <thead className="table-light">
                           <tr>
+                            <th>Order ID</th>
                             <th>Action</th>
-                            <th>Count</th>
+                            <th>From Status</th>
+                            <th>To Status</th>
+                            <th>Employee</th>
+                            <th>Timestamp</th>
+                            <th>Remarks</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {Object.entries(reportData.historySummary).map(([action, count]) => (
-                            <tr key={action}>
-                              <td>{action}</td>
-                              <td>{count}</td>
+                          {auditLogs.map((log) => (
+                            <tr key={log.log_id}>
+                              <td>{log.order_id}</td>
+                              <td>{log.action}</td>
+                              <td>{log.from_status || "N/A"}</td>
+                              <td>{log.to_status || "N/A"}</td>
+                              <td>{log.employee_name || "N/A"}</td>
+                              <td>{new Date(log.timestamp).toLocaleString()}</td>
+                              <td>{log.remarks || "N/A"}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                    {reportData.deletedSummary && Object.keys(reportData.deletedSummary).length > 0 && (
-                      <div className="col-md-3">
-                        <h6 className="text-center">Deleted Orders Summary</h6>
-                        <div className="canvas-container">
-                          <canvas id="deletedChart"></canvas>
-                        </div>
-                        <table className="table table-sm table-bordered mt-3">
-                          <thead className="table-light">
-                            <tr>
-                              <th>Status</th>
-                              <th>Count</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Object.entries(reportData.deletedSummary).map(([status, count]) => (
-                              <tr key={status}>
-                                <td>{status}</td>
-                                <td>{count}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                    {auditLogs.length > 0 && (
-                      <div className="col-12 mt-4">
-                        <h6>Audit Log Details</h6>
-                        <div className="table-responsive">
-                          <table className="table table-sm table-bordered">
-                            <thead className="table-light">
-                              <tr>
-                                <th>Order ID</th>
-                                <th>Action</th>
-                                <th>From Status</th>
-                                <th>To Status</th>
-                                <th>Employee</th>
-                                <th>Timestamp</th>
-                                <th>Remarks</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {auditLogs.map((log) => (
-                                <tr key={log.log_id}>
-                                  <td>{log.order_id}</td>
-                                  <td>{log.action}</td>
-                                  <td>{log.from_status || "N/A"}</td>
-                                  <td>{log.to_status || "N/A"}</td>
-                                  <td>{log.employee_name || "N/A"}</td>
-                                  <td>{new Date(log.timestamp).toLocaleString()}</td>
-                                  <td>{log.remarks || "N/A"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
                   </div>
+                )}
+              </div>
                 </>
-              ) : (
-                <p className="text-muted">No report data available. Apply filters to generate a report.</p>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={onClose}>
-                Close
-              </button>
+            ) : (
+              <p className="text-muted">No report data available. Apply filters to generate a report.</p>
+            )}
           </div>
+          <div className="modal-footer">
+            <button className="btn btn-secondary" onClick={onClose}>
+              Close
+            </button>
           </div>
         </div>
       </div>
+    </div>
     </>
   );
 };
