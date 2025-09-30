@@ -2342,7 +2342,7 @@ const CardViewBOC = () => {
         </div>
       )}
 
-      <ToastContainer
+<ToastContainer
         className="position-fixed top-0 start-50 translate-middle-x p-3"
         style={{ zIndex: 9999 }}
       >
@@ -2368,6 +2368,8 @@ const CardViewBOC = () => {
             {toast.message}
           </Toast.Body>
         </Toast>
+      </ToastContainer>
+
       {state.showReportModal && (
         <ReportModal
           onClose={() => {
@@ -2378,9 +2380,6 @@ const CardViewBOC = () => {
           fetchReportData={fetchReportData}
         />
       )}
-      
-
-      </ToastContainer>
     </div>
   );
 };
